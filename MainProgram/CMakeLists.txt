@@ -28,10 +28,13 @@ if(MSVC)
 add_compile_options(/arch:AVX2) #make sure SIMD optimizations take place
 endif()
 
-project(mygame)
+project(mygame LANGUAGES C CXX CUDA)
 
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_ARCHITECTURES native)
 
-
+find_package(CUDAToolkit REQUIRED)
 
 #Add SFML, and here you would add other libraries if needed!
 add_subdirectory(thirdparty/SFML-2.6.1)
@@ -211,4 +214,5 @@ target_link_libraries("${CMAKE_PROJECT_NAME}"
 	glad
 	nlohmann
 	tinyfiledialogs
+	CUDA::cudart
 )
