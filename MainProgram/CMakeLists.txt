@@ -39,6 +39,7 @@ add_subdirectory(thirdparty/imgui-docking)
 add_subdirectory(thirdparty/imgui-sfml-2.6.x)
 add_subdirectory(thirdparty/glad)
 add_subdirectory(thirdparty/nlohmann)
+add_subdirectory(thirdparty/tinyfiledialogs)
 
 
 # MY_SOURCES is defined to be a list of all the source files for my game 
@@ -66,8 +67,23 @@ else()
 endif()
 
 target_sources("${CMAKE_PROJECT_NAME}" PRIVATE ${MY_SOURCES} 
-	"src/ConfigManager.cpp" "src/CreditsState.cpp" "src/main.cpp" "src/MainMenuState.cpp" "src/MultiplayerState.cpp" "src/OptionsState.cpp" "src/SinglePlayerState.cpp" "src/State.cpp" "src/StateManager.cpp"
-	"include/ConfigManager.h" "include/CreditsState.h" "include/MainMenuState.h" "include/MultiplayerState.h" "include/OptionsState.h" "include/SinglePlayerState.h" "include/State.h" "include/StateManager.h"
+	"src/ConfigManager.cpp"
+	"src/CreditsState.cpp"
+	"src/main.cpp"
+	"src/MainMenuState.cpp"
+	"src/MultiplayerState.cpp"
+	"src/OptionsState.cpp"
+	"src/SinglePlayerState.cpp"
+	"src/State.cpp"
+	"src/StateManager.cpp"
+	"include/ConfigManager.h"
+	"include/CreditsState.h"
+	"include/MainMenuState.h"
+	"include/MultiplayerState.h"
+	"include/OptionsState.h"
+	"include/SinglePlayerState.h"
+	"include/State.h"
+	"include/StateManager.h"
 )
 
 if(MSVC) # If using the VS compiler...
@@ -93,4 +109,5 @@ target_link_libraries("${CMAKE_PROJECT_NAME}"
 	ImGui-SFML::ImGui-SFML
 	glad
 	nlohmann
+	tinyfiledialogs
 )
