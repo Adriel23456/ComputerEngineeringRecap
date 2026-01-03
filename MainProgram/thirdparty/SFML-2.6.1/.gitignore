@@ -1,40 +1,96 @@
+############################################################
+# SFML vendorizado dentro del repo
+# Objetivo:
+# - Ignorar outputs generados (build/obj/etc.)
+# - Ignorar binarios en general
+# - PERO permitir SOLO las extlibs necesarias para MSVC x64
+############################################################
+
+#############################
 # Prerequisites
+#############################
 *.d
 
+#############################
 # Compiled Object files
+#############################
 *.slo
 *.lo
 *.o
 *.obj
 
+#############################
 # Precompiled Headers
+#############################
 *.gch
 *.pch
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
+#############################
+# Fortran module files (por compatibilidad)
+#############################
 *.mod
 *.smod
 
-# Compiled Static libraries
+#############################
+# Executables
+#############################
+*.exe
+*.out
+*.app
+
+#############################
+# Build folders (generados)
+#############################
+build/
+
+#############################
+# Cache/IDE folders
+#############################
+.cache/
+.vscode/
+.idea/
+
+############################################################
+# Binarios en general (por defecto ignorados)
+# (esto evita llenar el repo con outputs o builds locales)
+############################################################
+*.so
+*.dylib
+*.dll
 *.lai
 *.la
 *.a
 *.lib
 
-# Executables
-*.exe
-*.out
-*.app
+############################################################
+# PERMITIR SOLO extlibs necesarios para tu build actual:
+# - MSVC universal x64 libs (OpenAL/Vorbis/FLAC/Ogg, etc.)
+# - DLLs runtime x64 (openal32.dll, etc.)
+#
+# Nota: esto "anula" los ignores *.lib / *.dll SOLO en estas rutas.
+############################################################
 
-# Build folders
-build/
+# Asegura que Git no ignore el directorio extlibs
+!extlibs/
+!extlibs/**/
 
-# Cache/IDE folders
-.cache/
-.vscode/
-.idea/
+# Permitir libs MSVC universal x64
+!extlibs/libs-msvc-universal/
+!extlibs/libs-msvc-universal/**/
+!extlibs/libs-msvc-universal/x64/
+!extlibs/libs-msvc-universal/x64/*.lib
+
+# Permitir DLLs runtime x64 (si SFML las trae aquí)
+!extlibs/bin/
+!extlibs/bin/**/
+!extlibs/bin/x64/
+!extlibs/bin/x64/*.dll
+
+############################################################
+# EXCLUIR explícitamente librerías no obligatorias (otros targets)
+# (aunque ya estén ignoradas por defecto, esto deja la intención clara)
+############################################################
+extlibs/libs-android/
+extlibs/libs-ios/
+extlibs/libs-mingw/
+extlibs/libs-msvc/
