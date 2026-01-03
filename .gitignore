@@ -1,41 +1,68 @@
-# Prerequisites
-*.d
+############################################################
+# GLOBAL .gitignore (repo root)
+# Enfocado a: Visual Studio + CMake + outputs generados
+# NO ignora librerías (.lib/.dll) para no romper thirdparty.
+############################################################
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+#############################
+# Visual Studio
+#############################
+**/.vs/
+**/*.suo
+**/*.user
+**/*.userosscache
+**/*.sln.docstates
+**/*.VC.db
+**/*.VC.VC.opendb
+**/ipch/
+**/.idea/
 
-# Precompiled Headers
-*.gch
-*.pch
+#############################
+# CMake (archivos generados)
+#############################
+**/CMakeCache.txt
+**/CMakeFiles/
+**/cmake_install.cmake
+**/Makefile
+**/CTestTestfile.cmake
+**/install_manifest.txt
+**/compile_commands.json
 
-# Linker files
-*.ilk
+#############################
+# Carpetas de build típicas
+#############################
+**/out/
+**/build/
+**/cmake-build-*/
+**/bin/
+**/lib/
+**/Debug/
+**/Release/
+**/RelWithDebInfo/
+**/MinSizeRel/
 
-# Debugger Files
-*.pdb
+#############################
+# Artefactos de compilación (objetos intermedios)
+# OJO: NO incluye .lib/.dll para no matar deps en thirdparty.
+#############################
+**/*.obj
+**/*.o
+**/*.lo
+**/*.slo
+**/*.ilk
+**/*.pdb
+**/*.idb
+**/*.iobj
+**/*.ipdb
+**/*.tlog
+**/*.log
+**/*.cache
+**/*.pch
+**/*.gch
+**/*.d
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# debug information files
-*.dwo
+#############################
+# OS / Editor noise
+#############################
+**/.DS_Store
+**/Thumbs.db

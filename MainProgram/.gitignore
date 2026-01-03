@@ -1,7 +1,53 @@
-/out
-bin/
+############################################################
+# MainProgram/.gitignore
+# Ignorar solo outputs locales del proyecto, manteniendo thirdparty.
+############################################################
+
+#############################
+# Visual Studio
+#############################
+.vs/
+
+#############################
+# Output de CMake/VS
+#############################
+out/
 build/
-/.vs
-.idea/
-CMakeSettings.json
-Makefile
+cmake-build-*/
+bin/
+lib/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+
+#############################
+# Objetos intermedios
+#############################
+*.obj
+*.o
+*.lo
+*.slo
+*.ilk
+*.pdb
+*.idb
+*.iobj
+*.ipdb
+*.tlog
+*.log
+*.cache
+*.pch
+*.gch
+*.d
+
+#############################
+# IMPORTANTE:
+# NO ignores *.lib / *.dll aquí.
+# Queremos que thirdparty/SFML/extlibs pueda entrar al repo.
+#############################
+
+#############################
+# (Opcional) Si generas assets temporales propios
+#############################
+# resources/cache/
+# resources/generated/
