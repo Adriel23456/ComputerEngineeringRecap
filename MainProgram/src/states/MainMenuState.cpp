@@ -1,6 +1,6 @@
 #include "states/MainMenuState.h"
 #include "states/ProgramState.h"
-#include "core/StateManager.h"
+#include "core/fsm/StateManager.h"
 #include "imgui.h"
 #include <memory>
 #include <string>
