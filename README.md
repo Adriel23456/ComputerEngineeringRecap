@@ -1,178 +1,260 @@
-# ComputerScienceEngineeringRecap
-Attempt at completing various projects that recap the totality of my learnings this past 5 years of CSE
+# Computer Science Engineering Recap (CSE Recap)
 
+A **comprehensive C++ recap project** that consolidates and reimplements the core concepts, systems, and architectural patterns studied throughout my **Computer Engineering (CE / CSE)** degree.
 
-Proyect Structure:
-===============================================================================================================
+This repository is designed as a **modular, extensible simulation framework** built with **C++17**, **CMake**, and **Visual Studio 2026**, following modern software engineering practices such as **MVCC**, strict separation of concerns, and clean architectural layering.
+
+The long-term objective is to serve as:
+- A **technical portfolio**
+- A **knowledge consolidation project**
+- A **base platform** for experimenting with advanced computer architecture, algorithms, and visualization systems
+
+---
+
+## 🚀 Current & Planned Projects
+
+### Implemented / In Progress
+- **TLP CPU Simulator with Shared Cache**
+  - Multi-core CPU simulation
+  - 2-way set associative shared L1 cache
+  - Instruction pipeline, hazards, snooping, and interconnect bus
+  - Full graphical UI with real-time visualization and inspection
+
+### Planned
+- **Tomasulo Algorithm Simulator**
+  - Dynamic scheduling
+  - Reservation stations
+  - Complete CPU datapath simulation *(Coming soon)*
+
+- **Quicksort Visualizer**
+  - Step-by-step algorithm visualization
+  - Performance and partitioning analysis *(Coming soon)*
+
+- **Additional Computer Architecture & Algorithms Projects**
+  - To be announced
+
+---
+
+## 🛠️ Technology Stack
+
+- **Language:** C++17  
+- **Build System:** CMake (≥ 3.16)  
+- **Compiler:** MSVC (Visual Studio 2026)  
+
+### Graphics & UI
+- SFML (static)
+- ImGui (Docking branch)
+- ImGui-SFML
+
+### Utilities & Dependencies
+- GLAD
+- nlohmann/json
+- tinyfiledialogs
+
+### Architectural Principles
+- Modular app-based design
+- State-driven application core
+- MVCC-inspired data handling
+- Strict separation between **core engine**, **simulation logic**, and **UI**
+
+---
+
+## 📁 Project Structure
+
+The structure below reflects the **actual layout enforced by `CMakeLists.txt`** and represents the authoritative organization of the codebase.
+
+```
+
 project-root/
+│
+├── CMakeLists.txt
+│
 ├── include/
-│   ├── apps/
-│   │   └── cpu_tlp_shared_cache/
-│   │       ├── simulation/
-│   │       │   ├── assembler/
-│   │       │   │   └── Assembler.h
-│   │       │   ├── bus/
-│   │       │   │   └── interconnect_bus.h
-│   │       │   ├── cache/
-│   │       │   │   ├── l1_cache.h
-│   │       │   │   ├── l1_snoop.h
-│   │       │   │   └── l1_utils.h
-│   │       │   ├── memory/
-│   │       │   │   ├── InstructionMemoryComponent.h
-│   │       │   │   └── SharedMemory.h
-│   │       │   └── processor/
-│   │       │       ├── InterconnectComponent.h
-│   │       │       ├── L1Component.h
-│   │       │       ├── PE0Component.h
-│   │       │       ├── PE1Component.h
-│   │       │       ├── PE2Component.h
-│   │       │       ├── PE3Component.h
-│   │       │       ├── SharedData.h
-│   │       │       └── SharedMemoryComponent.h
-│   │       ├── ui/
-│   │       │   ├── views/
-│   │       │   │   ├── processor/
-│   │       │   │   │   ├── PE0CPUView.h
-│   │       │   │   │   ├── PE0MemView.h
-│   │       │   │   │   ├── PE0RegView.h
-│   │       │   │   │   ├── PE1CPUView.h
-│   │       │   │   │   ├── PE1MemView.h
-│   │       │   │   │   ├── PE1RegView.h
-│   │       │   │   │   ├── PE2CPUView.h
-│   │       │   │   │   ├── PE2MemView.h
-│   │       │   │   │   ├── PE2RegView.h
-│   │       │   │   │   ├── PE3CPUView.h
-│   │       │   │   │   ├── PE3MemView.h
-│   │       │   │   │   └── PE3RegView.h
-│   │       │   │   ├── AnalysisDataView.h
-│   │       │   │   ├── CompilerView.h
-│   │       │   │   ├── GeneralView.h
-│   │       │   │   ├── ICpuTLPView.h
-│   │       │   │   └── RAMView.h
-│   │       │   └── widgets/
-│   │       │       ├── CacheMemTable.h
-│   │       │       ├── InstructionDisassembler.h
-│   │       │       ├── Log.h
-│   │       │       ├── MemCacheTable.h
-│   │       │       ├── RamTable.h
-│   │       │       ├── RegTable.h
-│   │       │       └── ZoomPanImage.h
-│   │       ├── CpuTLPControlAPI.h
-│   │       ├── CpuTLPSharedCacheState.h
-│   │       └── tlp_debug.h
 │   ├── core/
+│   │   ├── Application.h
 │   │   ├── config/
 │   │   │   └── ConfigManager.h
 │   │   ├── fsm/
 │   │   │   ├── IState.h
 │   │   │   ├── State.h
 │   │   │   └── StateManager.h
-│   │   ├── resources/
-│   │   │   └── TextureCache.h
-│   │   └── Application.h
-│   ├── states/
-│   │   ├── MainMenuState.h
-│   │   └── ProgramState.h
+│   │   └── resources/
+│   │       └── TextureCache.h
+│   │
 │   ├── systems/
 │   │   └── audio/
 │   │       └── AudioManager.h
+│   │
+│   ├── states/
+│   │   ├── MainMenuState.h
+│   │   └── ProgramState.h
+│   │
 │   ├── ui/
 │   │   └── overlays/
-│   │       ├── panels/
-│   │       │   ├── AudioSettingsPanel.h
-│   │       │   ├── CreditsPanel.h
-│   │       │   └── VideoSettingsPanel.h
-│   │       └── SettingsOverlay.h
-│   └── util/
-│       └── errorReporting.h
-│
-├── src/
+│   │       ├── SettingsOverlay.h
+│   │       └── panels/
+│   │           ├── VideoSettingsPanel.h
+│   │           ├── AudioSettingsPanel.h
+│   │           └── CreditsPanel.h
+│   │
 │   ├── apps/
 │   │   └── cpu_tlp_shared_cache/
+│   │       ├── CpuTLPControlAPI.h
+│   │       ├── CpuTLPSharedCacheState.h
 │   │       ├── simulation/
 │   │       │   ├── assembler/
-│   │       │   │   └── Assembler.cpp
+│   │       │   │   └── Assembler.h
 │   │       │   ├── bus/
-│   │       │   │   └── interconnect_bus.cpp
+│   │       │   │   └── InterconnectBus.h
 │   │       │   ├── cache/
-│   │       │   │   ├── l1_cache.cpp
-│   │       │   │   ├── l1_fsm.cpp
-│   │       │   │   ├── l1_snoop.cpp
-│   │       │   │   └── l1_utils.cpp
+│   │       │   │   ├── L1Cache.h
+│   │       │   │   ├── L1Snoop.h
+│   │       │   │   └── L1Utils.h
+│   │       │   ├── debug/
+│   │       │   │   ├── TLPDebug.h
+│   │       │   │   └── TLPDebugHelpers.h
 │   │       │   ├── memory/
-│   │       │   │   ├── InstructionMemoryComponent.cpp
-│   │       │   │   └── SharedMemory.cpp
+│   │       │   │   ├── InstructionMemoryComponent.h
+│   │       │   │   └── SharedMemory.h
 │   │       │   └── processor/
-│   │       │       ├── InterconnectComponent.cpp
-│   │       │       ├── L1Component.cpp
-│   │       │       ├── PE0Component.cpp
-│   │       │       ├── PE1Component.cpp
-│   │       │       ├── PE2Component.cpp
-│   │       │       ├── PE3Component.cpp
-│   │       │       └── SharedMemoryComponent.cpp
-│   │       ├── ui/
-│   │       │   ├── views/
-│   │       │   │   ├── processor/
-│   │       │   │   │   ├── PE0CPUView.cpp
-│   │       │   │   │   ├── PE0MemView.cpp
-│   │       │   │   │   ├── PE0RegView.cpp
-│   │       │   │   │   ├── PE1CPUView.cpp
-│   │       │   │   │   ├── PE1MemView.cpp
-│   │       │   │   │   ├── PE1RegView.cpp
-│   │       │   │   │   ├── PE2CPUView.cpp
-│   │       │   │   │   ├── PE2MemView.cpp
-│   │       │   │   │   ├── PE2RegView.cpp
-│   │       │   │   │   ├── PE3CPUView.cpp
-│   │       │   │   │   ├── PE3MemView.cpp
-│   │       │   │   │   └── PE3RegView.cpp
-│   │       │   │   ├── AnalysisDataView.cpp
-│   │       │   │   ├── CompilerView.cpp
-│   │       │   │   ├── GeneralView.cpp
-│   │       │   │   └── RAMView.cpp
-│   │       │   └── widgets/
-│   │       │       ├── CacheMemTable.cpp
-│   │       │       ├── InstructionDisassembler.cpp
-│   │       │       ├── MemCacheTable.cpp
-│   │       │       ├── RamTable.cpp
-│   │       │       ├── RegTable.cpp
-│   │       │       └── ZoomPanImage.cpp
-│   │       ├── CpuTLPSharedCacheState.cpp
-│   │       └── CpuTLPStateFactory.cpp
+│   │       │       ├── InterconnectComponent.h
+│   │       │       ├── L1Component.h
+│   │       │       ├── SharedMemoryComponent.h
+│   │       │       ├── PEComponent.h
+│   │       │       └── pe/
+│   │       │           ├── PipelineRegisters.h
+│   │       │           ├── RegisterFile.h
+│   │       │           ├── ALU.h
+│   │       │           ├── ControlUnit.h
+│   │       │           └── HazardUnit.h
+│   │       └── ui/
+│   │           ├── views/
+│   │           │   ├── ICpuTLPView.h
+│   │           │   ├── GeneralView.h
+│   │           │   ├── CompilerView.h
+│   │           │   ├── RAMView.h
+│   │           │   └── AnalysisDataView.h
+│   │           └── widgets/
+│   │               ├── CacheMemTable.h
+│   │               ├── MemCacheTable.h
+│   │               ├── RamTable.h
+│   │               ├── RegTable.h
+│   │               ├── InstructionDisassembler.h
+│   │               ├── ZoomPanImage.h
+│   │               └── Log.h
+│   │
+│   └── util/
+│       ├── ErrorReporting.h
+│       └── gl_debug/
+│           ├── GLDebugOutput.h
+│           ├── GLDebugFilter.h
+│           ├── GLDebugFormatter.h
+│           └── GLDebugCallback.h
+│
+├── src/
+│   ├── Main.cpp
 │   ├── core/
-│   │   ├── config/
-│   │   │   └── ConfigManager.cpp
-│   │   ├── fsm/
-│   │   │   ├── State.cpp
-│   │   │   └── StateManager.cpp
-│   │   ├── resources/
-│   │   │   └── TextureCache.cpp
-│   │   └── Application.cpp
-│   ├── states/
-│   │   ├── MainMenuState.cpp
-│   │   └── ProgramState.cpp
 │   ├── systems/
-│   │   └── audio/
-│   │       └── AudioManager.cpp
+│   ├── states/
 │   ├── ui/
-│   │   └── overlays/
-│   │       ├── panels/
-│   │       │   ├── AudioSettingsPanel.cpp
-│   │       │   ├── CreditsPanel.cpp
-│   │       │   └── VideoSettingsPanel.cpp
-│   │       └── SettingsOverlay.cpp
-│   └── main.cpp
-===============================================================================================================
+│   └── apps/
+│       └── cpu_tlp_shared_cache/
+│           ├── CpuTLPSharedCacheState.cpp
+│           ├── CpuTLPStateFactory.cpp
+│           ├── simulation/
+│           └── ui/
+│
+├── resources/
+│   └── (textures, fonts, shaders, configuration files)
+│
+└── thirdparty/
+├── SFML-2.6.1/
+├── imgui-docking/
+├── imgui-sfml-2.6.x/
+├── glad/
+├── nlohmann/
+└── tinyfiledialogs/
 
+````
 
+---
 
-Ok decidi que la posicion adecuada de CpuTLPStateFactory.cpp era:
+## 🧠 Architectural Notes
 
-// File: src/apps/cpu_tlp_shared_cache/CpuTLPStateFactory.cpp
+- Single executable hosting **multiple independent applications**
+- Each simulator runs as a **self-contained application state**
+- Simulation logic is fully **decoupled from UI**
+- Advanced inspection via **ImGui Docking**
+- Designed with **future CUDA integration** in mind
+- AVX2 optimizations enabled on MSVC
 
+---
 
+## ⚙️ Build Configuration
 
-Para que lo consideres para tu contexto Y TAMBIEN: CpuTLPSharedCacheState.h NO ESTA EN '/ui/widgets/', si no que, esta en: #include "apps/cpu_tlp_shared_cache/CpuTLPSharedCacheState.h"
+- **IDE:** Visual Studio 2026
+- **CMake:** ≥ 3.16
+- **SFML:** statically linked
+- **Build mode toggle:**
+  ```cmake
+  option(PRODUCTION_BUILD "Make this a production build!" OFF)
+````
 
+> ⚠️ After changing `PRODUCTION_BUILD`, **delete the `out/` build directory** to force a clean reconfiguration (Visual Studio caching limitation).
 
+---
 
-Ten cuidado con el contexto de archivos de nuestro proyecto, qeu creo qeu te lo habia pasado medio incorrecto, ya lo corregi y el actual es:
+## 🎯 Purpose & Vision
+
+This project is intentionally **over-engineered by design**.
+
+Its purpose is not minimalism, but:
+
+* Deep mastery of **computer architecture**
+* Professional-grade **C++ systems design**
+* Realistic simulation of CPU internals
+* A long-term, extensible technical foundation
+
+It represents **five years of accumulated Computer Engineering knowledge**, distilled into a single evolving codebase.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**.
+
+```
+MIT License
+
+Copyright (c) 2026 Adriel23456
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
+## 👤 Author
+
+**Adriel Sebastian Chaves Salazar**
+Computer Engineering
+C++ / Systems & Architecture Enthusiast
+
+---
+
+🚧 **Status:** Actively developed and evolving
