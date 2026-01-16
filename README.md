@@ -1,10 +1,11 @@
 # Computer Science Engineering Recap (CSE Recap)
 
-A **comprehensive C++ recap project** that consolidates and reimplements the core concepts, systems, and architectural patterns studied throughout my **Computer Engineering (CE / CSE)** degree.
+A **comprehensive C++ recap project** that consolidates and reimplements the core concepts, systems, and architectural patterns studied throughout a **Computer Engineering (CSE)** degree.
 
 This repository is designed as a **modular, extensible simulation framework** built with **C++17**, **CMake**, and **Visual Studio 2026**, following modern software engineering practices such as **MVCC**, strict separation of concerns, and clean architectural layering.
 
 The long-term objective is to serve as:
+
 - A **technical portfolio**
 - A **knowledge consolidation project**
 - A **base platform** for experimenting with advanced computer architecture, algorithms, and visualization systems
@@ -14,6 +15,7 @@ The long-term objective is to serve as:
 ## 🚀 Current & Planned Projects
 
 ### Implemented / In Progress
+
 - **TLP CPU Simulator with Shared Cache**
   - Multi-core CPU simulation
   - 2-way set associative shared L1 cache
@@ -21,14 +23,17 @@ The long-term objective is to serve as:
   - Full graphical UI with real-time visualization and inspection
 
 ### Planned
+
 - **Tomasulo Algorithm Simulator**
   - Dynamic scheduling
   - Reservation stations
-  - Complete CPU datapath simulation *(Coming soon)*
+  - Complete CPU datapath simulation  
+  *(Coming soon)*
 
 - **Quicksort Visualizer**
   - Step-by-step algorithm visualization
-  - Performance and partitioning analysis *(Coming soon)*
+  - Performance and partitioning analysis  
+  *(Coming soon)*
 
 - **Additional Computer Architecture & Algorithms Projects**
   - To be announced
@@ -39,10 +44,10 @@ The long-term objective is to serve as:
 
 - **Language:** C++17  
 - **Build System:** CMake (≥ 3.16)  
-- **Compiler:** MSVC (Visual Studio 2026)  
+- **Compiler / IDE:** Visual Studio 2026  
 
 ### Graphics & UI
-- SFML (static)
+- SFML (statically linked)
 - ImGui (Docking branch)
 - ImGui-SFML
 
@@ -66,7 +71,6 @@ The structure below reflects the **actual layout enforced by `CMakeLists.txt`** 
 ```
 
 project-root/
-│
 ├── CMakeLists.txt
 │
 ├── include/
@@ -179,26 +183,17 @@ project-root/
 
 ---
 
-## 🧠 Architectural Notes
-
-- Single executable hosting **multiple independent applications**
-- Each simulator runs as a **self-contained application state**
-- Simulation logic is fully **decoupled from UI**
-- Advanced inspection via **ImGui Docking**
-- Designed with **future CUDA integration** in mind
-- AVX2 optimizations enabled on MSVC
-
----
-
 ## ⚙️ Build Configuration
 
-- **IDE:** Visual Studio 2026
-- **CMake:** ≥ 3.16
-- **SFML:** statically linked
-- **Build mode toggle:**
-  ```cmake
-  option(PRODUCTION_BUILD "Make this a production build!" OFF)
-```
+- **IDE:** Visual Studio 2026  
+- **CMake:** ≥ 3.16  
+- **SFML:** statically linked  
+
+### Build Mode Toggle
+
+```cmake
+option(PRODUCTION_BUILD "Make this a production build!" OFF)
+````
 
 > ⚠️ After changing `PRODUCTION_BUILD`, **delete the `out/` build directory** to force a clean reconfiguration (Visual Studio caching limitation).
 
@@ -219,41 +214,16 @@ It represents **five years of accumulated Computer Engineering knowledge**, dist
 
 ---
 
-## 📄 License
-
-This project is licensed under the **MIT License**.
-
-```
-MIT License
-
-Copyright (c) 2026 Adriel23456
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
 ## 👤 Author
 
 **Adriel Sebastian Chaves Salazar**
 Computer Engineering
-C++ / Systems & Architecture Enthusiast
+
+**Interests & Focus Areas:**
+
+* Embedded Systems Engineering
+* Low-Level Programming
+* Systems & Computer Architecture
 
 ---
 
