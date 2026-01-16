@@ -200,10 +200,6 @@ project-root/
   option(PRODUCTION_BUILD "Make this a production build!" OFF)
 ````
 
-> ⚠️ After changing `PRODUCTION_BUILD`, **delete the `out/` build directory** to force a clean reconfiguration (Visual Studio caching limitation).
-
----
-
 ## 🎯 Purpose & Vision
 
 This project is intentionally **over-engineered by design**.
@@ -258,4 +254,3 @@ C++ / Systems & Architecture Enthusiast
 ---
 
 🚧 **Status:** Actively developed and evolving
-```
