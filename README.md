@@ -198,7 +198,11 @@ project-root/
 - **Build mode toggle:**
   ```cmake
   option(PRODUCTION_BUILD "Make this a production build!" OFF)
-````
+```
+
+> ⚠️ After changing `PRODUCTION_BUILD`, **delete the `out/` build directory** to force a clean reconfiguration (Visual Studio caching limitation).
+
+---
 
 ## 🎯 Purpose & Vision
 
