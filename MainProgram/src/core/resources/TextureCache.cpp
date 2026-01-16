@@ -1,25 +1,40 @@
+// ============================================================================
+// File: src/core/resources/TextureCache.cpp
+// ============================================================================
+
+/**
+ * @file TextureCache.cpp
+ * @brief Implementation of TextureCache singleton.
+ */
+
 #include "core/resources/TextureCache.h"
 #include <iostream>
 
 TextureCache& TextureCache::instance() {
-    static TextureCache inst;
-    return inst;
+    static TextureCache instance;
+    return instance;
 }
 
 std::shared_ptr<sf::Texture> TextureCache::get(const std::string& fullPath) {
+    // Check if texture is already cached and still alive
     auto it = m_cache.find(fullPath);
     if (it != m_cache.end()) {
-        if (auto sp = it->second.lock()) return sp;
+        if (auto existingTexture = it->second.lock()) {
+            return existingTexture;
+        }
     }
 
-    auto tex = std::make_shared<sf::Texture>();
-    if (!tex->loadFromFile(fullPath)) {
-        std::cout << "[TextureCache] No se pudo cargar textura: " << fullPath << "\n";
+    // Load new texture
+    auto texture = std::make_shared<sf::Texture>();
+    if (!texture->loadFromFile(fullPath)) {
+        std::cout << "[TextureCache] Failed to load texture: " << fullPath << "\n";
         return nullptr;
     }
-    tex->setSmooth(true);
-    m_cache[fullPath] = tex;
-    return tex;
+
+    texture->setSmooth(true);
+    m_cache[fullPath] = texture;
+
+    return texture;
 }
 
 void TextureCache::clear() {

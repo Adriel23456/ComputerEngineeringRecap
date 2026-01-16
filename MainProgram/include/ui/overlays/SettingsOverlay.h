@@ -1,56 +1,134 @@
-#pragma once
-#include <SFML/Graphics.hpp>
-#include <vector>
-#include <string>
-#include "core/config/ConfigManager.h"
-#include "systems/audio/AudioManager.h"
+// ============================================================================
+// File: include/ui/overlays/SettingsOverlay.h
+// ============================================================================
 
+#pragma once
+
+/**
+ * @file SettingsOverlay.h
+ * @brief Settings overlay UI coordinator.
+ *
+ * Manages the settings overlay window and coordinates between
+ * different settings panels (video, audio, credits).
+ *
+ * @note Follows:
+ *   - SRP: Coordinates overlay display, delegates to panels
+ *   - OCP: New panels can be added without modifying existing code
+ */
+
+#include <SFML/Graphics.hpp>
+#include <string>
+#include <memory>
+
+ // Forward declarations
+class ConfigManager;
+class AudioManager;
+class VideoSettingsPanel;
+class AudioSettingsPanel;
+class CreditsPanel;
+
+/**
+ * @class SettingsOverlay
+ * @brief Main settings overlay controller.
+ *
+ * Manages overlay visibility, animation, and panel switching.
+ * Delegates actual settings UI to specialized panel classes.
+ */
 class SettingsOverlay {
 public:
-    struct ResItem { unsigned w; unsigned h; };
+    /**
+     * @brief Constructs the settings overlay.
+     * @param window Pointer to render window.
+     * @param config Pointer to configuration manager.
+     * @param audio Pointer to audio manager.
+     */
+    SettingsOverlay(sf::RenderWindow* window, ConfigManager* config, AudioManager* audio);
 
-    SettingsOverlay(sf::RenderWindow* window, ConfigManager* cfg, AudioManager* audio);
+    /**
+     * @brief Destructor.
+     */
+    ~SettingsOverlay();
 
+    // ========================================================================
+    // Visibility Control
+    // ========================================================================
+
+    /** @brief Toggles overlay visibility. */
     void toggle();
-    void open();
-    void close();
-    bool isOpen() const { return m_open; }
 
-    void handleEvent(const sf::Event& e);
-    void update(float dt);
+    /** @brief Opens the overlay. */
+    void open();
+
+    /** @brief Closes the overlay. */
+    void close();
+
+    /** @brief Checks if overlay is visible. */
+    bool isOpen() const { return m_isOpen; }
+
+    // ========================================================================
+    // Update Loop
+    // ========================================================================
+
+    /**
+     * @brief Handles input events.
+     * @param event SFML event to process.
+     */
+    void handleEvent(const sf::Event& event);
+
+    /**
+     * @brief Updates overlay animation.
+     * @param deltaTime Time since last frame.
+     */
+    void update(float deltaTime);
+
+    /**
+     * @brief Renders the overlay.
+     */
     void render();
 
+    // ========================================================================
+    // Window Recreation
+    // ========================================================================
+
+    /** @brief Rebuilds UI elements after window recreation. */
     void rebuildAfterRecreate();
+
+    /**
+     * @brief Checks and consumes apply request flag.
+     * @return true if display settings were applied.
+     */
     bool consumeApplyRequested();
 
 private:
+    /** @brief Renders the modal background with fade effect. */
+    void renderModalBackground(float alpha);
+
+    /** @brief Renders the main overlay window. */
+    void renderMainWindow(float alpha);
+
+    /** @brief Renders the settings view. */
+    void renderSettingsView();
+
+    /** @brief Renders the credits view. */
+    void renderCreditsView();
+
+    // Dependencies
     sf::RenderWindow* m_window;
-    ConfigManager* m_cfg;
+    ConfigManager* m_config;
     AudioManager* m_audio;
 
-    bool m_open = false;
-    bool m_applyRequested = false;
+    // Panels (composition for SRP)
+    std::unique_ptr<VideoSettingsPanel> m_videoPanel;
+    std::unique_ptr<AudioSettingsPanel> m_audioPanel;
+    std::unique_ptr<CreditsPanel>       m_creditsPanel;
 
-    // Variable para animación de fade-in
+    // State
+    bool  m_isOpen = false;
+    bool  m_applyRequested = false;
+    bool  m_showingCredits = false;
     float m_animationTimer = 0.0f;
 
-    // cache UI
-    std::vector<ResItem> m_resList;
-    int   m_resIndex = 0;
-
-    int   m_pendingBGM = 40;
-    int   m_pendingSFX = 60;
-    bool  m_pendingVSync = true;
-    int   m_screenModeIndex = 0;
-
-    // ---- NUEVO: modo "Credits" dentro del overlay ----
-    bool        m_showingCredits = false;
-    std::string m_creditsText;
-
-    void buildResolutions();
-    bool hasDisplayChangesPending() const;
-    void applyAndSave();
-    static bool sameRes(unsigned w1, unsigned h1, unsigned w2, unsigned h2);
-    std::string getAspectRatioString(unsigned w, unsigned h);
+    // UI constants
+    static constexpr float BUTTON_HEIGHT = 56.0f;
+    static constexpr float ANIMATION_SPEED = 3.0f;
 };
-

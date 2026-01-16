@@ -1,11 +1,24 @@
+// ============================================================================
+// File: src/apps/cpu_tlp_shared_cache/ui/widgets/ZoomPanImage.cpp
+// ============================================================================
+
+/**
+ * @file ZoomPanImage.cpp
+ * @brief Implementation of ZoomPanImage.
+ */
+
 #include "apps/cpu_tlp_shared_cache/ui/widgets/ZoomPanImage.h"
 #include "imgui.h"
 #include "imgui-SFML.h"
 #include <algorithm>
 
-static inline float clampf(float v, float lo, float hi) {
-    return v < lo ? lo : (v > hi ? hi : v);
-}
+namespace {
+
+    float clampf(float v, float lo, float hi) {
+        return v < lo ? lo : (v > hi ? hi : v);
+    }
+
+} // anonymous namespace
 
 void ZoomPanImage::render(const sf::Texture& tex, const char* id) {
     renderWithOverlay(tex, id, nullptr);
@@ -14,31 +27,34 @@ void ZoomPanImage::render(const sf::Texture& tex, const char* id) {
 void ZoomPanImage::renderWithOverlay(
     const sf::Texture& tex,
     const char* id,
-    const std::function<void(const ImVec2& origin, float scale, ImDrawList* dl)>& overlay
-) {
-    ImVec2 avail = ImGui::GetContentRegionAvail();
-    if (avail.x <= 0.f || avail.y <= 0.f) {
+    const std::function<void(const ImVec2& origin, float scale, ImDrawList* dl)>& overlay)
+{
+    ImVec2 available = ImGui::GetContentRegionAvail();
+    if (available.x <= 0.f || available.y <= 0.f) {
         ImGui::TextUnformatted("No space to render image.");
         return;
     }
 
-    ImGuiWindowFlags childFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-    ImGui::BeginChild(id, avail, true, childFlags);
+    ImGuiWindowFlags childFlags =
+        ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoScrollWithMouse;
+
+    ImGui::BeginChild(id, available, true, childFlags);
 
     auto ts = tex.getSize();
     ImVec2 img(ts.x > 0 ? static_cast<float>(ts.x) : 1.f,
         ts.y > 0 ? static_cast<float>(ts.y) : 1.f);
 
-    float fitScale = std::min(avail.x / img.x, avail.y / img.y);
+    // Calculate fit scale
+    float fitScale = std::min(available.x / img.x, available.y / img.y);
     fitScale = std::max(fitScale, 0.0001f);
 
-    // --- SCALE: fijo si zoom deshabilitado, o m_zoom si está habilitado ---
-    float lockedFrac = clampf(m_lockedVisibleFrac, 0.05f, 1.0f); // seguridad
-    float scale = m_zoomEnabled ? (fitScale * m_zoom)
-        : (fitScale / lockedFrac); // ej: frac=0.8 -> 1.25x
+    // Calculate actual scale based on zoom settings
+    float lockedFrac = clampf(m_lockedVisibleFrac, 0.05f, 1.0f);
+    float scale = m_zoomEnabled ? (fitScale * m_zoom) : (fitScale / lockedFrac);
 
     ImVec2 dispSize(img.x * scale, img.y * scale);
-    ImVec2 centerTL((avail.x - dispSize.x) * 0.5f, (avail.y - dispSize.y) * 0.5f);
+    ImVec2 centerTL((available.x - dispSize.x) * 0.5f, (available.y - dispSize.y) * 0.5f);
     ImVec2 origin(centerTL.x + m_pan.x, centerTL.y + m_pan.y);
 
     ImVec2 childScreenPos = ImGui::GetCursorScreenPos();
@@ -47,16 +63,16 @@ void ZoomPanImage::renderWithOverlay(
 
     bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
 
-    // ======= LÍMITE: fracción mínima visible =======
+    // Lambda to enforce minimum visible fraction
     float minFrac = clampf(m_minVisibleFrac, 0.05f, 1.0f);
-    auto clamp_to_min_visible = [&](ImVec2& originRef) {
-        const float minVisX = std::min(minFrac * dispSize.x, avail.x);
-        const float minVisY = std::min(minFrac * dispSize.y, avail.y);
+    auto clampToMinVisible = [&](ImVec2& originRef) {
+        const float minVisX = std::min(minFrac * dispSize.x, available.x);
+        const float minVisY = std::min(minFrac * dispSize.y, available.y);
 
         const float minOriginX = (minVisX - dispSize.x);
-        const float maxOriginX = (avail.x - minVisX);
+        const float maxOriginX = (available.x - minVisX);
         const float minOriginY = (minVisY - dispSize.y);
-        const float maxOriginY = (avail.y - minVisY);
+        const float maxOriginY = (available.y - minVisY);
 
         originRef.x = clampf(originRef.x, minOriginX, maxOriginX);
         originRef.y = clampf(originRef.y, minOriginY, maxOriginY);
@@ -65,23 +81,23 @@ void ZoomPanImage::renderWithOverlay(
         m_pan.y = originRef.y - centerTL.y;
         };
 
-    // Clamp inicial
-    clamp_to_min_visible(origin);
+    // Initial clamp
+    clampToMinVisible(origin);
 
-    // Doble click: recenter; si zoom habilitado, también reset zoom
+    // Double-click to reset view
     if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
         if (m_zoomEnabled) m_zoom = 1.0f;
         m_pan = ImVec2(0, 0);
 
-        // Recalcular con estado reseteado
+        // Recalculate with reset state
         scale = m_zoomEnabled ? (fitScale * m_zoom) : (fitScale / lockedFrac);
         dispSize = ImVec2(img.x * scale, img.y * scale);
-        centerTL = ImVec2((avail.x - dispSize.x) * 0.5f, (avail.y - dispSize.y) * 0.5f);
+        centerTL = ImVec2((available.x - dispSize.x) * 0.5f, (available.y - dispSize.y) * 0.5f);
         origin = ImVec2(centerTL.x + m_pan.x, centerTL.y + m_pan.y);
-        clamp_to_min_visible(origin);
+        clampToMinVisible(origin);
     }
 
-    // Zoom con la rueda SOLO si está habilitado
+    // Zoom with mouse wheel (only if enabled)
     if (hovered && m_zoomEnabled) {
         float wheel = ImGui::GetIO().MouseWheel;
         if (wheel != 0.0f) {
@@ -93,6 +109,7 @@ void ZoomPanImage::renderWithOverlay(
                 float oldScale = scale;
                 float newScale = fitScale * newZoom;
 
+                // Zoom toward mouse position
                 ImVec2 rel(localMouse.x - origin.x, localMouse.y - origin.y);
                 ImVec2 texCoord(rel.x / oldScale, rel.y / oldScale);
                 origin.x = localMouse.x - texCoord.x * newScale;
@@ -101,30 +118,29 @@ void ZoomPanImage::renderWithOverlay(
                 m_zoom = newZoom;
                 scale = newScale;
                 dispSize = ImVec2(img.x * scale, img.y * scale);
-                centerTL = ImVec2((avail.x - dispSize.x) * 0.5f, (avail.y - dispSize.y) * 0.5f);
+                centerTL = ImVec2((available.x - dispSize.x) * 0.5f, (available.y - dispSize.y) * 0.5f);
 
-                clamp_to_min_visible(origin);
+                clampToMinVisible(origin);
             }
         }
     }
 
-    // Pan con drag izquierdo (siempre)
+    // Pan with left mouse drag
     if (hovered && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
         ImVec2 delta = ImGui::GetIO().MouseDelta;
         origin.x += delta.x;
         origin.y += delta.y;
-        clamp_to_min_visible(origin);
+        clampToMinVisible(origin);
     }
 
-    // Dibujo imagen
+    // Draw image
     ImGui::SetCursorPos(origin);
     ImGui::Image(tex, sf::Vector2f(dispSize.x, dispSize.y));
 
-    // Overlay
+    // Draw overlay if provided
     if (overlay) {
         overlay(origin, scale, ImGui::GetWindowDrawList());
     }
 
     ImGui::EndChild();
 }
-

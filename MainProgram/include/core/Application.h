@@ -1,8 +1,22 @@
+// ============================================================================
+// File: include/core/Application.h
+// ============================================================================
+
 #pragma once
+
+/**
+ * @file Application.h
+ * @brief Main application controller definition.
+ *
+ * Provides the central coordination point for all application
+ * subsystems following the Single Responsibility Principle.
+ */
+
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <string>
 
+ // Forward declarations to minimize header dependencies (DIP)
 class StateManager;
 class ConfigManager;
 class AudioManager;
@@ -16,9 +30,10 @@ class SettingsOverlay;
  * and shutdown. Delegates specific responsibilities to specialized
  * manager classes.
  *
- * @note Follows:
+ * @note Design principles applied:
  *   - SRP: Only coordinates high-level application flow
  *   - DIP: Depends on manager abstractions (can be injected)
+ *   - OCP: New systems can be added without modifying existing code
  */
 class Application {
 public:
@@ -28,9 +43,12 @@ public:
      */
     explicit Application(const std::string& configPath);
 
+    /**
+     * @brief Destructor - ensures clean shutdown.
+     */
     ~Application();
 
-    // Prevent copying - application is a singleton-like resource
+    // Prevent copying - application owns unique system resources
     Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
 
@@ -64,17 +82,20 @@ private:
     /** @brief Recreates the window after settings change. */
     void recreateWindow();
 
-    /** @brief Initializes the ImGui context. */
+    /** @brief Initializes the ImGui context and styling. */
     void initImGui();
 
-    // Core systems
-    std::string m_configPath;
-    sf::RenderWindow m_window;                          ///< Main render window (value, not pointer)
+    // Configuration
+    std::string m_configPath; ///< Path to configuration file
+
+    // Core systems (order matters for initialization/destruction)
+    sf::RenderWindow m_window;                          ///< Main render window
     std::unique_ptr<ConfigManager> m_config;            ///< Configuration manager
-    std::unique_ptr<AudioManager> m_audio;              ///< Audio system
-    std::unique_ptr<StateManager> m_stateManager;       ///< State machine
+    std::unique_ptr<AudioManager> m_audio;              ///< Audio system manager
+    std::unique_ptr<StateManager> m_stateManager;       ///< Application state machine
     std::unique_ptr<SettingsOverlay> m_settingsOverlay; ///< Settings UI overlay
 
-    sf::Clock m_clock;      ///< Delta time clock
+    // Runtime state
+    sf::Clock m_clock;      ///< Delta time measurement clock
     bool m_running = false; ///< Application running flag
 };

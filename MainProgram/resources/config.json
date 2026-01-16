@@ -1,7 +1,7 @@
 {
     "audio": {
-        "bgm": 20,
-        "sfx": 25
+        "bgm": 10,
+        "sfx": 15
     },
     "framerate": 60,
     "resolution": {

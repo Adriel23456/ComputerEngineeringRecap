@@ -1,3 +1,15 @@
+// ============================================================================
+// File: src/core/Application.cpp
+// ============================================================================
+
+/**
+ * @file Application.cpp
+ * @brief Implementation of the Application class.
+ *
+ * Contains the main application loop and subsystem coordination.
+ * All specific functionality is delegated to specialized managers.
+ */
+
 #include "core/Application.h"
 #include "core/fsm/StateManager.h"
 #include "core/config/ConfigManager.h"
@@ -10,10 +22,10 @@
 #include <iostream>
 #include <algorithm>
 
-/**
- * @brief Constructs application with configuration file path.
- * @param configPath Path to config.json file.
- */
+ // ============================================================================
+ // Construction / Destruction
+ // ============================================================================
+
 Application::Application(const std::string& configPath)
     : m_configPath(configPath)
 {
@@ -23,10 +35,14 @@ Application::~Application() {
     shutdown();
 }
 
+// ============================================================================
+// Initialization
+// ============================================================================
+
 /**
  * @brief Initializes all application subsystems in correct order.
  *
- * Initialization order matters:
+ * Initialization order is critical:
  * 1. Configuration (needed by all other systems)
  * 2. Window (needed for rendering)
  * 3. ImGui (needs window)
@@ -37,7 +53,7 @@ Application::~Application() {
  * @return true if all systems initialized successfully.
  */
 bool Application::initialize() {
-    // 1. Load configuration
+    // Step 1: Load configuration
     m_config = std::make_unique<ConfigManager>();
     if (!m_config->load(m_configPath)) {
         std::cerr << "[Application] Config not found, using defaults.\n";
@@ -45,7 +61,7 @@ bool Application::initialize() {
         m_config->save(m_configPath);
     }
 
-    // 2. Create render window
+    // Step 2: Create render window
     sf::VideoMode videoMode(
         m_config->getResolutionWidth(),
         m_config->getResolutionHeight()
@@ -58,10 +74,10 @@ bool Application::initialize() {
     m_window.setFramerateLimit(m_config->getFramerate());
     m_window.setVerticalSyncEnabled(m_config->isVSyncEnabled());
 
-    // 3. Initialize ImGui
+    // Step 3: Initialize ImGui
     initImGui();
 
-    // 4. Initialize audio system
+    // Step 4: Initialize audio system
     m_audio = std::make_unique<AudioManager>();
     m_audio->setBGMVolume(m_config->getBGMVolume() / 100.f);
     m_audio->setSFXVolume(m_config->getSFXVolume() / 100.f);
@@ -70,13 +86,13 @@ bool Application::initialize() {
     m_audio->loadSFX("exitSettings", "SoundEffects/Settings.wav");
     m_audio->playBGM(true);
 
-    // 5. Initialize state manager with initial state
+    // Step 5: Initialize state manager with initial state
     m_stateManager = std::make_unique<StateManager>();
     m_stateManager->setCurrentState(
         std::make_unique<MainMenuState>(m_stateManager.get(), &m_window)
     );
 
-    // 6. Create settings overlay
+    // Step 6: Create settings overlay
     m_settingsOverlay = std::make_unique<SettingsOverlay>(
         &m_window, m_config.get(), m_audio.get()
     );
@@ -85,6 +101,10 @@ bool Application::initialize() {
     std::cout << "[Application] Initialization complete.\n";
     return true;
 }
+
+// ============================================================================
+// Main Loop
+// ============================================================================
 
 /**
  * @brief Main application loop.
@@ -101,7 +121,7 @@ int Application::run() {
     }
 
     while (m_window.isOpen()) {
-        // Calculate delta time with safety clamp
+        // Calculate delta time with safety clamp to prevent physics issues
         sf::Time dt = m_clock.restart();
         float deltaTime = std::clamp(dt.asSeconds(), 0.f, 1.f);
 
@@ -109,12 +129,12 @@ int Application::run() {
         update(deltaTime);
         render();
 
-        // Handle deferred window recreation
+        // Handle deferred window recreation (after settings apply)
         if (m_settingsOverlay->consumeApplyRequested()) {
             recreateWindow();
         }
 
-        // Apply pending state transitions
+        // Apply pending state transitions at safe point
         if (m_stateManager->hasNextState()) {
             m_stateManager->applyNextState();
         }
@@ -122,6 +142,10 @@ int Application::run() {
 
     return 0;
 }
+
+// ============================================================================
+// Event Processing
+// ============================================================================
 
 /**
  * @brief Processes all pending SFML events.
@@ -138,12 +162,13 @@ void Application::processEvents() {
     while (m_window.pollEvent(event)) {
         ImGui::SFML::ProcessEvent(m_window, event);
 
-        // System events
+        // Handle window close request
         if (event.type == sf::Event::Closed) {
             m_window.close();
             continue;
         }
 
+        // Handle window resize - update viewport
         if (event.type == sf::Event::Resized) {
             sf::FloatRect visibleArea(
                 0.f, 0.f,
@@ -154,14 +179,14 @@ void Application::processEvents() {
             continue;
         }
 
-        // Toggle settings overlay
+        // Toggle settings overlay with Escape key
         if (event.type == sf::Event::KeyPressed &&
             event.key.code == sf::Keyboard::Escape) {
             m_settingsOverlay->toggle();
             continue;
         }
 
-        // Forward to state if overlay is closed and ImGui doesn't want input
+        // Forward events to current state when appropriate
         bool imguiWantsInput = io.WantCaptureMouse || io.WantCaptureKeyboard;
         if (!m_settingsOverlay->isOpen() && !imguiWantsInput) {
             if (auto* state = m_stateManager->getCurrentState()) {
@@ -171,6 +196,10 @@ void Application::processEvents() {
     }
 }
 
+// ============================================================================
+// Update
+// ============================================================================
+
 /**
  * @brief Updates all active systems.
  * @param deltaTime Time since last frame in seconds.
@@ -178,7 +207,7 @@ void Application::processEvents() {
 void Application::update(float deltaTime) {
     ImGui::SFML::Update(m_window, sf::seconds(deltaTime));
 
-    // Update state only when overlay is closed
+    // Update current state only when overlay is closed
     if (!m_settingsOverlay->isOpen()) {
         if (auto* state = m_stateManager->getCurrentState()) {
             state->update(deltaTime);
@@ -187,6 +216,10 @@ void Application::update(float deltaTime) {
 
     m_settingsOverlay->update(deltaTime);
 }
+
+// ============================================================================
+// Rendering
+// ============================================================================
 
 /**
  * @brief Renders the current frame.
@@ -215,6 +248,10 @@ void Application::render() {
     m_window.display();
 }
 
+// ============================================================================
+// Window Management
+// ============================================================================
+
 /**
  * @brief Recreates the window with current configuration.
  *
@@ -242,6 +279,9 @@ void Application::recreateWindow() {
 
 /**
  * @brief Initializes ImGui with application styling.
+ *
+ * Sets up the ImGui context, applies custom theme,
+ * and configures input handling.
  */
 void Application::initImGui() {
     ImGui::SFML::Init(m_window);
@@ -254,8 +294,14 @@ void Application::initImGui() {
     ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f;
 }
 
+// ============================================================================
+// Shutdown
+// ============================================================================
+
 /**
  * @brief Shuts down all subsystems in reverse initialization order.
+ *
+ * Ensures proper cleanup of all resources before application exit.
  */
 void Application::shutdown() {
     if (!m_running) return;

@@ -1,27 +1,36 @@
+// ============================================================================
+// File: src/apps/cpu_tlp_shared_cache/ui/views/AnalysisDataView.cpp
+// ============================================================================
+
+/**
+ * @file AnalysisDataView.cpp
+ * @brief Implementation of AnalysisDataView.
+ */
+
 #include "apps/cpu_tlp_shared_cache/ui/views/AnalysisDataView.h"
-#include "apps/cpu_tlp_shared_cache/CpuTLPSharedCacheState.h"
 #include <imgui.h>
 
 void AnalysisDataView::render() {
-    // Usar TODO el espacio disponible (la tabla maneja su scroll)
-    ImVec2 avail = ImGui::GetContentRegionAvail();
+    ImVec2 available = ImGui::GetContentRegionAvail();
 
     ImGuiTableFlags flags =
         ImGuiTableFlags_Resizable |
         ImGuiTableFlags_RowBg |
         ImGuiTableFlags_Borders |
-        ImGuiTableFlags_ScrollY |      // scroll vertical con rueda
-        ImGuiTableFlags_ScrollX |      // scroll horizontal (por si se angosta)
+        ImGuiTableFlags_ScrollY |
+        ImGuiTableFlags_ScrollX |
         ImGuiTableFlags_SizingStretchProp;
 
-    if (ImGui::BeginTable("##analysis_data_table", 2, flags, ImVec2(avail.x, avail.y))) {
+    if (ImGui::BeginTable("##analysis_data_table", 2, flags, ImVec2(available.x, available.y))) {
         ImGui::TableSetupScrollFreeze(0, 1);
-        // 70% / 30%
+
+        // Column proportions: 70% metric name, 30% value
         ImGui::TableSetupColumn("Metric", ImGuiTableColumnFlags_WidthStretch, 0.70f);
         ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.30f);
         ImGui::TableHeadersRow();
 
-        auto row = [&](const char* name, uint64_t value) {
+        // Helper lambda for rendering metric rows
+        auto renderRow = [](const char* name, uint64_t value) {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::TextUnformatted(name);
@@ -29,14 +38,15 @@ void AnalysisDataView::render() {
             ImGui::Text("%llu", static_cast<unsigned long long>(value));
             };
 
-        row("Number of cache misses:", m_cacheMisses);
-        row("Number of invalidations of relevant lines:", m_invalidations);
-        row("Number of read/write operations:", m_readWriteOps);
-        row("Number of transactions in MESI:", m_transactionsMESI);
-        row("Traffic of read/write in PE0:", m_trafficPE[0]);
-        row("Traffic of read/write in PE1:", m_trafficPE[1]);
-        row("Traffic of read/write in PE2:", m_trafficPE[2]);
-        row("Traffic of read/write in PE3:", m_trafficPE[3]);
+        // Render all metrics
+        renderRow("Number of cache misses:", m_cacheMisses);
+        renderRow("Number of invalidations of relevant lines:", m_invalidations);
+        renderRow("Number of read/write operations:", m_readWriteOps);
+        renderRow("Number of transactions in MESI:", m_transactionsMESI);
+        renderRow("Traffic of read/write in PE0:", m_trafficPE[0]);
+        renderRow("Traffic of read/write in PE1:", m_trafficPE[1]);
+        renderRow("Traffic of read/write in PE2:", m_trafficPE[2]);
+        renderRow("Traffic of read/write in PE3:", m_trafficPE[3]);
 
         ImGui::EndTable();
     }

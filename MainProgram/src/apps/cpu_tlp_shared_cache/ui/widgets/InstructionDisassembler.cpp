@@ -1,3 +1,12 @@
+// ============================================================================
+// File: src/apps/cpu_tlp_shared_cache/ui/widgets/InstructionDisassembler.cpp
+// ============================================================================
+
+/**
+ * @file InstructionDisassembler.cpp
+ * @brief Implementation of InstructionDisassembler.
+ */
+
 #include "apps/cpu_tlp_shared_cache/ui/widgets/InstructionDisassembler.h"
 #include <sstream>
 #include <iomanip>
@@ -7,7 +16,7 @@ namespace cpu_tlp {
 
     const char* InstructionDisassembler::getOpcodeMnemonic(uint8_t opcode) {
         switch (opcode) {
-            // Operaciones enteras básicas
+            // Integer operations
         case 0x00: return "ADD";
         case 0x01: return "SUB";
         case 0x02: return "ADC";
@@ -23,7 +32,7 @@ namespace cpu_tlp {
         case 0x0C: return "ASR";
         case 0x0D: return "ROR";
 
-            // Operaciones con inmediato
+            // Immediate operations
         case 0x0E: return "ADDI";
         case 0x0F: return "SUBI";
         case 0x10: return "ADCI";
@@ -41,7 +50,7 @@ namespace cpu_tlp {
         case 0x1C: return "INC";
         case 0x1D: return "DEC";
 
-            // Operaciones float
+            // Float operations
         case 0x1E: return "FADD";
         case 0x1F: return "FSUB";
         case 0x20: return "FMUL";
@@ -70,7 +79,7 @@ namespace cpu_tlp {
         case 0x35: return "FMOVI";
         case 0x36: return "FMVNI";
 
-            // Comparaciones
+            // Comparisons
         case 0x37: return "CMP";
         case 0x38: return "CMN";
         case 0x39: return "TST";
@@ -95,17 +104,17 @@ namespace cpu_tlp {
         case 0x4A: return "BUN";
         case 0x4B: return "BORD";
 
-            // Especiales
+            // Special
         case 0x4C: return "SWI";
         case 0x4D: return "NOP";
 
-            // Memoria
+            // Memory
         case 0x4E: return "LDR";
         case 0x4F: return "STR";
         case 0x50: return "LDRB";
         case 0x51: return "STRB";
 
-            // Float con inmediato
+            // Float with immediate
         case 0x52: return "FSQRTI";
         case 0x53: return "FNEGI";
         case 0x54: return "FABSI";
@@ -149,13 +158,11 @@ namespace cpu_tlp {
         std::ostringstream oss;
 
         if (isFloat) {
-            // Convertir float32 a double y mostrar
             float f;
             std::memcpy(&f, &imm, 4);
             oss << "#" << std::fixed << std::setprecision(6) << static_cast<double>(f);
         }
         else {
-            // Mostrar como decimal con signo
             int32_t signedImm = signExtend32(imm);
             oss << "#" << signedImm;
         }
@@ -164,15 +171,15 @@ namespace cpu_tlp {
     }
 
     std::string InstructionDisassembler::disassemble(uint64_t instruction) {
-        // Casos especiales primero
+        // Special cases
         if (instruction == 0x4D00000000000000ULL) {
             return "NOP";
         }
-        if (instruction == 0x4D00000000000001ULL) { // NUEVO
+        if (instruction == 0x4D00000000000001ULL) {
             return "FLUSH";
         }
 
-        // Extraer campos
+        // Extract fields
         uint8_t opcode = (instruction >> 56) & 0xFF;
         uint8_t rd = (instruction >> 52) & 0xF;
         uint8_t rn = (instruction >> 48) & 0xF;
@@ -183,9 +190,9 @@ namespace cpu_tlp {
         std::ostringstream result;
         result << mnemonic;
 
-        // Determinar formato según opcode
+        // Format based on opcode type
         switch (opcode) {
-            // Rd, Rn, Rm (3 registros)
+            // Rd, Rn, Rm (3 registers)
         case 0x00: case 0x01: case 0x02: case 0x03:
         case 0x04: case 0x05: case 0x06: case 0x07:
         case 0x08: case 0x09: case 0x0A: case 0x0B:
@@ -196,7 +203,7 @@ namespace cpu_tlp {
                 << getRegisterName(rm);
             break;
 
-            // Rd, Rn, #imm (entero)
+            // Rd, Rn, #imm (integer)
         case 0x0E: case 0x0F: case 0x10: case 0x11:
         case 0x12: case 0x13: case 0x14: case 0x15:
         case 0x16: case 0x17: case 0x18: case 0x19:
@@ -215,7 +222,7 @@ namespace cpu_tlp {
                 << formatImmediate(imm, true);
             break;
 
-            // Rd, Rm (2 registros)
+            // Rd, Rm (2 registers)
         case 0x28: case 0x29: case 0x2A: case 0x2B:
         case 0x2C: case 0x2D: case 0x2E: case 0x2F: case 0x30:
         case 0x31: case 0x32:
@@ -223,14 +230,14 @@ namespace cpu_tlp {
                 << getRegisterName(rm);
             break;
 
-            // Rd, #imm (MOV variants - entero)
+            // Rd, #imm (MOV variants - integer)
         case 0x33: case 0x34:
             result << " " << getRegisterName(rd) << ", "
                 << formatImmediate(imm, false);
             break;
 
-        case 0x1C: // INC
-        case 0x1D: // DEC
+            // Rd only
+        case 0x1C: case 0x1D:
             result << " " << getRegisterName(rd);
             break;
 
@@ -242,25 +249,23 @@ namespace cpu_tlp {
                 << formatImmediate(imm, true);
             break;
 
-            // Rn, Rm (comparaciones)
+            // Rn, Rm (comparisons)
         case 0x37: case 0x38: case 0x39: case 0x3A:
         case 0x3F: case 0x40: case 0x41:
             result << " " << getRegisterName(rn) << ", "
                 << getRegisterName(rm);
             break;
 
-            // Branches: etiqueta (mostrar como decimal)
+            // Branches
         case 0x45: case 0x46: case 0x47: case 0x48:
-        case 0x49: case 0x4A: case 0x4B:
-        {
+        case 0x49: case 0x4A: case 0x4B: {
             int32_t offset = signExtend32(imm);
             result << " label_" << offset;
             break;
         }
 
-        // Memoria: Rd, [Rn, #offset] o Rm, [Rn, #offset]
-        case 0x4E: case 0x50: // LDR, LDRB
-        {
+                 // Memory: LDR, LDRB
+        case 0x4E: case 0x50: {
             int32_t offset = signExtend32(imm);
             result << " " << getRegisterName(rd) << ", ["
                 << getRegisterName(rn);
@@ -271,8 +276,8 @@ namespace cpu_tlp {
             break;
         }
 
-        case 0x4F: case 0x51: // STR, STRB
-        {
+                 // Memory: STR, STRB
+        case 0x4F: case 0x51: {
             int32_t offset = signExtend32(imm);
             result << " " << getRegisterName(rm) << ", ["
                 << getRegisterName(rn);
@@ -283,8 +288,8 @@ namespace cpu_tlp {
             break;
         }
 
-        // Sin operandos
-        case 0x4C: case 0x4D: // SWI, NOP
+                 // No operands
+        case 0x4C: case 0x4D:
             break;
 
         default:

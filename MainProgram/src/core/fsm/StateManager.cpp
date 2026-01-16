@@ -1,38 +1,71 @@
+// ============================================================================
+// File: src/core/fsm/StateManager.cpp
+// ============================================================================
+
+/**
+ * @file StateManager.cpp
+ * @brief Implementation of the StateManager class.
+ *
+ * Provides safe state transition management using a deferred
+ * transition pattern to prevent mid-frame state change issues.
+ */
+
 #include "core/fsm/StateManager.h"
 
+ /**
+  * @brief Constructs state manager with null states.
+  */
 StateManager::StateManager()
     : m_currentState(nullptr)
     , m_nextState(nullptr)
 {
 }
 
-StateManager::~StateManager() {
-    // El unique_ptr se encargará de eliminar el estado en el destructor.
-}
+/**
+ * @brief Destructor - unique_ptr handles cleanup automatically.
+ */
+StateManager::~StateManager() = default;
 
+/**
+ * @brief Immediately replaces the current state.
+ * @param newState New state to set (ownership transferred).
+ */
 void StateManager::setCurrentState(std::unique_ptr<State> newState) {
-    // Reemplaza el estado actual por el nuevo inmediatamente
     m_currentState = std::move(newState);
 }
 
+/**
+ * @brief Queues a state for deferred transition.
+ * @param newState State to queue (ownership transferred).
+ */
 void StateManager::queueNextState(std::unique_ptr<State> newState) {
-    // Guardamos el siguiente estado en cola, sin cambiar aún
     m_nextState = std::move(newState);
 }
 
+/**
+ * @brief Checks for pending state transition.
+ * @return true if a state is queued.
+ */
 bool StateManager::hasNextState() const {
-    return (bool)m_nextState;
+    return static_cast<bool>(m_nextState);
 }
 
+/**
+ * @brief Applies queued state if present.
+ *
+ * Transfers ownership from queue to current state.
+ * Queue is automatically cleared after transfer.
+ */
 void StateManager::applyNextState() {
     if (m_nextState) {
-        // Ahora sí cambiamos de estado
         setCurrentState(std::move(m_nextState));
-        // m_nextState ya queda en nullptr
     }
 }
 
+/**
+ * @brief Returns pointer to current state.
+ * @return Raw pointer to current state (non-owning).
+ */
 State* StateManager::getCurrentState() const {
     return m_currentState.get();
 }
-

@@ -1,17 +1,30 @@
+// ============================================================================
+// File: src/apps/cpu_tlp_shared_cache/ui/widgets/CacheMemTable.cpp
+// ============================================================================
+
+/**
+ * @file CacheMemTable.cpp
+ * @brief Implementation of CacheMemTable.
+ */
+
 #include "apps/cpu_tlp_shared_cache/ui/widgets/CacheMemTable.h"
 #include <imgui.h>
 #include <sstream>
 #include <iomanip>
 #include <cstring>
 
-void CacheMemTable::setLine(int index, const std::string& tag, const std::array<uint8_t, 32>& data, const std::string& mesi) {
+void CacheMemTable::setLine(int index, const std::string& tag,
+    const std::array<uint8_t, 32>& data,
+    const std::string& mesi) {
     if (index < 0 || index >= kTotalLines) return;
     m_lines[index].tag = tag;
     m_lines[index].data = data;
     m_lines[index].mesi = mesi;
 }
 
-void CacheMemTable::setLineBySetWay(int set, int way, const std::string& tag, const std::array<uint8_t, 32>& data, const std::string& mesi) {
+void CacheMemTable::setLineBySetWay(int set, int way, const std::string& tag,
+    const std::array<uint8_t, 32>& data,
+    const std::string& mesi) {
     if (set < 0 || set >= kSets || way < 0 || way >= kWays) return;
     int index = set * kWays + way;
     setLine(index, tag, data, mesi);
@@ -40,6 +53,7 @@ uint64_t CacheMemTable::extract8Bytes(const std::array<uint8_t, 32>& data, int s
     uint64_t value = 0;
     int offset = segment * 8;
 
+    // Little-endian extraction
     for (int i = 0; i < 8; ++i) {
         value |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
     }
@@ -55,30 +69,30 @@ std::string CacheMemTable::format8BytesAsHex(const std::array<uint8_t, 32>& data
 }
 
 void CacheMemTable::render(const char* id) {
-    ImVec2 avail = ImGui::GetContentRegionAvail();
+    ImVec2 available = ImGui::GetContentRegionAvail();
 
-    // ========== CONTROLES DE NAVEGACIÓN ==========
-    // ===== 1. MÁS ESPACIO VERTICAL PARA EL NAVEGADOR =====
+    // Navigation controls area
     const float CTRL_HEIGHT = 200.0f;
-    const float TABLE_HEIGHT = avail.y - CTRL_HEIGHT - 10.0f;
+    const float TABLE_HEIGHT = available.y - CTRL_HEIGHT - 10.0f;
 
-    ImGui::BeginChild("##CacheControls", ImVec2(avail.x, CTRL_HEIGHT), true);
+    ImGui::BeginChild("##CacheControls", ImVec2(available.x, CTRL_HEIGHT), true);
     {
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Cache Line Navigator");
         ImGui::Separator();
-        ImGui::Dummy(ImVec2(1, 8));  // Más espacio vertical
+        ImGui::Dummy(ImVec2(1, 8));
 
-        // ===== SELECTOR DE SET =====
+        // Set selector
         ImGui::Text("Set:");
         ImGui::SameLine();
 
-        const float btnW = 60.0f;      // Botones más anchos
-        const float btnH = 32.0f;      // Botones más altos
-        const float spacing = 8.0f;    // Más espacio entre botones
+        const float btnW = 60.0f;
+        const float btnH = 32.0f;
+        const float spacing = 8.0f;
 
         for (int s = 0; s < kSets; ++s) {
             if (s > 0) ImGui::SameLine(0, spacing);
 
+            // Color coding for selection state
             if (m_selectedSet == s) {
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.9f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.7f, 1.0f, 1.0f));
@@ -98,9 +112,9 @@ void CacheMemTable::render(const char* id) {
             ImGui::PopStyleColor(3);
         }
 
-        ImGui::Dummy(ImVec2(1, 10));  // Más espacio entre filas
+        ImGui::Dummy(ImVec2(1, 10));
 
-        // ===== SELECTOR DE WAY =====
+        // Way selector
         ImGui::Text("Way:");
         ImGui::SameLine();
 
@@ -134,8 +148,8 @@ void CacheMemTable::render(const char* id) {
 
     ImGui::Dummy(ImVec2(1, 5));
 
-    // ========== TABLA DE LA LÍNEA SELECCIONADA ==========
-    ImGui::BeginChild("##CacheTableArea", ImVec2(avail.x, TABLE_HEIGHT), false);
+    // Cache line table
+    ImGui::BeginChild("##CacheTableArea", ImVec2(available.x, TABLE_HEIGHT), false);
     {
         ImGuiTableFlags flags =
             ImGuiTableFlags_Resizable |
@@ -144,47 +158,46 @@ void CacheMemTable::render(const char* id) {
             ImGuiTableFlags_ScrollY |
             ImGuiTableFlags_SizingStretchProp;
 
-        // 5 columnas: Tag, Data, MESI, Decimal, Double
         if (ImGui::BeginTable(id, 5, flags, ImVec2(0, 0))) {
             ImGui::TableSetupScrollFreeze(0, 1);
 
             const float charW = ImGui::CalcTextSize("W").x;
+            const float tagWidth = charW * 22.0f;
+            const float dataWidth = charW * 27.0f;
+            const float mesiWidth = charW * 6.0f;
 
-            // ===== AJUSTAR TAMAÑOS DE COLUMNAS =====
-            const float tagWidth = charW * 22.0f;      // 2. Tag perfecto - sin cambios
-            const float dataWidth = charW * 27.0f;     // 3. Data contraído 30% (de 38 a ~27)
-            const float mesiWidth = charW * 6.0f;      // 4. MESI perfecto - sin cambios
-            // 5 y 6. Decimal y Double extendidos con factores de stretch mayores
-
-            ImGui::TableSetupColumn("Tag (56 bits)", ImGuiTableColumnFlags_WidthFixed, tagWidth);
-            ImGui::TableSetupColumn("Data (Hex, 32B)", ImGuiTableColumnFlags_WidthFixed, dataWidth);
-            ImGui::TableSetupColumn("MESI", ImGuiTableColumnFlags_WidthFixed, mesiWidth);
-            ImGui::TableSetupColumn("Decimal (int64, 2's comp)", ImGuiTableColumnFlags_WidthStretch, 1.5f);  // 5. Extendido de 1.0f a 1.5f
-            ImGui::TableSetupColumn("Double (IEEE 754, 64-bit)", ImGuiTableColumnFlags_WidthStretch, 1.5f);  // 6. Extendido de 1.0f a 1.5f
+            ImGui::TableSetupColumn("Tag (56 bits)",
+                ImGuiTableColumnFlags_WidthFixed, tagWidth);
+            ImGui::TableSetupColumn("Data (Hex, 32B)",
+                ImGuiTableColumnFlags_WidthFixed, dataWidth);
+            ImGui::TableSetupColumn("MESI",
+                ImGuiTableColumnFlags_WidthFixed, mesiWidth);
+            ImGui::TableSetupColumn("Decimal (int64, 2's comp)",
+                ImGuiTableColumnFlags_WidthStretch, 1.5f);
+            ImGui::TableSetupColumn("Double (IEEE 754, 64-bit)",
+                ImGuiTableColumnFlags_WidthStretch, 1.5f);
             ImGui::TableHeadersRow();
 
-            // Obtener la línea actual
             const CacheLine& line = getCurrentLine();
 
-            // ===== FILA ÚNICA: LA LÍNEA SELECCIONADA =====
-            // Como la DATA tiene 4 segmentos de 8 bytes, renderizamos 4 sub-filas
+            // Render 4 sub-rows for 4x8-byte segments
             for (int seg = 0; seg < 4; ++seg) {
                 ImGui::TableNextRow();
 
-                // ===== COLUMNA 0: TAG (solo en la primera sub-fila) =====
+                // Tag column (only first row)
                 ImGui::TableSetColumnIndex(0);
                 if (seg == 0) {
-                    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Set %d / Way %d", m_selectedSet, m_selectedWay);
+                    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f),
+                        "Set %d / Way %d", m_selectedSet, m_selectedWay);
                     ImGui::Text("%s", line.tag.c_str());
                 }
                 else {
                     ImGui::Dummy(ImVec2(0, 0));
                 }
 
-                // ===== COLUMNA 1: DATA (segmento actual) =====
+                // Data column (8 bytes per segment)
                 ImGui::TableSetColumnIndex(1);
                 {
-                    // Mostrar solo los 8 bytes de este segmento
                     std::ostringstream oss;
                     oss << std::hex << std::uppercase << std::setfill('0');
 
@@ -197,7 +210,7 @@ void CacheMemTable::render(const char* id) {
                     ImGui::Text("[%d] %s", seg, oss.str().c_str());
                 }
 
-                // ===== COLUMNA 2: MESI (solo en la primera sub-fila) =====
+                // MESI column (only first row)
                 ImGui::TableSetColumnIndex(2);
                 if (seg == 0) {
                     ImVec4 color;
@@ -212,7 +225,7 @@ void CacheMemTable::render(const char* id) {
                     ImGui::Dummy(ImVec2(0, 0));
                 }
 
-                // ===== COLUMNA 3: DECIMAL (segmento actual) =====
+                // Decimal column
                 ImGui::TableSetColumnIndex(3);
                 {
                     uint64_t bits = extract8Bytes(line.data, seg);
@@ -220,7 +233,7 @@ void CacheMemTable::render(const char* id) {
                     ImGui::Text("%lld", static_cast<long long>(asSigned));
                 }
 
-                // ===== COLUMNA 4: DOUBLE (segmento actual) =====
+                // Double column
                 ImGui::TableSetColumnIndex(4);
                 {
                     uint64_t bits = extract8Bytes(line.data, seg);

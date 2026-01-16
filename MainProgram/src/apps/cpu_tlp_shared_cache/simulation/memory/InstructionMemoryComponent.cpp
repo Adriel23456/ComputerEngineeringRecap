@@ -1,25 +1,43 @@
-﻿#include "apps/cpu_tlp_shared_cache/simulation/memory/InstructionMemoryComponent.h"
+﻿// ============================================================================
+// File: src/apps/cpu_tlp_shared_cache/simulation/memory/InstructionMemoryComponent.cpp
+// ============================================================================
+
+/**
+ * @file InstructionMemoryComponent.cpp
+ * @brief Implementation of InstructionMemoryComponent.
+ */
+
+#include "apps/cpu_tlp_shared_cache/simulation/memory/InstructionMemoryComponent.h"
 #include "apps/cpu_tlp_shared_cache/ui/widgets/Log.h"
 #include <fstream>
 #include <iostream>
 #include <chrono>
 #include <thread>
 #include <cstring>
-#include <array>
 
 namespace cpu_tlp {
+
+    // ============================================================================
+    // Construction / Destruction
+    // ============================================================================
 
     InstructionMemoryComponent::InstructionMemoryComponent()
         : m_sharedData(nullptr)
         , m_executionThread(nullptr)
         , m_memorySize(0)
         , m_isRunning(false)
-        , m_processingPaused(false) {
+        , m_processingPaused(false)
+    {
+        m_lastPC.fill(0xFFFFFFFFFFFFFFFFULL);
     }
 
     InstructionMemoryComponent::~InstructionMemoryComponent() {
         shutdown();
     }
+
+    // ============================================================================
+    // Initialization / Shutdown
+    // ============================================================================
 
     bool InstructionMemoryComponent::initialize(std::shared_ptr<CPUSystemSharedData> sharedData) {
         if (m_isRunning) {
@@ -65,6 +83,10 @@ namespace cpu_tlp {
         return m_isRunning;
     }
 
+    // ============================================================================
+    // Memory Loading
+    // ============================================================================
+
     bool InstructionMemoryComponent::loadInstructionMemory() {
         std::string fullPath = std::string(RESOURCES_PATH) + INSTRUCTION_FILE_PATH;
         std::ifstream file(fullPath, std::ios::binary | std::ios::ate);
@@ -73,7 +95,7 @@ namespace cpu_tlp {
             std::cerr << "[InstructionMemory] Could not open file: " << fullPath << std::endl;
             m_instructionMemory.clear();
             m_memorySize = 0;
-            return true;
+            return true;  // Empty memory is valid
         }
 
         m_memorySize = static_cast<size_t>(file.tellg());
@@ -87,6 +109,7 @@ namespace cpu_tlp {
             oss << "[InstructionMemory] Loaded " << m_memorySize
                 << " bytes from " << INSTRUCTION_FILE_PATH << "\n";
             });
+
         return true;
     }
 
@@ -99,16 +122,18 @@ namespace cpu_tlp {
         bool success = loadInstructionMemory();
 
         if (success) {
-            // AÑADIR ESTAS LÍNEAS: Resetear lastPC para forzar actualización
+            // Reset lastPC to force update on next request
             for (int i = 0; i < 4; ++i) {
                 m_lastPC[i] = 0xFFFFFFFFFFFFFFFFULL;
             }
 
+            // Reset all PE connections
             for (int i = 0; i < 4; ++i) {
                 auto& connection = m_sharedData->instruction_connections[i];
                 connection.PC_F.store(0x0000000000000000ULL, std::memory_order_release);
                 connection.INS_READY.store(false, std::memory_order_release);
             }
+
             std::cout << "[InstructionMemory] Reload successful" << std::endl;
         }
         else {
@@ -119,6 +144,10 @@ namespace cpu_tlp {
         return success;
     }
 
+    // ============================================================================
+    // Processing Control
+    // ============================================================================
+
     void InstructionMemoryComponent::pauseProcessing() {
         m_processingPaused.store(true, std::memory_order_release);
     }
@@ -126,6 +155,10 @@ namespace cpu_tlp {
     void InstructionMemoryComponent::resumeProcessing() {
         m_processingPaused.store(false, std::memory_order_release);
     }
+
+    // ============================================================================
+    // Instruction Access
+    // ============================================================================
 
     uint64_t InstructionMemoryComponent::bytesToUint64LittleEndian(const uint8_t* bytes) {
         uint64_t result = 0;
@@ -148,7 +181,7 @@ namespace cpu_tlp {
         auto& connection = m_sharedData->instruction_connections[peIndex];
         uint64_t currentPC = connection.PC_F.load(std::memory_order_acquire);
 
-        // CAMBIAR DE STATIC A USAR LA VARIABLE MIEMBRO
+        // Only process if PC has changed
         if (currentPC != m_lastPC[peIndex]) {
             connection.INS_READY.store(false, std::memory_order_release);
 
@@ -161,10 +194,14 @@ namespace cpu_tlp {
         }
     }
 
+    // ============================================================================
+    // Service Thread
+    // ============================================================================
+
     void InstructionMemoryComponent::threadMain() {
         std::cout << "[InstructionMemory] Thread started" << std::endl;
 
-        // Procesar inicialmente todas las direcciones 0x0
+        // Process initial requests for all PEs at address 0x0
         for (int i = 0; i < 4; ++i) {
             processPERequest(i);
         }
@@ -175,7 +212,7 @@ namespace cpu_tlp {
                 continue;
             }
 
-            // Procesar todos los PEs
+            // Process all PE requests
             for (int i = 0; i < 4; ++i) {
                 processPERequest(i);
             }

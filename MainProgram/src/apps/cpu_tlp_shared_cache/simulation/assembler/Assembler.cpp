@@ -1,4 +1,20 @@
-﻿#include "apps/cpu_tlp_shared_cache/simulation/assembler/Assembler.h"
+﻿// ============================================================================
+// File: src/apps/cpu_tlp_shared_cache/simulation/assembler/Assembler.cpp
+// ============================================================================
+
+/**
+ * @file Assembler.cpp
+ * @brief Implementation of the assembly language assembler.
+ *
+ * Converts human-readable assembly source code into 64-bit machine
+ * instructions for the CPU TLP simulation.
+ *
+ * @note Two-pass assembly:
+ *   - Pass 1: Collect labels and count instructions
+ *   - Pass 2: Generate binary encoding with resolved references
+ */
+
+#include "apps/cpu_tlp_shared_cache/simulation/assembler/Assembler.h"
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -13,573 +29,529 @@
 #include <unordered_map>
 #include <tuple>
 
-// ═══════════════════════════════════════════════════════════════════════════
-//                           UTILIDADES DE PROCESAMIENTO
-// ═══════════════════════════════════════════════════════════════════════════
+ // ============================================================================
+ // String Processing Utilities
+ // ============================================================================
 
-/**
- * Convierte una cadena a mayúsculas
- */
 std::string Assembler::up(const std::string& s) {
-    std::string r = s;
-    std::transform(r.begin(), r.end(), r.begin(),
-        [](unsigned char c) { return std::toupper(c); });
-    return r;
+    std::string result = s;
+    std::transform(result.begin(), result.end(), result.begin(),
+        [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+    return result;
 }
 
-/**
- * Elimina espacios en blanco al inicio y final de la cadena
- */
 std::string Assembler::trim(const std::string& s) {
-    size_t a = s.find_first_not_of(" \t\r\n");
-    if (a == std::string::npos) return "";
-    size_t b = s.find_last_not_of(" \t\r\n");
-    return s.substr(a, b - a + 1);
+    size_t start = s.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) return "";
+    size_t end = s.find_last_not_of(" \t\r\n");
+    return s.substr(start, end - start + 1);
 }
 
-/**
- * Separa operandos por comas, eliminando espacios
- */
 std::vector<std::string> Assembler::splitOperands(const std::string& s) {
-    std::vector<std::string> r;
-    std::string trimmed_input = trim(s);
-    if (trimmed_input.empty()) return r;
+    std::vector<std::string> result;
+    std::string trimmedInput = trim(s);
+    if (trimmedInput.empty()) return result;
 
     size_t start = 0;
     size_t pos = 0;
 
-    while ((pos = trimmed_input.find(',', start)) != std::string::npos) {
-        std::string token = trim(trimmed_input.substr(start, pos - start));
+    while ((pos = trimmedInput.find(',', start)) != std::string::npos) {
+        std::string token = trim(trimmedInput.substr(start, pos - start));
         if (!token.empty()) {
-            r.push_back(token);
+            result.push_back(token);
         }
         start = pos + 1;
     }
 
-    std::string last_token = trim(trimmed_input.substr(start));
-    if (!last_token.empty()) {
-        r.push_back(last_token);
+    std::string lastToken = trim(trimmedInput.substr(start));
+    if (!lastToken.empty()) {
+        result.push_back(lastToken);
     }
 
-    return r;
+    return result;
 }
 
-/**
- * Verifica si un token es un inmediato (comienza con '#')
- */
-bool Assembler::isImmediate(const std::string& t) {
-    return !t.empty() && t[0] == '#';
+bool Assembler::isImmediate(const std::string& token) {
+    return !token.empty() && token[0] == '#';
 }
 
-/**
- * Parsea un inmediato entero (elimina el '#' y convierte)
- * Soporta tanto decimal (#123, #-45) como hexadecimal (#0x800, #0xFF)
- */
-long Assembler::parseIntImm(const std::string& t) {
+long Assembler::parseIntImm(const std::string& token) {
     try {
-        if (t.size() <= 1) {
-            throw std::runtime_error("Inmediato vacio: " + t);
+        if (token.size() <= 1) {
+            throw std::runtime_error("Empty immediate: " + token);
         }
 
-        std::string num_str = t.substr(1); // Eliminar el '#'
+        std::string numStr = token.substr(1);  // Remove '#'
 
-        // Detectar si es hexadecimal (comienza con 0x o 0X)
-        if (num_str.size() >= 2 &&
-            num_str[0] == '0' &&
-            (num_str[1] == 'x' || num_str[1] == 'X')) {
-            // Hexadecimal: usar base 16
-            return std::stol(num_str, nullptr, 16);
+        // Detect hexadecimal (0x or 0X prefix)
+        if (numStr.size() >= 2 &&
+            numStr[0] == '0' &&
+            (numStr[1] == 'x' || numStr[1] == 'X')) {
+            return std::stol(numStr, nullptr, 16);
         }
         else {
-            // Decimal: usar base 10 (soporta negativos)
-            return std::stol(num_str, nullptr, 10);
+            // Decimal (supports negative values)
+            return std::stol(numStr, nullptr, 10);
         }
     }
     catch (const std::exception& e) {
-        throw std::runtime_error("Inmediato entero invalido: " + t + " (" + e.what() + ")");
+        throw std::runtime_error("Invalid integer immediate: " + token + " (" + e.what() + ")");
     }
 }
 
-/**
- * Convierte un float a su representación binaria uint32_t (IEEE 754)
- */
 uint32_t Assembler::floatToU32(float f) {
     uint32_t u;
     std::memcpy(&u, &f, sizeof(u));
     return u;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//                              ENSAMBLADOR PRINCIPAL
-// ═══════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// Main Assembler Implementation
+// ============================================================================
 
 std::vector<Assembler::u64> Assembler::assembleFile(const std::string& path) {
 
-    // ───────────────────────────────────────────────────────────────────────
-    // TABLA DE OPCODES - Mapeo de mnemonics a valores hexadecimales
-    // ───────────────────────────────────────────────────────────────────────
+    // ========================================================================
+    // Opcode Table - Mnemonic to hex value mapping
+    // ========================================================================
+
     static const std::unordered_map<std::string, uint8_t> OPCODE_MAP = {
-        // Operaciones aritméticas enteras (3 registros)
+        // Integer arithmetic (3 registers)
         {"ADD", 0x00}, {"SUB", 0x01}, {"ADC", 0x02}, {"SBC", 0x03},
         {"MUL", 0x04}, {"DIV", 0x05},
 
-        // Operaciones lógicas (3 registros)
+        // Logical operations (3 registers)
         {"AND", 0x06}, {"ORR", 0x07}, {"EOR", 0x08}, {"BIC", 0x09},
 
-        // Operaciones de desplazamiento (3 registros)
+        // Shift operations (3 registers)
         {"LSL", 0x0A}, {"LSR", 0x0B}, {"ASR", 0x0C}, {"ROR", 0x0D},
 
-        // Operaciones con inmediato entero
+        // Integer immediate operations
         {"ADDI", 0x0E}, {"SUBI", 0x0F}, {"ADCI", 0x10}, {"SBCI", 0x11},
         {"MULI", 0x12}, {"DIVI", 0x13}, {"ANDI", 0x14}, {"ORRI", 0x15},
         {"EORI", 0x16}, {"BICI", 0x17}, {"LSLI", 0x18}, {"LSRI", 0x19},
         {"ASRI", 0x1A}, {"RORI", 0x1B},
 
-        // Incremento/Decremento
+        // Increment/Decrement
         {"INC", 0x1C}, {"DEC", 0x1D},
 
-        // Operaciones float (sin inmediato)
+        // Float operations (no immediate)
         {"FADD", 0x1E}, {"FSUB", 0x1F}, {"FMUL", 0x20}, {"FDIV", 0x21},
         {"FCOPYSIGN", 0x22},
 
-        // Operaciones float (con inmediato)
+        // Float operations (with immediate)
         {"FADDI", 0x23}, {"FSUBI", 0x24}, {"FMULI", 0x25}, {"FDIVI", 0x26},
         {"FCOPYSIGNI", 0x27},
 
-        // Operaciones float unarias
+        // Unary float operations
         {"FSQRT", 0x28}, {"FNEG", 0x29}, {"FABS", 0x2A},
         {"CDTI", 0x2B}, {"CDTD", 0x2C}, {"RTNR", 0x2D},
         {"RTZ", 0x2E}, {"RTP", 0x2F}, {"RTNE", 0x30},
 
-        // MOV y variantes
+        // MOV variants
         {"MOV", 0x31}, {"MVN", 0x32}, {"MOVI", 0x33}, {"MVNI", 0x34},
         {"FMOVI", 0x35}, {"FMVNI", 0x36},
 
-        // MOVL - Carga dirección de etiqueta (usa mismo opcode que MOVI)
+        // MOVL - Load label address (uses MOVI opcode)
         {"MOVL", 0x33},
 
-        // Comparaciones enteras (sin inmediato)
+        // Integer comparisons (no immediate)
         {"CMP", 0x37}, {"CMN", 0x38}, {"TST", 0x39}, {"TEQ", 0x3A},
 
-        // Comparaciones enteras (con inmediato)
+        // Integer comparisons (with immediate)
         {"CMPI", 0x3B}, {"CMNI", 0x3C}, {"TSTI", 0x3D}, {"TEQI", 0x3E},
 
-        // Comparaciones float (sin inmediato)
+        // Float comparisons (no immediate)
         {"FCMP", 0x3F}, {"FCMN", 0x40}, {"FCMPS", 0x41},
 
-        // Comparaciones float (con inmediato)
+        // Float comparisons (with immediate)
         {"FCMPI", 0x42}, {"FCMNI", 0x43}, {"FCMPSI", 0x44},
 
-        // Branches (saltos condicionales e incondicionales)
+        // Branches
         {"B", 0x45}, {"BEQ", 0x46}, {"BNE", 0x47}, {"BLT", 0x48},
         {"BGT", 0x49}, {"BUN", 0x4A}, {"BORD", 0x4B},
 
-        // Instrucciones especiales
+        // Special instructions
         {"SWI", 0x4C},  // Software Interrupt
         {"NOP", 0x4D},  // No Operation
 
-        // Operaciones de memoria
+        // Memory operations
         {"LDR", 0x4E}, {"STR", 0x4F}, {"LDRB", 0x50}, {"STRB", 0x51},
 
-        // Float unarias con inmediato
+        // Unary float with immediate
         {"FSQRTI", 0x52}, {"FNEGI", 0x53}, {"FABSI", 0x54},
         {"CDTII", 0x55}, {"CDTDI", 0x56}, {"RTNRI", 0x57},
         {"RTZI", 0x58}, {"RTPI", 0x59}, {"RTNEI", 0x5A}
     };
 
-    // ───────────────────────────────────────────────────────────────────────
-    // TABLA DE REGISTROS - Mapeo de nombres a códigos
-    // ───────────────────────────────────────────────────────────────────────
+    // ========================================================================
+    // Register Table - Name to code mapping
+    // ========================================================================
+
     static const std::unordered_map<std::string, uint8_t> REGS = {
         {"REG0", 0x0}, {"REG1", 0x1}, {"REG2", 0x2}, {"REG3", 0x3},
         {"REG4", 0x4}, {"REG5", 0x5}, {"REG6", 0x6}, {"REG7", 0x7},
         {"REG8", 0x8}, {"SIDS", 0x9}, {"UPPER_REG", 0xA}, {"LOWER_REG", 0xB}
     };
 
-    // ───────────────────────────────────────────────────────────────────────
-    // APERTURA Y LECTURA DEL ARCHIVO
-    // ───────────────────────────────────────────────────────────────────────
+    // ========================================================================
+    // Open Source File
+    // ========================================================================
+
     std::ifstream ifs(path);
-    if (!ifs) throw std::runtime_error("No se pudo abrir el archivo: " + path);
+    if (!ifs) {
+        throw std::runtime_error("Could not open file: " + path);
+    }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //                          PRIMERA PASADA
-    //                   Recolección de etiquetas y instrucciones
-    // ═══════════════════════════════════════════════════════════════════════
+    // ========================================================================
+    // Pass 1: Collect Labels and Instructions
+    // ========================================================================
 
-    struct LineInfo { int lineno; std::string text; };
+    struct LineInfo {
+        int lineNumber;
+        std::string text;
+    };
+
     std::vector<LineInfo> lines;
     std::string raw;
-    int lineno = 1;
+    int lineNumber = 1;
 
-    // Leer todas las líneas, eliminando comentarios
+    // Read all lines, removing comments
     while (std::getline(ifs, raw)) {
-        // Eliminar \r si existe (compatibilidad Windows)
+        // Remove \r for Windows compatibility
         if (!raw.empty() && raw.back() == '\r') {
             raw.pop_back();
         }
-        // Eliminar comentarios (todo después de ';')
-        size_t p = raw.find_first_of(";");
-        if (p != std::string::npos) raw = raw.substr(0, p);
-        lines.push_back({ lineno++, raw });
+
+        // Remove comments (everything after ';' or '#' at line start)
+        size_t commentPos = raw.find_first_of(";");
+        if (commentPos != std::string::npos) {
+            raw = raw.substr(0, commentPos);
+        }
+
+        // Also handle '#' comments at start of line
+        std::string trimmed = trim(raw);
+        if (!trimmed.empty() && trimmed[0] == '#') {
+            raw.clear();
+        }
+
+        lines.push_back({ lineNumber++, raw });
     }
 
-    std::vector<std::tuple<int, std::string, int>> insts;  // (PC, texto, línea)
-    std::unordered_map<std::string, int> labels;           // etiqueta → PC
-    int pc = 0;  // Program Counter (en unidades de instrucciones)
+    std::vector<std::tuple<int, std::string, int>> instructions;  // (PC, text, line)
+    std::unordered_map<std::string, int> labels;                  // label -> PC
+    int pc = 0;
 
-    // Procesar líneas para extraer etiquetas e instrucciones
+    // Process lines to extract labels and instructions
     for (auto& ln : lines) {
         std::string s = trim(ln.text);
         if (s.empty()) continue;
 
-        // Procesar todas las etiquetas en la línea (puede haber múltiples)
+        // Process all labels on the line (can be multiple)
         while (true) {
-            size_t col = s.find(':');
-            if (col == std::string::npos) break;
-            std::string lbl = trim(s.substr(0, col));
-            if (!lbl.empty()) labels[up(lbl)] = pc;
-            s = trim(s.substr(col + 1));
+            size_t colonPos = s.find(':');
+            if (colonPos == std::string::npos) break;
+
+            std::string label = trim(s.substr(0, colonPos));
+            if (!label.empty()) {
+                labels[up(label)] = pc;
+            }
+            s = trim(s.substr(colonPos + 1));
         }
 
-        // Si queda texto después de las etiquetas, es una instrucción
+        // Remaining text after labels is an instruction
         if (!s.empty()) {
-            insts.emplace_back(pc, s, ln.lineno);
+            instructions.emplace_back(pc, s, ln.lineNumber);
             ++pc;
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //                          SEGUNDA PASADA
-    //                         Ensamblado de instrucciones
-    // ═══════════════════════════════════════════════════════════════════════
+    // ========================================================================
+    // Pass 2: Encode Instructions
+    // ========================================================================
 
-    std::vector<u64> out;              // Instrucciones binarias resultantes
-    std::vector<std::string> errors;   // Errores acumulados
+    std::vector<u64> output;
+    std::vector<std::string> errors;
 
-    std::cout << "[Assembler] Iniciando ensamblado: " << path
-        << " (" << insts.size() << " instrucciones)\n";
+    std::cout << "[Assembler] Starting assembly: " << path
+        << " (" << instructions.size() << " instructions)\n";
 
-    for (const auto& p : insts) {
-        int curpc = std::get<0>(p);
-        std::string text = std::get<1>(p);
-        int lineNumber = std::get<2>(p);
+    for (const auto& inst : instructions) {
+        int currentPC = std::get<0>(inst);
+        std::string text = std::get<1>(inst);
+        int srcLine = std::get<2>(inst);
 
         try {
-            // ───────────────────────────────────────────────────────────────
-            // Separar opcode del resto de operandos
-            // ───────────────────────────────────────────────────────────────
-            std::stringstream line_ss(text);
-            std::string opc, rest;
+            // Separate opcode from operands
+            std::stringstream lineSS(text);
+            std::string opcode, rest;
 
-            line_ss >> opc;
-            std::getline(line_ss, rest);
+            lineSS >> opcode;
+            std::getline(lineSS, rest);
             rest = trim(rest);
 
-            std::string opcU = up(opc);
-            if (OPCODE_MAP.find(opcU) == OPCODE_MAP.end()) {
-                throw std::runtime_error("Opcode desconocido: '" + opc + "'");
+            std::string opcodeUpper = up(opcode);
+            if (OPCODE_MAP.find(opcodeUpper) == OPCODE_MAP.end()) {
+                throw std::runtime_error("Unknown opcode: '" + opcode + "'");
             }
 
-            uint8_t opcval = OPCODE_MAP.at(opcU);
+            uint8_t opcodeValue = OPCODE_MAP.at(opcodeUpper);
             u64 word = 0;
-            word |= (u64(opcval) & 0xFFULL) << 56;  // Opcode en bits [63:56]
+            word |= (u64(opcodeValue) & 0xFFULL) << 56;  // Opcode in bits [63:56]
             bool encoded = false;
 
-            // ═══════════════════════════════════════════════════════════════
-            //              CASO ESPECIAL: INSTRUCCIONES DE MEMORIA
-            //              (Procesadas ANTES de splitOperands)
-            // ═══════════════════════════════════════════════════════════════
-            // Formato: LDR/STR REG, [BASE] o REG, [BASE, #offset]
-            // Estas usan sintaxis con corchetes que no se puede separar con comas
+            // ================================================================
+            // Memory Instructions (LDR/STR/LDRB/STRB)
+            // Special handling due to bracket syntax
+            // ================================================================
 
-            if (opcval == 0x4E || opcval == 0x4F || opcval == 0x50 || opcval == 0x51) {
-                size_t bracket_open = rest.find('[');
-                size_t bracket_close = rest.find(']');
+            if (opcodeValue == 0x4E || opcodeValue == 0x4F ||
+                opcodeValue == 0x50 || opcodeValue == 0x51) {
 
-                if (bracket_open == std::string::npos || bracket_close == std::string::npos) {
-                    throw std::runtime_error("Instruccion de memoria requiere: REG, [BASE] o REG, [BASE, #offset]");
+                size_t bracketOpen = rest.find('[');
+                size_t bracketClose = rest.find(']');
+
+                if (bracketOpen == std::string::npos || bracketClose == std::string::npos) {
+                    throw std::runtime_error(
+                        "Memory instruction requires: REG, [BASE] or REG, [BASE, #offset]");
                 }
 
-                // Extraer primer registro (antes del '[')
-                std::string before_bracket = rest.substr(0, bracket_open);
-                size_t comma_pos = before_bracket.find(',');
-                if (comma_pos == std::string::npos) {
-                    throw std::runtime_error("Falta coma antes de '['");
+                // Extract first register (before '[')
+                std::string beforeBracket = rest.substr(0, bracketOpen);
+                size_t commaPos = beforeBracket.find(',');
+                if (commaPos == std::string::npos) {
+                    throw std::runtime_error("Missing comma before '['");
                 }
-                std::string reg_str = trim(before_bracket.substr(0, comma_pos));
-                std::string reg_str_upper = up(reg_str);
 
-                if (REGS.count(reg_str_upper) == 0) {
-                    throw std::runtime_error("Registro invalido: " + reg_str);
+                std::string regStr = trim(beforeBracket.substr(0, commaPos));
+                std::string regStrUpper = up(regStr);
+
+                if (REGS.count(regStrUpper) == 0) {
+                    throw std::runtime_error("Invalid register: " + regStr);
                 }
-                uint8_t reg = REGS.at(reg_str_upper);
+                uint8_t reg = REGS.at(regStrUpper);
 
-                // Extraer contenido dentro de los corchetes
-                std::string inside_brackets = trim(rest.substr(bracket_open + 1, bracket_close - bracket_open - 1));
+                // Extract content inside brackets
+                std::string insideBrackets = trim(
+                    rest.substr(bracketOpen + 1, bracketClose - bracketOpen - 1));
 
-                uint8_t base_reg = 0;
-                uint32_t offset_u32 = 0;
+                uint8_t baseReg = 0;
+                uint32_t offsetU32 = 0;
 
-                // Verificar si hay offset: [BASE, #offset]
-                size_t comma_inside = inside_brackets.find(',');
-                if (comma_inside != std::string::npos) {
-                    // Formato: [BASE, #offset]
-                    std::string base_str = trim(inside_brackets.substr(0, comma_inside));
-                    std::string offset_str = trim(inside_brackets.substr(comma_inside + 1));
+                // Check for offset: [BASE, #offset]
+                size_t commaInside = insideBrackets.find(',');
+                if (commaInside != std::string::npos) {
+                    std::string baseStr = trim(insideBrackets.substr(0, commaInside));
+                    std::string offsetStr = trim(insideBrackets.substr(commaInside + 1));
 
-                    std::string base_str_upper = up(base_str);
-                    if (REGS.count(base_str_upper) == 0) {
-                        throw std::runtime_error("Registro base invalido: " + base_str);
+                    std::string baseStrUpper = up(baseStr);
+                    if (REGS.count(baseStrUpper) == 0) {
+                        throw std::runtime_error("Invalid base register: " + baseStr);
                     }
-                    base_reg = REGS.at(base_str_upper);
+                    baseReg = REGS.at(baseStrUpper);
 
-                    if (!isImmediate(offset_str)) {
-                        throw std::runtime_error("Offset debe ser inmediato: " + offset_str);
+                    if (!isImmediate(offsetStr)) {
+                        throw std::runtime_error("Offset must be immediate: " + offsetStr);
                     }
-                    long offset_val = parseIntImm(offset_str);
-                    offset_u32 = static_cast<uint32_t>(static_cast<int32_t>(offset_val));
+                    long offsetVal = parseIntImm(offsetStr);
+                    offsetU32 = static_cast<uint32_t>(static_cast<int32_t>(offsetVal));
                 }
                 else {
-                    // Formato: [BASE] (sin offset)
-                    std::string base_str_upper = up(inside_brackets);
-                    if (REGS.count(base_str_upper) == 0) {
-                        throw std::runtime_error("Registro base invalido: " + inside_brackets);
+                    // Format: [BASE] (no offset)
+                    std::string baseStrUpper = up(insideBrackets);
+                    if (REGS.count(baseStrUpper) == 0) {
+                        throw std::runtime_error("Invalid base register: " + insideBrackets);
                     }
-                    base_reg = REGS.at(base_str_upper);
-                    offset_u32 = 0;
+                    baseReg = REGS.at(baseStrUpper);
+                    offsetU32 = 0;
                 }
 
-                // Codificar según el tipo de instrucción
-                if (opcval == 0x4E || opcval == 0x50) {
-                    // LDR/LDRB: primer registro → Rd (bits 52-55)
+                // Encode based on instruction type
+                if (opcodeValue == 0x4E || opcodeValue == 0x50) {
+                    // LDR/LDRB: first register -> Rd (bits 52-55)
                     word |= (u64(reg) & 0xFULL) << 52;
-                    word |= (u64(base_reg) & 0xFULL) << 48;
+                    word |= (u64(baseReg) & 0xFULL) << 48;
                 }
                 else {
-                    // STR/STRB: primer registro → Rm (bits 44-47)
+                    // STR/STRB: first register -> Rm (bits 44-47)
                     word |= (u64(reg) & 0xFULL) << 44;
-                    word |= (u64(base_reg) & 0xFULL) << 48;
+                    word |= (u64(baseReg) & 0xFULL) << 48;
                 }
-                word |= (u64(offset_u32) & 0xFFFFFFFFULL) << 12;
+                word |= (u64(offsetU32) & 0xFFFFFFFFULL) << 12;
                 encoded = true;
             }
-            // ═══════════════════════════════════════════════════════════════
-            //                  RESTO DE INSTRUCCIONES
-            //                  (Usan splitOperands normal)
-            // ═══════════════════════════════════════════════════════════════
+            // ================================================================
+            // All Other Instructions
+            // ================================================================
             else {
                 auto ops = splitOperands(rest);
 
-                // ───────────────────────────────────────────────────────────
-                // MOVL: Carga dirección absoluta de etiqueta (PRIORIDAD)
-                // ───────────────────────────────────────────────────────────
-                // Formato: MOVL REG, .LABEL
-                // DEBE IR ANTES de la verificación genérica de 2 operandos
-                // Carga el PC (en bytes) de la etiqueta en el registro
-
-                if (ops.size() == 2 && !isImmediate(ops[1]) && opcU == "MOVL") {
-                    std::string rd_s = up(ops[0]);
-                    if (REGS.count(rd_s) == 0) {
-                        throw std::runtime_error("Registro destino invalido para MOVL: " + ops[0]);
+                // MOVL: Load label address
+                if (ops.size() == 2 && !isImmediate(ops[1]) && opcodeUpper == "MOVL") {
+                    std::string rdStr = up(ops[0]);
+                    if (REGS.count(rdStr) == 0) {
+                        throw std::runtime_error("Invalid destination register for MOVL: " + ops[0]);
                     }
 
                     std::string target = up(ops[1]);
                     if (labels.count(target) == 0) {
-                        throw std::runtime_error("Etiqueta no encontrada para MOVL: '" + ops[1] + "'");
+                        throw std::runtime_error("Label not found for MOVL: '" + ops[1] + "'");
                     }
 
-                    uint8_t rd = REGS.at(rd_s);
+                    uint8_t rd = REGS.at(rdStr);
+                    long targetPC = labels.at(target);
+                    long targetAddrBytes = targetPC * 8;  // Convert to bytes
+                    uint32_t immU32 = static_cast<uint32_t>(static_cast<int32_t>(targetAddrBytes));
 
-                    // El inmediato es el PC absoluto de la etiqueta EN BYTES
-                    long target_pc_instructions = labels.at(target);
-                    long target_address_bytes = target_pc_instructions * 8;  // Convertir a bytes
-                    uint32_t imm_u32 = static_cast<uint32_t>(static_cast<int32_t>(target_address_bytes));
-
-                    word |= (u64(rd) & 0xFULL) << 52;                    // Rd
-                    word |= (u64(rd) & 0xFULL) << 48;                    // Rn (mismo que Rd)
-                    word |= (u64(imm_u32) & 0xFFFFFFFFULL) << 12;        // Inmediato (dirección)
+                    word |= (u64(rd) & 0xFULL) << 52;
+                    word |= (u64(rd) & 0xFULL) << 48;
+                    word |= (u64(immU32) & 0xFFFFFFFFULL) << 12;
                     encoded = true;
                 }
-
-                // ───────────────────────────────────────────────────────────
-                // FORMATO R: 3 Operandos de Registro (Rd, Rn, Rm)
-                // ───────────────────────────────────────────────────────────
-                // Ejemplo: ADD REG1, REG2, REG3
-
+                // R-Format: 3 register operands (Rd, Rn, Rm)
                 else if (ops.size() == 3 && !isImmediate(ops[2])) {
                     std::string rd = up(ops[0]), rn = up(ops[1]), rm = up(ops[2]);
-                    if (REGS.count(rd) == 0 || REGS.count(rn) == 0 || REGS.count(rm) == 0)
-                        throw std::runtime_error("Registro invalido en instruccion de 3 operandos.");
+                    if (REGS.count(rd) == 0 || REGS.count(rn) == 0 || REGS.count(rm) == 0) {
+                        throw std::runtime_error("Invalid register in 3-operand instruction.");
+                    }
 
                     word |= (u64(REGS.at(rd)) & 0xFULL) << 52;  // Rd [55:52]
                     word |= (u64(REGS.at(rn)) & 0xFULL) << 48;  // Rn [51:48]
                     word |= (u64(REGS.at(rm)) & 0xFULL) << 44;  // Rm [47:44]
                     encoded = true;
                 }
-
-                // ───────────────────────────────────────────────────────────
-                // FORMATO R: 2 Operandos de Registro
-                // ───────────────────────────────────────────────────────────
-                // Dos subcasos:
-                // 1. Comparaciones: CMP/CMN/TST/TEQ/FCMP/FCMN/FCMPS → Rn, Rm
-                // 2. MOV/MVN y otros: → Rd, Rm
-
+                // R-Format: 2 register operands
                 else if (ops.size() == 2 && !isImmediate(ops[1])) {
                     std::string arg0 = up(ops[0]), arg1 = up(ops[1]);
-                    if (REGS.count(arg0) == 0 || REGS.count(arg1) == 0)
-                        throw std::runtime_error("Registro invalido en instruccion de 2 operandos.");
+                    if (REGS.count(arg0) == 0 || REGS.count(arg1) == 0) {
+                        throw std::runtime_error("Invalid register in 2-operand instruction.");
+                    }
 
-                    // Instrucciones de comparación: primer operando → Rn, segundo → Rm
-                    if (opcval == 0x37 || opcval == 0x38 || opcval == 0x39 || opcval == 0x3A ||
-                        opcval == 0x3F || opcval == 0x40 || opcval == 0x41) {
+                    // Comparison instructions: Rn, Rm
+                    if (opcodeValue == 0x37 || opcodeValue == 0x38 ||
+                        opcodeValue == 0x39 || opcodeValue == 0x3A ||
+                        opcodeValue == 0x3F || opcodeValue == 0x40 ||
+                        opcodeValue == 0x41) {
                         word |= (u64(REGS.at(arg0)) & 0xFULL) << 48;  // Rn
                         word |= (u64(REGS.at(arg1)) & 0xFULL) << 44;  // Rm
                         encoded = true;
                     }
-                    // Otras instrucciones: primer operando → Rd, segundo → Rm
+                    // Other: Rd, Rm
                     else {
                         word |= (u64(REGS.at(arg0)) & 0xFULL) << 52;  // Rd
                         word |= (u64(REGS.at(arg1)) & 0xFULL) << 44;  // Rm
                         encoded = true;
                     }
                 }
-
-                // ───────────────────────────────────────────────────────────
-                // FORMATO I: Instrucciones con Inmediato
-                // ───────────────────────────────────────────────────────────
-                // Formatos: Rd, #imm  o  Rd, Rn, #imm
-
+                // I-Format: Instructions with immediate
                 else if (!ops.empty() && isImmediate(ops.back())) {
-                    if (ops.size() < 2 || ops.size() > 3)
-                        throw std::runtime_error("Instruccion con inmediato requiere 2 o 3 operandos.");
-
-                    std::string rd_s = up(ops[0]);
-                    if (REGS.count(rd_s) == 0)
-                        throw std::runtime_error("Registro destino invalido: " + ops[0]);
-
-                    uint8_t rd = REGS.at(rd_s);
-                    uint8_t rn = rd;  // Por defecto, Rn = Rd
-
-                    // Si hay 3 operandos, el segundo es Rn
-                    if (ops.size() == 3) {
-                        std::string rn_s = up(ops[1]);
-                        if (isImmediate(rn_s))
-                            throw std::runtime_error("Segundo operando no puede ser inmediato.");
-                        if (REGS.count(rn_s) == 0)
-                            throw std::runtime_error("Registro fuente invalido: " + ops[1]);
-                        rn = REGS.at(rn_s);
+                    if (ops.size() < 2 || ops.size() > 3) {
+                        throw std::runtime_error("Immediate instruction requires 2 or 3 operands.");
                     }
 
-                    uint32_t imm_u32 = 0;
-                    std::string immtok = ops.back();
+                    std::string rdStr = up(ops[0]);
+                    if (REGS.count(rdStr) == 0) {
+                        throw std::runtime_error("Invalid destination register: " + ops[0]);
+                    }
 
-                    // Determinar tipo: float (tiene '.') o entero
-                    if (immtok.find('.') != std::string::npos && opcU[0] == 'F') {
-                        // Float: convertir a IEEE 754 de 32 bits
-                        float fval = std::stof(immtok.substr(1));
-                        imm_u32 = floatToU32(fval);
+                    uint8_t rd = REGS.at(rdStr);
+                    uint8_t rn = rd;  // Default: Rn = Rd
+
+                    if (ops.size() == 3) {
+                        std::string rnStr = up(ops[1]);
+                        if (isImmediate(rnStr)) {
+                            throw std::runtime_error("Second operand cannot be immediate.");
+                        }
+                        if (REGS.count(rnStr) == 0) {
+                            throw std::runtime_error("Invalid source register: " + ops[1]);
+                        }
+                        rn = REGS.at(rnStr);
+                    }
+
+                    uint32_t immU32 = 0;
+                    std::string immToken = ops.back();
+
+                    // Float immediate (has '.') or integer
+                    if (immToken.find('.') != std::string::npos && opcodeUpper[0] == 'F') {
+                        float fval = std::stof(immToken.substr(1));
+                        immU32 = floatToU32(fval);
                     }
                     else {
-                        // Entero: mantener representación de complemento a 2
-                        // Ahora soporta hexadecimal (#0x800) y decimal (#123, #-45)
-                        long val = parseIntImm(immtok);
-                        imm_u32 = static_cast<uint32_t>(static_cast<int32_t>(val));
+                        long val = parseIntImm(immToken);
+                        immU32 = static_cast<uint32_t>(static_cast<int32_t>(val));
                     }
 
-                    word |= (u64(rd) & 0xFULL) << 52;                    // Rd
-                    word |= (u64(rn) & 0xFULL) << 48;                    // Rn
-                    word |= (u64(imm_u32) & 0xFFFFFFFFULL) << 12;        // Inmediato [43:12]
+                    word |= (u64(rd) & 0xFULL) << 52;
+                    word |= (u64(rn) & 0xFULL) << 48;
+                    word |= (u64(immU32) & 0xFFFFFFFFULL) << 12;
                     encoded = true;
                 }
-
-                // ───────────────────────────────────────────────────────────
-                // BRANCHES: Saltos a etiquetas
-                // ───────────────────────────────────────────────────────────
-                // Formato: BEQ .LABEL, BLT .LOOP, etc.
-                // El offset se calcula en BYTES (instrucciones × 8)
-
-                else if (ops.size() == 1 && !isImmediate(ops[0]) && opcU[0] == 'B') {
+                // Branches: Jump to label
+                else if (ops.size() == 1 && !isImmediate(ops[0]) && opcodeUpper[0] == 'B') {
                     std::string target = up(ops[0]);
                     if (labels.count(target) == 0) {
-                        throw std::runtime_error("Etiqueta no encontrada: '" + ops[0] + "'");
+                        throw std::runtime_error("Label not found: '" + ops[0] + "'");
                     }
 
-                    // Calcular offset en bytes
-                    long offset_instructions = (long)labels.at(target) - (long)curpc;
-                    long offset_bytes = offset_instructions * 8;  // Cada instrucción = 8 bytes
+                    long offsetInstr = static_cast<long>(labels.at(target)) - static_cast<long>(currentPC);
+                    long offsetBytes = offsetInstr * 8;  // Each instruction = 8 bytes
 
-                    uint32_t offset_u32 = static_cast<uint32_t>(static_cast<int32_t>(offset_bytes));
-                    word |= (u64(offset_u32) & 0xFFFFFFFFULL) << 12;
+                    uint32_t offsetU32 = static_cast<uint32_t>(static_cast<int32_t>(offsetBytes));
+                    word |= (u64(offsetU32) & 0xFFFFFFFFULL) << 12;
                     encoded = true;
                 }
-
-                // ───────────────────────────────────────────────────────────
-                // INC/DEC: Operaciones unarias de incremento/decremento
-                // ───────────────────────────────────────────────────────────
-                // Formato: INC REG3, DEC REG2
-                // Internamente se codifican como ADD/SUB con inmediato = 1
-
+                // INC/DEC: Unary increment/decrement
                 else if (ops.size() == 1 && !isImmediate(ops[0]) &&
-                    (opcval == 0x1C || opcval == 0x1D)) {
-                    std::string rd_s = up(ops[0]);
-                    if (REGS.count(rd_s) == 0) {
-                        throw std::runtime_error("Registro invalido para INC/DEC: " + ops[0]);
+                    (opcodeValue == 0x1C || opcodeValue == 0x1D)) {
+                    std::string rdStr = up(ops[0]);
+                    if (REGS.count(rdStr) == 0) {
+                        throw std::runtime_error("Invalid register for INC/DEC: " + ops[0]);
                     }
 
-                    uint8_t rd = REGS.at(rd_s);
-                    uint32_t imm_u32 = 1;  // Siempre usa inmediato = 1
+                    uint8_t rd = REGS.at(rdStr);
+                    uint32_t immU32 = 1;  // Always uses immediate = 1
 
-                    word |= (u64(rd) & 0xFULL) << 52;                    // Rd (destino)
-                    word |= (u64(rd) & 0xFULL) << 48;                    // Rn (fuente = destino)
-                    word |= (u64(imm_u32) & 0xFFFFFFFFULL) << 12;        // Inmediato = 1
+                    word |= (u64(rd) & 0xFULL) << 52;
+                    word |= (u64(rd) & 0xFULL) << 48;
+                    word |= (u64(immU32) & 0xFFFFFFFFULL) << 12;
                     encoded = true;
                 }
-
-                // ───────────────────────────────────────────────────────────
-                // SIN OPERANDOS: NOP, SWI
-                // ───────────────────────────────────────────────────────────
-
+                // No operands: NOP, SWI
                 else if (ops.empty()) {
                     encoded = true;
                 }
 
-                // ───────────────────────────────────────────────────────────
-                // ERROR: Formato no reconocido
-                // ───────────────────────────────────────────────────────────
-
                 if (!encoded) {
-                    throw std::runtime_error("Formato de instruccion no valido o numero de operandos incorrecto.");
+                    throw std::runtime_error(
+                        "Invalid instruction format or incorrect number of operands.");
                 }
             }
 
-            // Agregar instrucción binaria al resultado
-            out.push_back(word);
+            output.push_back(word);
 
         }
         catch (const std::exception& e) {
-            // Acumular errores para reportar al final
-            std::stringstream error_ss;
-            error_ss << "[Linea " << lineNumber << "] " << e.what() << " -> \"" << text << "\"";
-            errors.push_back(error_ss.str());
+            std::stringstream errorSS;
+            errorSS << "[Line " << srcLine << "] " << e.what() << " -> \"" << text << "\"";
+            errors.push_back(errorSS.str());
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //                      REPORTE DE ERRORES O ÉXITO
-    // ═══════════════════════════════════════════════════════════════════════
+    // ========================================================================
+    // Report Errors or Success
+    // ========================================================================
 
     if (!errors.empty()) {
-        std::stringstream final_error;
-        final_error << "El ensamblado fallo con " << errors.size() << " error(es):\n";
+        std::stringstream finalError;
+        finalError << "Assembly failed with " << errors.size() << " error(s):\n";
         for (const auto& err : errors) {
-            final_error << "  * " << err << "\n";
+            finalError << "  * " << err << "\n";
         }
-        throw std::runtime_error(final_error.str());
+        throw std::runtime_error(finalError.str());
     }
 
-    std::cout << "[Assembler] OK Ensamblado completado exitosamente: "
-        << out.size() << " instrucciones generadas.\n";
+    std::cout << "[Assembler] OK - Assembly completed successfully: "
+        << output.size() << " instructions generated.\n";
 
-    return out;
+    return output;
 }

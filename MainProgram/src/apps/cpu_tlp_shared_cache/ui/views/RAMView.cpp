@@ -1,6 +1,14 @@
+// ============================================================================
+// File: src/apps/cpu_tlp_shared_cache/ui/views/RAMView.cpp
+// ============================================================================
+
+/**
+ * @file RAMView.cpp
+ * @brief Implementation of RAMView.
+ */
+
 #include "apps/cpu_tlp_shared_cache/ui/views/RAMView.h"
 #include "apps/cpu_tlp_shared_cache/simulation/processor/SharedMemoryComponent.h"
-
 #include "tinyfiledialogs.h"
 #include <imgui.h>
 #include <iostream>
@@ -11,54 +19,62 @@ void RAMView::render() {
         return;
     }
 
-    ImVec2 avail = ImGui::GetContentRegionAvail();
-    const float BETWEEN = 8.0f;
-    const float BOTTOM_H = 46.0f;
+    ImVec2 available = ImGui::GetContentRegionAvail();
+    const float SPACING = 8.0f;
+    const float BUTTON_HEIGHT = 46.0f;
 
-    float tableH = avail.y - (BETWEEN + BOTTOM_H);
-    if (tableH < 0.0f) tableH = 0.0f;
+    float tableHeight = available.y - (SPACING + BUTTON_HEIGHT);
+    if (tableHeight < 0.0f) {
+        tableHeight = 0.0f;
+    }
 
-    // Acceder a la memoria a través del componente
+    // Get memory reference
     auto& sharedRAM = m_sharedMemoryComponent->getMemory();
 
-    // Sincronizar datos de SharedMemory a RamTable
+    // Synchronize data from SharedMemory to table widget
     for (uint16_t byteAddr = 0; byteAddr < SharedMemory::MEM_SIZE_BYTES; byteAddr += 8) {
         uint64_t value = sharedRAM.get(byteAddr);
         int rowIndex = byteAddr / 8;
         m_table.setDataByIndex(rowIndex, value);
     }
 
-    // Renderizar tabla
-    ImGuiWindowFlags childFlags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-    ImGui::BeginChild("##RAMTableArea", ImVec2(avail.x, tableH), false, childFlags);
+    // Render table
+    ImGuiWindowFlags childFlags =
+        ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoScrollWithMouse;
+
+    ImGui::BeginChild("##RAMTableArea", ImVec2(available.x, tableHeight), false, childFlags);
     {
         m_table.render("##RAM_TABLE");
     }
     ImGui::EndChild();
 
-    ImGui::Dummy(ImVec2(1.0f, BETWEEN));
+    ImGui::Dummy(ImVec2(1.0f, SPACING));
 
+    // Control buttons
     const float GAP = 10.0f;
-    const float w = (avail.x - GAP) * 0.5f;
-    const ImVec2 btnSize(w, BOTTOM_H);
+    const float buttonWidth = (available.x - GAP) * 0.5f;
+    const ImVec2 buttonSize(buttonWidth, BUTTON_HEIGHT);
 
-    // Botón Reset
+    // Reset button (red)
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.70f, 0.16f, 0.16f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.78f, 0.22f, 0.22f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.58f, 0.12f, 0.12f, 1.0f));
-    if (ImGui::Button("Reset", btnSize)) {
+
+    if (ImGui::Button("Reset", buttonSize)) {
         std::cout << "[RAM] RESET pressed\n";
         sharedRAM.reset();
     }
-    ImGui::PopStyleColor(3);
 
+    ImGui::PopStyleColor(3);
     ImGui::SameLine(0.0f, GAP);
 
-    // Botón Load
+    // Load button (green)
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.55f, 0.20f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.68f, 0.28f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.09f, 0.45f, 0.16f, 1.0f));
-    if (ImGui::Button("Load", btnSize)) {
+
+    if (ImGui::Button("Load", buttonSize)) {
         const char* filters[] = { "*.bin" };
         const char* filePath = tinyfd_openFileDialog(
             "Select Binary File",
@@ -80,5 +96,6 @@ void RAMView::render() {
             std::cout << "[RAM] Load cancelled.\n";
         }
     }
+
     ImGui::PopStyleColor(3);
 }

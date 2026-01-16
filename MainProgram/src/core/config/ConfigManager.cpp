@@ -1,28 +1,52 @@
+// ============================================================================
+// File: src/core/config/ConfigManager.cpp
+// ============================================================================
+
+/**
+ * @file ConfigManager.cpp
+ * @brief Implementation of ConfigManager class.
+ *
+ * Handles JSON parsing with robust error handling and type coercion
+ * for maximum compatibility with various configuration file formats.
+ */
+
 #include "core/config/ConfigManager.h"
 #include <SFML/Window.hpp>
-#include <fstream>
 #include <nlohmann/json.hpp>
+#include <fstream>
 #include <iostream>
 #include <algorithm>
 
 using json = nlohmann::json;
 
-static int clamp01_100(int v) { return std::max(0, std::min(100, v)); }
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
-unsigned ConfigManager::toUIntSafe(const std::string& s, unsigned def) {
-    try {
-        return static_cast<unsigned>(std::stoul(s));
+namespace {
+
+    /**
+     * @brief Clamps integer value to 0-100 range.
+     * @param value Value to clamp.
+     * @return Clamped value.
+     */
+    int clampVolume(int value) {
+        return std::max(0, std::min(100, value));
     }
-    catch (...) { return def; }
-}
-int ConfigManager::toIntSafe(const std::string& s, int def) {
-    try {
-        return static_cast<int>(std::stol(s));
-    }
-    catch (...) { return def; }
+
+} // anonymous namespace
+
+// ============================================================================
+// Construction
+// ============================================================================
+
+ConfigManager::ConfigManager() {
+    setDefault();
 }
 
-ConfigManager::ConfigManager() { setDefault(); }
+// ============================================================================
+// Default Settings
+// ============================================================================
 
 void ConfigManager::setDefault() {
     m_resolutionWidth = 1920;
@@ -35,64 +59,117 @@ void ConfigManager::setDefault() {
     m_sfxVolume = 60;
 }
 
+// ============================================================================
+// Safe Type Conversion
+// ============================================================================
+
+unsigned int ConfigManager::toUIntSafe(const std::string& str, unsigned int defaultValue) {
+    try {
+        return static_cast<unsigned int>(std::stoul(str));
+    }
+    catch (...) {
+        return defaultValue;
+    }
+}
+
+int ConfigManager::toIntSafe(const std::string& str, int defaultValue) {
+    try {
+        return static_cast<int>(std::stol(str));
+    }
+    catch (...) {
+        return defaultValue;
+    }
+}
+
+// ============================================================================
+// File I/O
+// ============================================================================
+
 bool ConfigManager::load(const std::string& filepath) {
-    std::ifstream f(filepath);
-    if (!f.is_open()) {
-        std::cout << "[Config] No se pudo abrir " << filepath << ", usando defaults.\n";
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        std::cout << "[Config] Could not open " << filepath << ", using defaults.\n";
         return false;
     }
-    json j;
-    try { f >> j; }
+
+    json data;
+    try {
+        file >> data;
+    }
     catch (const std::exception& e) {
-        std::cout << "[Config] JSON invalido: " << e.what() << " (usando defaults)\n";
+        std::cout << "[Config] Invalid JSON: " << e.what() << " (using defaults)\n";
         return false;
     }
 
-    // resolution
-    if (j.contains("resolution") && j["resolution"].is_object()) {
-        auto& r = j["resolution"];
-        if (r.contains("width")) {
-            if (r["width"].is_number_unsigned()) m_resolutionWidth = r["width"].get<unsigned>();
-            else if (r["width"].is_string())     m_resolutionWidth = toUIntSafe(r["width"].get<std::string>(), m_resolutionWidth);
+    // Parse resolution object
+    if (data.contains("resolution") && data["resolution"].is_object()) {
+        auto& res = data["resolution"];
+        if (res.contains("width")) {
+            if (res["width"].is_number_unsigned()) {
+                m_resolutionWidth = res["width"].get<unsigned>();
+            }
+            else if (res["width"].is_string()) {
+                m_resolutionWidth = toUIntSafe(res["width"].get<std::string>(), m_resolutionWidth);
+            }
         }
-        if (r.contains("height")) {
-            if (r["height"].is_number_unsigned()) m_resolutionHeight = r["height"].get<unsigned>();
-            else if (r["height"].is_string())     m_resolutionHeight = toUIntSafe(r["height"].get<std::string>(), m_resolutionHeight);
-        }
-    }
-
-    // framerate
-    if (j.contains("framerate")) {
-        if (j["framerate"].is_number_unsigned()) m_framerate = j["framerate"].get<unsigned>();
-        else if (j["framerate"].is_number_integer()) m_framerate = (unsigned)j["framerate"].get<int>();
-        else if (j["framerate"].is_string()) m_framerate = toUIntSafe(j["framerate"].get<std::string>(), m_framerate);
-    }
-
-    // vsync
-    if (j.contains("vsync")) {
-        if (j["vsync"].is_boolean()) m_vsync = j["vsync"].get<bool>();
-        else if (j["vsync"].is_string()) {
-            auto s = j["vsync"].get<std::string>();
-            std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-            m_vsync = (s == "true" || s == "1" || s == "on");
+        if (res.contains("height")) {
+            if (res["height"].is_number_unsigned()) {
+                m_resolutionHeight = res["height"].get<unsigned>();
+            }
+            else if (res["height"].is_string()) {
+                m_resolutionHeight = toUIntSafe(res["height"].get<std::string>(), m_resolutionHeight);
+            }
         }
     }
 
-    // screenMode
-    if (j.contains("screenMode")) {
-        if (j["screenMode"].is_string()) setWindowStyle(j["screenMode"].get<std::string>());
+    // Parse framerate
+    if (data.contains("framerate")) {
+        if (data["framerate"].is_number_unsigned()) {
+            m_framerate = data["framerate"].get<unsigned>();
+        }
+        else if (data["framerate"].is_number_integer()) {
+            m_framerate = static_cast<unsigned>(data["framerate"].get<int>());
+        }
+        else if (data["framerate"].is_string()) {
+            m_framerate = toUIntSafe(data["framerate"].get<std::string>(), m_framerate);
+        }
     }
 
-    // audio
-    if (j.contains("audio") && j["audio"].is_object()) {
-        auto& a = j["audio"];
-        if (a.contains("bgm")) {
-            if (a["bgm"].is_number_integer()) m_bgmVolume = clamp01_100(a["bgm"].get<int>());
-            else if (a["bgm"].is_string())    m_bgmVolume = clamp01_100(toIntSafe(a["bgm"].get<std::string>(), m_bgmVolume));
+    // Parse VSync
+    if (data.contains("vsync")) {
+        if (data["vsync"].is_boolean()) {
+            m_vsync = data["vsync"].get<bool>();
         }
-        if (a.contains("sfx")) {
-            if (a["sfx"].is_number_integer()) m_sfxVolume = clamp01_100(a["sfx"].get<int>());
-            else if (a["sfx"].is_string())    m_sfxVolume = clamp01_100(toIntSafe(a["sfx"].get<std::string>(), m_sfxVolume));
+        else if (data["vsync"].is_string()) {
+            std::string val = data["vsync"].get<std::string>();
+            std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+            m_vsync = (val == "true" || val == "1" || val == "on");
+        }
+    }
+
+    // Parse screen mode
+    if (data.contains("screenMode") && data["screenMode"].is_string()) {
+        setWindowStyle(data["screenMode"].get<std::string>());
+    }
+
+    // Parse audio settings
+    if (data.contains("audio") && data["audio"].is_object()) {
+        auto& audio = data["audio"];
+        if (audio.contains("bgm")) {
+            if (audio["bgm"].is_number_integer()) {
+                m_bgmVolume = clampVolume(audio["bgm"].get<int>());
+            }
+            else if (audio["bgm"].is_string()) {
+                m_bgmVolume = clampVolume(toIntSafe(audio["bgm"].get<std::string>(), m_bgmVolume));
+            }
+        }
+        if (audio.contains("sfx")) {
+            if (audio["sfx"].is_number_integer()) {
+                m_sfxVolume = clampVolume(audio["sfx"].get<int>());
+            }
+            else if (audio["sfx"].is_string()) {
+                m_sfxVolume = clampVolume(toIntSafe(audio["sfx"].get<std::string>(), m_sfxVolume));
+            }
         }
     }
 
@@ -100,20 +177,27 @@ bool ConfigManager::load(const std::string& filepath) {
 }
 
 bool ConfigManager::save(const std::string& filepath) {
-    json j;
-    j["resolution"]["width"] = m_resolutionWidth;
-    j["resolution"]["height"] = m_resolutionHeight;
-    j["framerate"] = m_framerate;
-    j["vsync"] = m_vsync;
-    j["screenMode"] = m_screenMode;
-    j["audio"]["bgm"] = m_bgmVolume;
-    j["audio"]["sfx"] = m_sfxVolume;
+    json data;
+    data["resolution"]["width"] = m_resolutionWidth;
+    data["resolution"]["height"] = m_resolutionHeight;
+    data["framerate"] = m_framerate;
+    data["vsync"] = m_vsync;
+    data["screenMode"] = m_screenMode;
+    data["audio"]["bgm"] = m_bgmVolume;
+    data["audio"]["sfx"] = m_sfxVolume;
 
-    std::ofstream f(filepath);
-    if (!f.is_open()) return false;
-    f << j.dump(4);
+    std::ofstream file(filepath);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    file << data.dump(4);
     return true;
 }
+
+// ============================================================================
+// Getters
+// ============================================================================
 
 unsigned int ConfigManager::getResolutionWidth()  const { return m_resolutionWidth; }
 unsigned int ConfigManager::getResolutionHeight() const { return m_resolutionHeight; }
@@ -124,16 +208,43 @@ std::string  ConfigManager::getScreenModeString() const { return m_screenMode; }
 int          ConfigManager::getBGMVolume()        const { return m_bgmVolume; }
 int          ConfigManager::getSFXVolume()        const { return m_sfxVolume; }
 
-void ConfigManager::setResolution(unsigned int w, unsigned int h) { m_resolutionWidth = w; m_resolutionHeight = h; }
-void ConfigManager::setFramerate(unsigned int fps) { m_framerate = fps; }
-void ConfigManager::setVSyncEnabled(bool e) { m_vsync = e; }
-void ConfigManager::setAudio(int bgm, int sfx) { m_bgmVolume = clamp01_100(bgm); m_sfxVolume = clamp01_100(sfx); }
+// ============================================================================
+// Setters
+// ============================================================================
+
+void ConfigManager::setResolution(unsigned int width, unsigned int height) {
+    m_resolutionWidth = width;
+    m_resolutionHeight = height;
+}
+
+void ConfigManager::setFramerate(unsigned int fps) {
+    m_framerate = fps;
+}
+
+void ConfigManager::setVSyncEnabled(bool enabled) {
+    m_vsync = enabled;
+}
+
+void ConfigManager::setAudio(int bgm, int sfx) {
+    m_bgmVolume = clampVolume(bgm);
+    m_sfxVolume = clampVolume(sfx);
+}
 
 void ConfigManager::setWindowStyle(const std::string& mode) {
     m_screenMode = mode;
-    if (mode == "window")      m_windowStyle = sf::Style::Titlebar | sf::Style::Close;
-    else if (mode == "fullscreen") m_windowStyle = sf::Style::Fullscreen;
-    else if (mode == "borderless") m_windowStyle = sf::Style::None;
-    else { m_screenMode = "window"; m_windowStyle = sf::Style::Titlebar | sf::Style::Close; }
-}
 
+    if (mode == "window") {
+        m_windowStyle = sf::Style::Titlebar | sf::Style::Close;
+    }
+    else if (mode == "fullscreen") {
+        m_windowStyle = sf::Style::Fullscreen;
+    }
+    else if (mode == "borderless") {
+        m_windowStyle = sf::Style::None;
+    }
+    else {
+        // Invalid mode - default to windowed
+        m_screenMode = "window";
+        m_windowStyle = sf::Style::Titlebar | sf::Style::Close;
+    }
+}

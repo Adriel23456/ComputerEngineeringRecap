@@ -72,205 +72,158 @@ else()
 
 endif()
 
-target_sources("${CMAKE_PROJECT_NAME}" PRIVATE ${MY_SOURCES} 
-    # =========================
-    # Entry point
-    # =========================
-    "src/main.cpp"
+target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
+    ${MY_SOURCES}
 
-    # =========================
-    # Core
-    # =========================
+    # ==========================================================
+    # ========================= ENTRY POINT ====================
+    # ==========================================================
+    "src/Main.cpp"
+
+    # ==========================================================
+    # ============================ CORE ========================
+    # ==========================================================
     "src/core/Application.cpp"
+    "include/core/Application.h"
 
-    # =========================
-    # Core - FSM
-    # =========================
+    # ------------------------- FSM ----------------------------
     "src/core/fsm/State.cpp"
     "src/core/fsm/StateManager.cpp"
+    "include/core/fsm/IState.h"
+    "include/core/fsm/State.h"
+    "include/core/fsm/StateManager.h"
 
-    # =========================
-    # Core - Config
-    # =========================
+    # ------------------------ CONFIG --------------------------
     "src/core/config/ConfigManager.cpp"
+    "include/core/config/ConfigManager.h"
 
-    # =========================
-    # Core - Resources
-    # =========================
+    # ----------------------- RESOURCES ------------------------
     "src/core/resources/TextureCache.cpp"
+    "include/core/resources/TextureCache.h"
 
-    # =========================
-    # Systems - Audio
-    # =========================
+    # ==========================================================
+    # =========================== SYSTEMS =====================
+    # ==========================================================
     "src/systems/audio/AudioManager.cpp"
+    "include/systems/audio/AudioManager.h"
 
-    # =========================
-    # States
-    # =========================
+    # ==========================================================
+    # ============================ STATES =====================
+    # ==========================================================
     "src/states/MainMenuState.cpp"
     "src/states/ProgramState.cpp"
+    "include/states/MainMenuState.h"
+    "include/states/ProgramState.h"
 
-    # =========================
-    # UI - Overlays
-    # =========================
+    # ==========================================================
+    # ============================ UI =========================
+    # ==========================================================
+
+    # ------------------------ OVERLAYS ------------------------
     "src/ui/overlays/SettingsOverlay.cpp"
+    "include/ui/overlays/SettingsOverlay.h"
 
-    # =========================
-    # =========================
-    # CPU TLP SHARED CACHE APP
-    # =========================
-    # =========================
+    # -------------------- OVERLAY PANELS ---------------------
+    "src/ui/overlays/panels/VideoSettingsPanel.cpp"
+    "src/ui/overlays/panels/AudioSettingsPanel.cpp"
+    "src/ui/overlays/panels/CreditsPanel.cpp"
+    "include/ui/overlays/panels/VideoSettingsPanel.h"
+    "include/ui/overlays/panels/AudioSettingsPanel.h"
+    "include/ui/overlays/panels/CreditsPanel.h"
 
-    # ---- App root ----
+    # ==========================================================
+    # ============ CPU TLP SHARED CACHE APPLICATION ============
+    # ==========================================================
+
+    # ------------------------- APP ROOT -----------------------
     "src/apps/cpu_tlp_shared_cache/CpuTLPSharedCacheState.cpp"
-    "src/apps/cpu_tlp_shared_cache/factory.cpp"
+    "src/apps/cpu_tlp_shared_cache/CpuTLPStateFactory.cpp"
+    "include/apps/cpu_tlp_shared_cache/CpuTLPControlAPI.h"
+    "include/apps/cpu_tlp_shared_cache/CpuTLPSharedCacheState.h"
 
-    # =========================
-    # Simulation - Assembler
-    # =========================
+    # ==========================================================
+    # ========================= SIMULATION ====================
+    # ==========================================================
+
+    # ------------------------ ASSEMBLER ----------------------
     "src/apps/cpu_tlp_shared_cache/simulation/assembler/Assembler.cpp"
+    "include/apps/cpu_tlp_shared_cache/simulation/assembler/Assembler.h"
 
-    # =========================
-    # Simulation - Bus
-    # =========================
-    "src/apps/cpu_tlp_shared_cache/simulation/bus/interconnect_bus.cpp"
+    # --------------------------- BUS -------------------------
+    "src/apps/cpu_tlp_shared_cache/simulation/bus/InterconnectBus.cpp"
+    "include/apps/cpu_tlp_shared_cache/simulation/bus/InterconnectBus.h"
 
-    # =========================
-    # Simulation - Cache
-    # =========================
-    "src/apps/cpu_tlp_shared_cache/simulation/cache/l1_cash.cpp"
-    "src/apps/cpu_tlp_shared_cache/simulation/cache/l1_fsm.cpp"
-    "src/apps/cpu_tlp_shared_cache/simulation/cache/l1_snoop.cpp"
-    "src/apps/cpu_tlp_shared_cache/simulation/cache/l1_utils.cpp"
+    # -------------------------- CACHE ------------------------
+    "src/apps/cpu_tlp_shared_cache/simulation/cache/L1Cache.cpp"
+    "src/apps/cpu_tlp_shared_cache/simulation/cache/L1FSM.cpp"
+    "src/apps/cpu_tlp_shared_cache/simulation/cache/L1Snoop.cpp"
+    "src/apps/cpu_tlp_shared_cache/simulation/cache/L1Utils.cpp"
+    "include/apps/cpu_tlp_shared_cache/simulation/cache/L1Cache.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/cache/L1Snoop.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/cache/L1Utils.h"
 
-    # =========================
-    # Simulation - Memory
-    # =========================
+    # -------------------------- DEBUG ------------------------
+    "include/apps/cpu_tlp_shared_cache/simulation/debug/TLPDebug.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/debug/TLPDebugHelpers.h"
+
+    # -------------------------- MEMORY -----------------------
     "src/apps/cpu_tlp_shared_cache/simulation/memory/InstructionMemoryComponent.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/memory/SharedMemory.cpp"
+    "include/apps/cpu_tlp_shared_cache/simulation/memory/InstructionMemoryComponent.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/memory/SharedMemory.h"
 
-    # =========================
-    # Simulation - Processor
-    # =========================
+    # ------------------------- PROCESSOR ---------------------
     "src/apps/cpu_tlp_shared_cache/simulation/processor/InterconnectComponent.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/processor/L1Component.cpp"
-    "src/apps/cpu_tlp_shared_cache/simulation/processor/PE0Component.cpp"
-    "src/apps/cpu_tlp_shared_cache/simulation/processor/PE1Component.cpp"
-    "src/apps/cpu_tlp_shared_cache/simulation/processor/PE2Component.cpp"
-    "src/apps/cpu_tlp_shared_cache/simulation/processor/PE3Component.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/processor/SharedMemoryComponent.cpp"
+    "src/apps/cpu_tlp_shared_cache/simulation/processor/PEComponent.cpp"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/InterconnectComponent.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/L1Component.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/SharedData.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/SharedMemoryComponent.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/PEComponent.h"
 
-    # =========================
-    # UI - Views
-    # =========================
+    # -------------------- PROCESSOR - PE ---------------------
+    "src/apps/cpu_tlp_shared_cache/simulation/processor/pe/RegisterFile.cpp"
+    "src/apps/cpu_tlp_shared_cache/simulation/processor/pe/ALU.cpp"
+    "src/apps/cpu_tlp_shared_cache/simulation/processor/pe/ControlUnit.cpp"
+    "src/apps/cpu_tlp_shared_cache/simulation/processor/pe/HazardUnit.cpp"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/pe/PipelineRegisters.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/pe/RegisterFile.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/pe/ALU.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/pe/ControlUnit.h"
+    "include/apps/cpu_tlp_shared_cache/simulation/processor/pe/HazardUnit.h"
+
+    # ==========================================================
+    # ============================ UI =========================
+    # ==========================================================
+
+    # --------------------------- VIEWS -----------------------
     "src/apps/cpu_tlp_shared_cache/ui/views/AnalysisDataView.cpp"
     "src/apps/cpu_tlp_shared_cache/ui/views/CompilerView.cpp"
     "src/apps/cpu_tlp_shared_cache/ui/views/GeneralView.cpp"
     "src/apps/cpu_tlp_shared_cache/ui/views/RAMView.cpp"
-
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE0CPUView.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE0MemView.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE0RegView.cpp"
-
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE1CPUView.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE1MemView.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE1RegView.cpp"
-
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE2CPUView.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE2MemView.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE2RegView.cpp"
-
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE3CPUView.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE3MemView.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PE3RegView.cpp"
-
-    # =========================
-    # UI - Widgets
-    # =========================
-    "src/apps/cpu_tlp_shared_cache/ui/widgets/CacheMemTable.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/widgets/InstructionDisassembler.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/widgets/MemCacheTable.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/widgets/RamTable.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/widgets/RegTable.cpp"
-    "src/apps/cpu_tlp_shared_cache/ui/widgets/ZoomPanImage.cpp"
-
-
-    # ==========================================================
-    # ========================= HEADERS ========================
-    # ==========================================================
-
-    # ---- Core ----
-    "include/core/Application.h"
-    "include/core/fsm/IState.h"
-    "include/core/fsm/State.h"
-    "include/core/fsm/StateManager.h"
-    "include/core/config/ConfigManager.h"
-    "include/core/resources/TextureCache.h"
-
-    # ---- Systems ----
-    "include/systems/audio/AudioManager.h"
-
-    # ---- States ----
-    "include/states/MainMenuState.h"
-    "include/states/ProgramState.h"
-
-    # ---- UI ----
-    "include/ui/overlays/SettingsOverlay.h"
-
-    # ---- Utils ----
-    "include/util/errorReporting.h"
-
-    # ---- CPU TLP SHARED CACHE ----
-    "include/apps/cpu_tlp_shared_cache/CpuTLPControlAPI.h"
-    "include/apps/cpu_tlp_shared_cache/CpuTLPSharedCacheState.h"
-    "include/apps/cpu_tlp_shared_cache/tlp_debug.h"
-
-    # Simulation - Assembler
-    "include/apps/cpu_tlp_shared_cache/simulation/assembler/Assembler.h"
-
-    # Simulation - Bus
-    "include/apps/cpu_tlp_shared_cache/simulation/bus/interconnect_bus.h"
-
-    # Simulation - Cache
-    "include/apps/cpu_tlp_shared_cache/simulation/cache/l1_cash.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/cache/l1_snoop.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/cache/l1_utils.h"
-
-    # Simulation - Memory
-    "include/apps/cpu_tlp_shared_cache/simulation/memory/InstructionMemoryComponent.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/memory/SharedMemory.h"
-
-    # Simulation - Processor
-    "include/apps/cpu_tlp_shared_cache/simulation/processor/InterconnectComponent.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/processor/L1Component.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/processor/PE0Component.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/processor/PE1Component.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/processor/PE2Component.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/processor/PE3Component.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/processor/SharedData.h"
-    "include/apps/cpu_tlp_shared_cache/simulation/processor/SharedMemoryComponent.h"
-
-    # UI - Views
     "include/apps/cpu_tlp_shared_cache/ui/views/AnalysisDataView.h"
     "include/apps/cpu_tlp_shared_cache/ui/views/CompilerView.h"
     "include/apps/cpu_tlp_shared_cache/ui/views/GeneralView.h"
     "include/apps/cpu_tlp_shared_cache/ui/views/ICpuTLPView.h"
     "include/apps/cpu_tlp_shared_cache/ui/views/RAMView.h"
 
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE0CPUView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE0MemView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE0RegView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE1CPUView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE1MemView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE1RegView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE2CPUView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE2MemView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE2RegView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE3CPUView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE3MemView.h"
-    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PE3RegView.h"
+    # --------------------- VIEWS - PROCESSOR -----------------
+    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PECPUView.cpp"
+    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PERegView.cpp"
+    "src/apps/cpu_tlp_shared_cache/ui/views/processor/PEMemView.cpp"
+    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PECPUView.h"
+    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PERegView.h"
+    "include/apps/cpu_tlp_shared_cache/ui/views/processor/PEMemView.h"
 
-    # UI - Widgets
+    # -------------------------- WIDGETS ----------------------
+    "src/apps/cpu_tlp_shared_cache/ui/widgets/CacheMemTable.cpp"
+    "src/apps/cpu_tlp_shared_cache/ui/widgets/InstructionDisassembler.cpp"
+    "src/apps/cpu_tlp_shared_cache/ui/widgets/MemCacheTable.cpp"
+    "src/apps/cpu_tlp_shared_cache/ui/widgets/RamTable.cpp"
+    "src/apps/cpu_tlp_shared_cache/ui/widgets/RegTable.cpp"
+    "src/apps/cpu_tlp_shared_cache/ui/widgets/ZoomPanImage.cpp"
     "include/apps/cpu_tlp_shared_cache/ui/widgets/CacheMemTable.h"
     "include/apps/cpu_tlp_shared_cache/ui/widgets/InstructionDisassembler.h"
     "include/apps/cpu_tlp_shared_cache/ui/widgets/Log.h"
@@ -278,6 +231,21 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE ${MY_SOURCES}
     "include/apps/cpu_tlp_shared_cache/ui/widgets/RamTable.h"
     "include/apps/cpu_tlp_shared_cache/ui/widgets/RegTable.h"
     "include/apps/cpu_tlp_shared_cache/ui/widgets/ZoomPanImage.h"
+
+    # ==========================================================
+    # ============================ UTILS ======================
+    # ==========================================================
+    "include/util/ErrorReporting.h"
+
+    # ----------------------- GL DEBUG ------------------------
+    "src/util/gl_debug/GLDebugOutput.cpp"
+    "src/util/gl_debug/GLDebugFilter.cpp"
+    "src/util/gl_debug/GLDebugFormatter.cpp"
+    "src/util/gl_debug/GLDebugCallback.cpp"
+    "include/util/gl_debug/GLDebugOutput.h"
+    "include/util/gl_debug/GLDebugFilter.h"
+    "include/util/gl_debug/GLDebugFormatter.h"
+    "include/util/gl_debug/GLDebugCallback.h"
 )
 
 if(MSVC) # If using the VS compiler...
