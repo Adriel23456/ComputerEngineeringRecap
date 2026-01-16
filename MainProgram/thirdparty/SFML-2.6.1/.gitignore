@@ -1,59 +1,101 @@
+# Vendored SFML `.gitignore` Configuration
+
+This `.gitignore` file is intended to live **inside the vendored SFML directory** within the repository.
+
+Its goal is to:
+- Ignore **all generated build outputs** (objects, binaries, caches)
+- Ignore **platform binaries by default**
+- **Explicitly allow only the required MSVC x64 extlibs**
+- Keep the repository clean while preserving the **exact third-party binaries needed to build on Windows (MSVC x64)**
+
+This approach ensures:
+- Reproducible builds
+- No accidental platform pollution
+- Clear intent about which binaries are allowed and why
+
+---
+
+```gitignore
 ############################################################
-# SFML vendorizado dentro del repo
-# Objetivo:
-# - Ignorar outputs generados (build/obj/etc.)
-# - Ignorar binarios en general
-# - PERO permitir SOLO las extlibs necesarias para MSVC x64
+# Vendored SFML (.gitignore)
+#
+# Purpose:
+# - Ignore generated outputs (build/, obj/, cache, etc.)
+# - Ignore binaries by default
+# - Explicitly allow ONLY required MSVC x64 extlibs
+#
+# This prevents repository pollution while ensuring
+# the build remains self-contained on Windows (MSVC).
 ############################################################
+
 
 #############################
 # Prerequisites
 #############################
+
+# Dependency-generated files
 *.d
 
+
 #############################
-# Compiled Object files
+# Compiled object files
 #############################
+
 *.slo
 *.lo
 *.o
 *.obj
 
+
 #############################
-# Precompiled Headers
+# Precompiled headers
 #############################
+
 *.gch
 *.pch
 
+
 #############################
-# Fortran module files (por compatibilidad)
+# Fortran module files
+# (included for compatibility/completeness)
 #############################
+
 *.mod
 *.smod
+
 
 #############################
 # Executables
 #############################
+
 *.exe
 *.out
 *.app
 
-#############################
-# Build folders (generados)
-#############################
-build/
 
 #############################
-# Cache/IDE folders
+# Generated build folders
 #############################
+
+build/
+
+
+#############################
+# Cache / IDE folders
+#############################
+
 .cache/
 .vscode/
 .idea/
 
+
 ############################################################
-# Binarios en general (por defecto ignorados)
-# (esto evita llenar el repo con outputs o builds locales)
+# Binary files (ignored by default)
+#
+# This avoids committing local builds, toolchain outputs,
+# or platform-specific binaries by accident.
 ############################################################
+
 *.so
 *.dylib
 *.dll
@@ -62,34 +104,39 @@ build/
 *.a
 *.lib
 
+
 ############################################################
-# PERMITIR SOLO extlibs necesarios para tu build actual:
-# - MSVC universal x64 libs (OpenAL/Vorbis/FLAC/Ogg, etc.)
-# - DLLs runtime x64 (openal32.dll, etc.)
+# EXCEPTIONS — explicitly allowed binaries
 #
-# Nota: esto "anula" los ignores *.lib / *.dll SOLO en estas rutas.
+# These rules override the ignores above and allow ONLY
+# the required MSVC x64 runtime and import libraries
+# shipped with SFML.
 ############################################################
 
-# Asegura que Git no ignore el directorio extlibs
+# Ensure extlibs directory is always tracked
 !extlibs/
 !extlibs/**/
 
-# Permitir libs MSVC universal x64
+# Allow MSVC universal x64 libraries
 !extlibs/libs-msvc-universal/
 !extlibs/libs-msvc-universal/**/
 !extlibs/libs-msvc-universal/x64/
 !extlibs/libs-msvc-universal/x64/*.lib
 
-# Permitir DLLs runtime x64 (si SFML las trae aquí)
+# Allow MSVC x64 runtime DLLs (e.g. OpenAL)
 !extlibs/bin/
 !extlibs/bin/**/
 !extlibs/bin/x64/
 !extlibs/bin/x64/*.dll
 
+
 ############################################################
-# EXCLUIR explícitamente librerías no obligatorias (otros targets)
-# (aunque ya estén ignoradas por defecto, esto deja la intención clara)
+# Explicitly exclude non-target platforms
+#
+# Even though these are already ignored by default,
+# listing them here makes the intent unambiguous.
 ############################################################
+
 extlibs/libs-android/
 extlibs/libs-ios/
 extlibs/libs-mingw/

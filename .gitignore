@@ -1,25 +1,55 @@
+# Global `.gitignore` Configuration
+
+The following `.gitignore` file is intended to be placed at the **repository root** and is specifically tailored for a **C++ project built with Visual Studio + CMake**.
+
+It focuses on:
+- Ignoring **IDE-specific files**
+- Ignoring **CMake-generated artifacts**
+- Ignoring **build outputs and intermediate compilation files**
+- **Preserving third-party binaries** (`.lib`, `.dll`) to avoid breaking vendored dependencies
+
+---
+
+```gitignore
 ############################################################
-# GLOBAL .gitignore (repo root)
-# Enfocado a: Visual Studio + CMake + outputs generados
-# NO ignora librerías (.lib/.dll) para no romper thirdparty.
+# GLOBAL .gitignore (repository root)
+# Target environment:
+# - Visual Studio (MSVC)
+# - CMake-based build system
+# - Generated build outputs and intermediate artifacts
+#
+# IMPORTANT:
+# This file intentionally DOES NOT ignore .lib or .dll files
+# to avoid breaking third-party dependencies under /thirdparty.
 ############################################################
 
 #############################
 # Visual Studio
 #############################
+
+# Visual Studio working folders
 **/.vs/
+
+# User- and session-specific files
 **/*.suo
 **/*.user
 **/*.userosscache
 **/*.sln.docstates
+
+# IntelliSense / browsing databases
 **/*.VC.db
 **/*.VC.VC.opendb
 **/ipch/
+
+# JetBrains IDEs (optional, but commonly present)
 **/.idea/
 
+
 #############################
-# CMake (archivos generados)
+# CMake (generated files)
 #############################
+
+# Core CMake generation artifacts
 **/CMakeCache.txt
 **/CMakeFiles/
 **/cmake_install.cmake
@@ -28,41 +58,60 @@
 **/install_manifest.txt
 **/compile_commands.json
 
+
 #############################
-# Carpetas de build típicas
+# Common build output directories
 #############################
+
+# Generic build/output folders
 **/out/
 **/build/
 **/cmake-build-*/
 **/bin/
 **/lib/
+
+# MSVC configuration-specific folders
 **/Debug/
 **/Release/
 **/RelWithDebInfo/
 **/MinSizeRel/
 
+
 #############################
-# Artefactos de compilación (objetos intermedios)
-# OJO: NO incluye .lib/.dll para no matar deps en thirdparty.
+# Compilation artifacts (intermediate objects)
+#
+# NOTE:
+# .lib and .dll files are intentionally NOT ignored
+# to avoid breaking vendored third-party dependencies.
 #############################
+
 **/*.obj
 **/*.o
 **/*.lo
 **/*.slo
+
+# MSVC incremental and debug databases
 **/*.ilk
 **/*.pdb
 **/*.idb
 **/*.iobj
 **/*.ipdb
 **/*.tlog
+
+# Logs, caches, and precompiled headers
 **/*.log
 **/*.cache
 **/*.pch
 **/*.gch
 **/*.d
 
+
 #############################
 # OS / Editor noise
 #############################
+
+# macOS
 **/.DS_Store
+
+# Windows Explorer
 **/Thumbs.db
