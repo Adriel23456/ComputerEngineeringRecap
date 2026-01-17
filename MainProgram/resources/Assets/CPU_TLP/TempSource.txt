@@ -18,7 +18,7 @@
 
 START:    
     ; Dispatch a codigo especifico segun PEID
-    ; NOTA: SIDS contiene el ID del PE, NO usar REG0 (siempre es 0)
+    ; NOTA: SIDS contiene el ID del PE
     CMPI SIDS, #0
     BEQ .SETUP_PE0
     CMPI SIDS, #1

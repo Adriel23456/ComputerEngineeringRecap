@@ -37,7 +37,16 @@ project(mygame LANGUAGES C CXX)
 #set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 #set(CMAKE_CUDA_ARCHITECTURES native)
 
-find_package(CUDAToolkit REQUIRED)
+#find_package(CUDAToolkit REQUIRED)
+
+# Enable OpenMP support
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP found - Version: ${OpenMP_CXX_VERSION}")
+    message(STATUS "OpenMP CXX flags: ${OpenMP_CXX_FLAGS}")
+else()
+    message(FATAL_ERROR "OpenMP not found! OpenMP is required for this project.")
+endif()
 
 #Add SFML, and here you would add other libraries if needed!
 add_subdirectory(thirdparty/SFML-2.6.1)
@@ -246,7 +255,7 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/util/gl_debug/GLDebugFilter.h"
     "include/util/gl_debug/GLDebugFormatter.h"
     "include/util/gl_debug/GLDebugCallback.h"
-)
+ "include/apps/quicksort_visualizer/QuicksortVisualizerState.h" "src/apps/quicksort_visualizer/QuicksortVisualizerState.cpp" "src/apps/quicksort_visualizer/QuicksortVisualizerStateFactory.cpp" "include/apps/quicksort_visualizer/threading/LogicThreadController.h" "src/apps/quicksort_visualizer/threading/LogicThreadController.cpp" "include/apps/quicksort_visualizer/visualization/GridConfig.h" "include/apps/quicksort_visualizer/visualization/GridTransform.h" "src/apps/quicksort_visualizer/visualization/GridTransform.cpp" "include/apps/quicksort_visualizer/ui/GridPanel.h" "src/apps/quicksort_visualizer/ui/GridPanel.cpp" "include/apps/quicksort_visualizer/ui/ControlPanel.h" "src/apps/quicksort_visualizer/ui/ControlPanel.cpp" "include/apps/quicksort_visualizer/input/GridInputHandler.h" "src/apps/quicksort_visualizer/input/GridInputHandler.cpp")
 
 if(MSVC) # If using the VS compiler...
 
@@ -272,5 +281,6 @@ target_link_libraries("${CMAKE_PROJECT_NAME}"
 	glad
 	nlohmann
 	tinyfiledialogs
+    OpenMP::OpenMP_CXX
 	#CUDA::cudart
 )

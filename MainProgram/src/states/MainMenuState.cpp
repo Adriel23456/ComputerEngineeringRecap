@@ -19,6 +19,7 @@
 
  // Forward declaration for factory function
 std::unique_ptr<State> CreateCpuTLPSharedCacheState(StateManager*, sf::RenderWindow*);
+std::unique_ptr<State> CreateQuicksortVisualizerState(StateManager*, sf::RenderWindow*);
 
 // ============================================================================
 // Shader Background Implementation
@@ -202,8 +203,14 @@ void MainMenuState::handleMenuSelection(const std::string& itemName) {
             CreateCpuTLPSharedCacheState(m_stateManager, m_window)
         );
     }
+    else if (itemName == "Quicksort") {
+        // Navigate to Quicksort Visualizer state
+        m_stateManager->queueNextState(
+            CreateQuicksortVisualizerState(m_stateManager, m_window)
+        );
+    }
     else {
-        // Generic program state for other menu items
+        // Generic program state for other menu items (e.g., Tomasulo)
         m_stateManager->queueNextState(
             std::make_unique<ProgramState>(m_stateManager, m_window, itemName)
         );

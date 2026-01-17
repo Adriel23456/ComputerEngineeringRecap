@@ -1,9 +1,9 @@
 // ============================================================================
-// File: src/main.cpp
+// File: src/Main.cpp
 // ============================================================================
 
 /**
- * @file main.cpp
+ * @file Main.cpp
  * @brief Application entry point.
  *
  * Following SRP, main() only:

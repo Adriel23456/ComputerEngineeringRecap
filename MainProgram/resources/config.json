@@ -1,7 +1,7 @@
 {
     "audio": {
-        "bgm": 10,
-        "sfx": 15
+        "bgm": 15,
+        "sfx": 25
     },
     "framerate": 60,
     "resolution": {
@@ -9,5 +9,5 @@
         "width": 1600
     },
     "screenMode": "window",
-    "vsync": true
+    "vsync": false
 }
