@@ -166,9 +166,11 @@ namespace quicksort {
                 const ImVec2& contentMin);
 
             /**
-             * @brief Renders coordinate information overlay.
+             * @brief Renders coordinate information overlay directly on draw list.
+             * @param drawList ImGui draw list for rendering.
+             * @param contentMin Top-left of content area.
              */
-            void renderCoordinateInfo();
+            void renderCoordinateInfo(ImDrawList* drawList, const ImVec2& contentMin);
 
             /**
              * @brief Renders the placeholder text (for Step 3).

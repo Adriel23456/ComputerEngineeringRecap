@@ -94,34 +94,38 @@ namespace quicksort {
     }
 
     void GridTransform::zoomToward(float delta, const Vec2& screenPoint) {
-        // Get grid position under mouse before zoom
-        Vec2 gridPointBefore = screenToGrid(screenPoint);
+        // Store old target zoom to check if zoom actually changes
+        float oldTargetZoom = m_targetZoom;
 
-        // Apply zoom
-        float oldZoom = m_targetZoom;
-        m_targetZoom = clampZoom(m_targetZoom + delta);
+        // Calculate new target zoom
+        float newTargetZoom = clampZoom(m_targetZoom + delta);
 
-        // If zoom actually changed, adjust pan to keep point under mouse
-        if (std::abs(m_targetZoom - oldZoom) > ANIMATION_EPSILON) {
-            // Calculate where the grid point would appear after zoom
-            // We need to adjust pan so gridPointBefore stays at screenPoint
-
-            // Screen center in grid coords after new zoom (if pan unchanged)
-            Vec2 viewportCenter(m_viewportSize.x * 0.5f, m_viewportSize.y * 0.5f);
-
-            // Offset from viewport center to mouse in screen coords
-            Vec2 screenOffset = screenPoint - viewportCenter;
-
-            // Convert screen offset to grid offset with new zoom
-            Vec2 gridOffset = screenOffset / m_targetZoom;
-
-            // New pan should place gridPointBefore at screenPoint
-            m_targetPan = gridPointBefore - gridOffset;
-            m_targetPan = clampPan(m_targetPan);
-
-            // Also update current pan for immediate response on zoom
-            m_pan = m_targetPan;
+        // Only proceed if zoom actually changed
+        if (std::abs(newTargetZoom - oldTargetZoom) < ANIMATION_EPSILON) {
+            return;
         }
+
+        // Get the grid position under the mouse USING CURRENT values (what user sees now)
+        Vec2 gridPointUnderMouse = screenToGrid(screenPoint);
+
+        // Update target zoom
+        m_targetZoom = newTargetZoom;
+
+        // Calculate what pan offset would keep gridPointUnderMouse at screenPoint
+        // after the zoom completes
+        //
+        // Formula: screenPoint = viewportCenter + (gridPoint - pan) * zoom
+        // Solving for pan: pan = gridPoint - (screenPoint - viewportCenter) / zoom
+        //
+        Vec2 viewportCenter(m_viewportSize.x * 0.5f, m_viewportSize.y * 0.5f);
+        Vec2 screenOffset = screenPoint - viewportCenter;
+        Vec2 gridOffset = screenOffset / m_targetZoom;
+
+        m_targetPan = clampPan(gridPointUnderMouse - gridOffset);
+
+        // DO NOT update m_pan or m_zoom here!
+        // Let the animation system smoothly interpolate both together.
+        // This prevents the visual "jump" where pan is set for a different zoom level.
     }
 
     void GridTransform::resetZoom() {
@@ -167,10 +171,13 @@ namespace quicksort {
     }
 
     void GridTransform::resetView() {
-        resetZoom();
-        resetPan();
+        // Reset to defaults
+        m_targetZoom = config::GridConfig::DEFAULT_ZOOM;
+        m_targetPan = Vec2(m_gridSize.x * 0.5f, m_gridSize.y * 0.5f);
+
         // Also update current values immediately for instant reset
         m_zoom = m_targetZoom;
+        m_pan = m_targetPan;
     }
 
     // ============================================================================
@@ -228,7 +235,7 @@ namespace quicksort {
         // Smooth interpolation for zoom
         m_zoom = lerp(m_zoom, m_targetZoom, config::GridConfig::ZOOM_SMOOTHING, deltaTime);
 
-        // Smooth interpolation for pan (only if not being dragged - when values differ)
+        // Smooth interpolation for pan
         m_pan.x = lerp(m_pan.x, m_targetPan.x, config::GridConfig::PAN_SMOOTHING, deltaTime);
         m_pan.y = lerp(m_pan.y, m_targetPan.y, config::GridConfig::PAN_SMOOTHING, deltaTime);
 

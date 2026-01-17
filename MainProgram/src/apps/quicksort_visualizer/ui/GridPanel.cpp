@@ -13,6 +13,7 @@
 #include "imgui_internal.h"
 #include <cmath>
 #include <algorithm>
+#include <cstdio>
 
 namespace quicksort {
     namespace ui {
@@ -45,8 +46,7 @@ namespace quicksort {
                 ImGuiWindowFlags_NoMove |
                 ImGuiWindowFlags_NoTitleBar |
                 ImGuiWindowFlags_NoScrollbar |
-                ImGuiWindowFlags_NoScrollWithMouse |
-                ImGuiWindowFlags_NoBringToFrontOnFocus;
+                ImGuiWindowFlags_NoScrollWithMouse;
 
             ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(
                 config::GridConfig::GRID_BG_COLOR[0],
@@ -88,14 +88,13 @@ namespace quicksort {
                     mousePos.y >= contentMin.y && mousePos.y <= contentMax.y);
 
                 // Create an invisible button covering the content area to capture input
-                // Use NoNav to prevent focus issues
                 ImGui::SetCursorScreenPos(contentMin);
                 ImGui::InvisibleButton("##GridContent",
                     ImVec2(m_contentSize.x, m_contentSize.y),
                     ImGuiButtonFlags_MouseButtonLeft |
                     ImGuiButtonFlags_MouseButtonRight);
 
-                // Use IsItemHovered but also keep our manual check as backup
+                // Combine hover checks for reliability
                 m_isContentHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) || m_isHovered;
 
                 // Get draw list for custom rendering
@@ -111,17 +110,16 @@ namespace quicksort {
 
                 renderBorder(drawList, contentMin, contentMax);
                 renderPlaceholder(contentMin, contentMax);
+
+                // Render coordinate info directly on the draw list (inside the window)
+                if (m_showCoordinates) {
+                    renderCoordinateInfo(drawList, contentMin);
+                }
             }
             ImGui::End();
 
             ImGui::PopStyleVar(3);
             ImGui::PopStyleColor(2);
-
-            // Render coordinate info AFTER the main window ends
-            // This ensures it's not affected by the InvisibleButton focus
-            if (m_showCoordinates) {
-                renderCoordinateInfo();
-            }
         }
 
         // ============================================================================
@@ -216,8 +214,9 @@ namespace quicksort {
                     // Skip if this is a major line
                     if (std::fmod(std::abs(gx), majorSpacing) < 0.01f) continue;
 
-                    Vec2 screenPos = m_transform.gridToScreen(Vec2(gx, 0));
-                    float screenX = contentMin.x + (screenPos.x - m_contentPosition.x);
+                    // gridToScreen returns viewport-local coords, add contentMin for screen coords
+                    Vec2 viewportPos = m_transform.gridToScreen(Vec2(gx, 0));
+                    float screenX = contentMin.x + viewportPos.x;
 
                     if (screenX >= contentMin.x && screenX <= contentMax.x) {
                         drawList->AddLine(
@@ -232,8 +231,8 @@ namespace quicksort {
                     // Skip if this is a major line
                     if (std::fmod(std::abs(gy), majorSpacing) < 0.01f) continue;
 
-                    Vec2 screenPos = m_transform.gridToScreen(Vec2(0, gy));
-                    float screenY = contentMin.y + (screenPos.y - m_contentPosition.y);
+                    Vec2 viewportPos = m_transform.gridToScreen(Vec2(0, gy));
+                    float screenY = contentMin.y + viewportPos.y;
 
                     if (screenY >= contentMin.y && screenY <= contentMax.y) {
                         drawList->AddLine(
@@ -247,8 +246,8 @@ namespace quicksort {
 
             // Draw major grid lines
             for (float gx = startX; gx <= visibleRect.right(); gx += majorSpacing) {
-                Vec2 screenPos = m_transform.gridToScreen(Vec2(gx, 0));
-                float screenX = contentMin.x + (screenPos.x - m_contentPosition.x);
+                Vec2 viewportPos = m_transform.gridToScreen(Vec2(gx, 0));
+                float screenX = contentMin.x + viewportPos.x;
 
                 if (screenX >= contentMin.x && screenX <= contentMax.x) {
                     drawList->AddLine(
@@ -260,8 +259,8 @@ namespace quicksort {
             }
 
             for (float gy = startY; gy <= visibleRect.bottom(); gy += majorSpacing) {
-                Vec2 screenPos = m_transform.gridToScreen(Vec2(0, gy));
-                float screenY = contentMin.y + (screenPos.y - m_contentPosition.y);
+                Vec2 viewportPos = m_transform.gridToScreen(Vec2(0, gy));
+                float screenY = contentMin.y + viewportPos.y;
 
                 if (screenY >= contentMin.y && screenY <= contentMax.y) {
                     drawList->AddLine(
@@ -291,18 +290,19 @@ namespace quicksort {
             // Draw the actual grid content bounds (0,0 to gridWidth,gridHeight)
             Vec2 gridSize = m_transform.getGridSize();
 
-            // Convert grid corners to screen coordinates
-            Vec2 topLeftScreen = m_transform.gridToScreen(Vec2(0, 0));
-            Vec2 bottomRightScreen = m_transform.gridToScreen(gridSize);
+            // Convert grid corners to viewport-local coordinates
+            Vec2 topLeftViewport = m_transform.gridToScreen(Vec2(0, 0));
+            Vec2 bottomRightViewport = m_transform.gridToScreen(gridSize);
 
-            // Offset by content position
+            // Convert viewport-local coords to screen coords by adding content position
+            // FIX: Previously the calculation was wrong, causing ~12 pixel offset
             ImVec2 boundsMin(
-                contentMin.x + (topLeftScreen.x - m_contentPosition.x),
-                contentMin.y + (topLeftScreen.y - m_contentPosition.y)
+                contentMin.x + topLeftViewport.x,
+                contentMin.y + topLeftViewport.y
             );
             ImVec2 boundsMax(
-                contentMin.x + (bottomRightScreen.x - m_contentPosition.x),
-                contentMin.y + (bottomRightScreen.y - m_contentPosition.y)
+                contentMin.x + bottomRightViewport.x,
+                contentMin.y + bottomRightViewport.y
             );
 
             // Draw grid bounds rectangle (slightly visible)
@@ -314,58 +314,91 @@ namespace quicksort {
             drawList->AddRect(boundsMin, boundsMax, boundsBorderColor, 0.0f, 0, 2.0f);
         }
 
-        void GridPanel::renderCoordinateInfo() {
-            // Display coordinate info in corner
+        void GridPanel::renderCoordinateInfo(ImDrawList* drawList, const ImVec2& contentMin) {
+            // Render info panel directly using the draw list (no separate ImGui window)
+            // This avoids focus/input issues completely
+
             ImGuiIO& io = ImGui::GetIO();
             ImVec2 mousePos = io.MousePos;
 
-            // Convert to grid coordinates
-            Vec2 gridPos(0, 0);
-            if (m_isContentHovered) {
-                Vec2 screenPos(mousePos.x - m_contentPosition.x, mousePos.y - m_contentPosition.y);
-                gridPos = m_transform.screenToGrid(screenPos);
+            // Panel position and sizing
+            const float padding = 8.0f;
+            const float panelX = contentMin.x + 10.0f;
+            const float panelY = contentMin.y + 10.0f;
+
+            // Prepare text lines
+            char line1[64], line2[64], line3[64], line4[64];
+            Vec2 gridSize = m_transform.getGridSize();
+            Rect visible = m_transform.getVisibleGridRect();
+
+            snprintf(line1, sizeof(line1), "Grid: %.0fx%.0f", gridSize.x, gridSize.y);
+            snprintf(line2, sizeof(line2), "Zoom: %.1f%%", m_transform.getZoom() * 100.0f);
+
+            // Mouse position (only if hovering)
+            bool showMouse = m_isContentHovered;
+            if (showMouse) {
+                // Convert mouse screen position to viewport-local position
+                Vec2 viewportPos(mousePos.x - m_contentPosition.x, mousePos.y - m_contentPosition.y);
+                // Convert viewport position to grid coordinates
+                Vec2 gridPos = m_transform.screenToGrid(viewportPos);
+                snprintf(line3, sizeof(line3), "Mouse: (%.1f, %.1f)", gridPos.x, gridPos.y);
             }
 
-            // Info overlay in top-left - rendered OUTSIDE the main grid window
-            ImVec2 overlayPos(m_contentPosition.x + 10, m_contentPosition.y + 10);
-            ImGui::SetNextWindowPos(overlayPos, ImGuiCond_Always);
-            ImGui::SetNextWindowBgAlpha(0.75f);
+            snprintf(line4, sizeof(line4), "View: (%.0f,%.0f)-(%.0f,%.0f)",
+                visible.x, visible.y, visible.right(), visible.bottom());
 
-            // Use flags that prevent this window from being affected by other interactions
-            ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoDecoration |
-                ImGuiWindowFlags_AlwaysAutoResize |
-                ImGuiWindowFlags_NoSavedSettings |
-                ImGuiWindowFlags_NoFocusOnAppearing |
-                ImGuiWindowFlags_NoNav |
-                ImGuiWindowFlags_NoMove |
-                ImGuiWindowFlags_NoBringToFrontOnFocus |
-                ImGuiWindowFlags_NoInputs;  // Key: ignore all input
+            // Calculate text sizes
+            ImVec2 size1 = ImGui::CalcTextSize(line1);
+            ImVec2 size2 = ImGui::CalcTextSize(line2);
+            ImVec2 size3 = showMouse ? ImGui::CalcTextSize(line3) : ImVec2(0, 0);
+            ImVec2 size4 = ImGui::CalcTextSize(line4);
 
-            // Push a unique ID to avoid conflicts
-            ImGui::PushID("GridInfoOverlay");
+            // Calculate panel size
+            float maxWidth = std::max({ size1.x, size2.x, size3.x, size4.x });
+            float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            float separatorHeight = showMouse ? 4.0f : 0.0f;
+            int numLines = showMouse ? 4 : 3;
+            float totalHeight = lineHeight * numLines + separatorHeight;
 
-            if (ImGui::Begin("##GridInfoOverlay", nullptr, overlayFlags)) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.8f, 0.9f, 1.0f));
+            float panelWidth = maxWidth + padding * 2;
+            float panelHeight = totalHeight + padding * 2;
 
-                Vec2 gridSize = m_transform.getGridSize();
-                ImGui::Text("Grid: %.0fx%.0f", gridSize.x, gridSize.y);
-                ImGui::Text("Zoom: %.1f%%", m_transform.getZoom() * 100.0f);
+            // Draw panel background
+            ImVec2 panelMin(panelX, panelY);
+            ImVec2 panelMax(panelX + panelWidth, panelY + panelHeight);
 
-                if (m_isContentHovered) {
-                    ImGui::Separator();
-                    ImGui::Text("Mouse: (%.1f, %.1f)", gridPos.x, gridPos.y);
-                }
+            ImU32 bgColor = IM_COL32(20, 25, 35, 200);
+            ImU32 borderColor = IM_COL32(60, 70, 90, 255);
+            ImU32 textColor = IM_COL32(180, 200, 230, 255);
+            ImU32 separatorColor = IM_COL32(60, 70, 90, 200);
 
-                // Show visible area
-                Rect visible = m_transform.getVisibleGridRect();
-                ImGui::Text("View: (%.0f,%.0f)-(%.0f,%.0f)",
-                    visible.x, visible.y, visible.right(), visible.bottom());
+            drawList->AddRectFilled(panelMin, panelMax, bgColor, 4.0f);
+            drawList->AddRect(panelMin, panelMax, borderColor, 4.0f, 0, 1.0f);
 
-                ImGui::PopStyleColor();
+            // Draw text lines
+            float textX = panelX + padding;
+            float textY = panelY + padding;
+
+            drawList->AddText(ImVec2(textX, textY), textColor, line1);
+            textY += lineHeight;
+
+            drawList->AddText(ImVec2(textX, textY), textColor, line2);
+            textY += lineHeight;
+
+            if (showMouse) {
+                // Draw separator
+                drawList->AddLine(
+                    ImVec2(panelX + padding, textY),
+                    ImVec2(panelX + panelWidth - padding, textY),
+                    separatorColor, 1.0f
+                );
+                textY += separatorHeight;
+
+                drawList->AddText(ImVec2(textX, textY), textColor, line3);
+                textY += lineHeight;
             }
-            ImGui::End();
 
-            ImGui::PopID();
+            drawList->AddText(ImVec2(textX, textY), textColor, line4);
         }
 
         void GridPanel::renderPlaceholder(const ImVec2& contentMin, const ImVec2& contentMax) {
