@@ -33,7 +33,6 @@ The long-term objective is to serve as:
 - **Quicksort Visualizer**
   - Step-by-step algorithm visualization
   - Performance and partitioning analysis  
-  *(Coming soon)*
 
 - **Additional Computer Architecture & Algorithms Projects**
   - To be announced
@@ -69,7 +68,6 @@ The long-term objective is to serve as:
 The structure below reflects the **actual layout enforced by `CMakeLists.txt`** and represents the authoritative organization of the codebase.
 
 ```
-
 project-root/
 ├── CMakeLists.txt
 │
@@ -102,50 +100,80 @@ project-root/
 │   │           └── CreditsPanel.h
 │   │
 │   ├── apps/
-│   │   └── cpu_tlp_shared_cache/
-│   │       ├── CpuTLPControlAPI.h
-│   │       ├── CpuTLPSharedCacheState.h
-│   │       ├── simulation/
-│   │       │   ├── assembler/
-│   │       │   │   └── Assembler.h
-│   │       │   ├── bus/
-│   │       │   │   └── InterconnectBus.h
-│   │       │   ├── cache/
-│   │       │   │   ├── L1Cache.h
-│   │       │   │   ├── L1Snoop.h
-│   │       │   │   └── L1Utils.h
-│   │       │   ├── debug/
-│   │       │   │   ├── TLPDebug.h
-│   │       │   │   └── TLPDebugHelpers.h
-│   │       │   ├── memory/
-│   │       │   │   ├── InstructionMemoryComponent.h
-│   │       │   │   └── SharedMemory.h
-│   │       │   └── processor/
-│   │       │       ├── InterconnectComponent.h
-│   │       │       ├── L1Component.h
-│   │       │       ├── SharedMemoryComponent.h
-│   │       │       ├── PEComponent.h
-│   │       │       └── pe/
-│   │       │           ├── PipelineRegisters.h
-│   │       │           ├── RegisterFile.h
-│   │       │           ├── ALU.h
-│   │       │           ├── ControlUnit.h
-│   │       │           └── HazardUnit.h
+│   │   ├── cpu_tlp_shared_cache/
+│   │   │   ├── CpuTLPControlAPI.h
+│   │   │   ├── CpuTLPSharedCacheState.h
+│   │   │   ├── simulation/
+│   │   │   │   ├── assembler/
+│   │   │   │   │   └── Assembler.h
+│   │   │   │   ├── bus/
+│   │   │   │   │   └── InterconnectBus.h
+│   │   │   │   ├── cache/
+│   │   │   │   │   ├── L1Cache.h
+│   │   │   │   │   ├── L1Snoop.h
+│   │   │   │   │   └── L1Utils.h
+│   │   │   │   ├── debug/
+│   │   │   │   │   ├── TLPDebug.h
+│   │   │   │   │   └── TLPDebugHelpers.h
+│   │   │   │   ├── memory/
+│   │   │   │   │   ├── InstructionMemoryComponent.h
+│   │   │   │   │   └── SharedMemory.h
+│   │   │   │   └── processor/
+│   │   │   │       ├── InterconnectComponent.h
+│   │   │   │       ├── L1Component.h
+│   │   │   │       ├── SharedMemoryComponent.h
+│   │   │   │       ├── PEComponent.h
+│   │   │   │       └── pe/
+│   │   │   │           ├── PipelineRegisters.h
+│   │   │   │           ├── RegisterFile.h
+│   │   │   │           ├── ALU.h
+│   │   │   │           ├── ControlUnit.h
+│   │   │   │           └── HazardUnit.h
+│   │   │   └── ui/
+│   │   │       ├── views/
+│   │   │       │   ├── ICpuTLPView.h
+│   │   │       │   ├── GeneralView.h
+│   │   │       │   ├── CompilerView.h
+│   │   │       │   ├── RAMView.h
+│   │   │       │   ├── AnalysisDataView.h
+│   │   │       │   └── processor/
+│   │   │       │       ├── PECPUView.h
+│   │   │       │       ├── PERegView.h
+│   │   │       │       └── PEMemView.h
+│   │   │       └── widgets/
+│   │   │           ├── CacheMemTable.h
+│   │   │           ├── MemCacheTable.h
+│   │   │           ├── RamTable.h
+│   │   │           ├── RegTable.h
+│   │   │           ├── InstructionDisassembler.h
+│   │   │           ├── ZoomPanImage.h
+│   │   │           └── Log.h
+│   │   │
+│   │   └── quicksort_visualizer/
+│   │       ├── QuicksortVisualizerState.h
+│   │       ├── algorithm/
+│   │       │   └── QuicksortAlgorithm.h
+│   │       ├── animation/
+│   │       │   └── SwapAnimator.h
+│   │       ├── audio/
+│   │       │   └── SwapSoundGenerator.h
+│   │       ├── data/
+│   │       │   ├── SortElement.h
+│   │       │   ├── ElementCollection.h
+│   │       │   ├── SwapOperation.h
+│   │       │   └── SwapQueue.h
+│   │       ├── input/
+│   │       │   └── GridInputHandler.h
+│   │       ├── threading/
+│   │       │   └── LogicThreadController.h
+│   │       ├── visualization/
+│   │       │   ├── GridConfig.h
+│   │       │   └── GridTransform.h
 │   │       └── ui/
-│   │           ├── views/
-│   │           │   ├── ICpuTLPView.h
-│   │           │   ├── GeneralView.h
-│   │           │   ├── CompilerView.h
-│   │           │   ├── RAMView.h
-│   │           │   └── AnalysisDataView.h
-│   │           └── widgets/
-│   │               ├── CacheMemTable.h
-│   │               ├── MemCacheTable.h
-│   │               ├── RamTable.h
-│   │               ├── RegTable.h
-│   │               ├── InstructionDisassembler.h
-│   │               ├── ZoomPanImage.h
-│   │               └── Log.h
+│   │           ├── GridPanel.h
+│   │           ├── ControlPanel.h
+│   │           ├── ElementRenderer.h
+│   │           └── AmountInputPopup.h
 │   │
 │   └── util/
 │       ├── ErrorReporting.h
@@ -162,24 +190,46 @@ project-root/
 │   ├── states/
 │   ├── ui/
 │   └── apps/
-│       └── cpu_tlp_shared_cache/
-│           ├── CpuTLPSharedCacheState.cpp
-│           ├── CpuTLPStateFactory.cpp
-│           ├── simulation/
+│       ├── cpu_tlp_shared_cache/
+│       │   ├── CpuTLPSharedCacheState.cpp
+│       │   ├── CpuTLPStateFactory.cpp
+│       │   ├── simulation/
+│       │   └── ui/
+│       └── quicksort_visualizer/
+│           ├── QuicksortVisualizerState.cpp
+│           ├── QuicksortVisualizerStateFactory.cpp
+│           ├── algorithm/
+│           │   └── QuicksortAlgorithm.cpp
+│           ├── animation/
+│           │   └── SwapAnimator.cpp
+│           ├── audio/
+│           │   └── SwapSoundGenerator.cpp
+│           ├── data/
+│           │   ├── ElementCollection.cpp
+│           │   └── SwapQueue.cpp
+│           ├── input/
+│           │   └── GridInputHandler.cpp
+│           ├── threading/
+│           │   └── LogicThreadController.cpp
+│           ├── visualization/
+│           │   └── GridTransform.cpp
 │           └── ui/
+│               ├── GridPanel.cpp
+│               ├── ControlPanel.cpp
+│               ├── ElementRenderer.cpp
+│               └── AmountInputPopup.cpp
 │
 ├── resources/
 │   └── (textures, fonts, shaders, configuration files)
 │
 └── thirdparty/
-├── SFML-2.6.1/
-├── imgui-docking/
-├── imgui-sfml-2.6.x/
-├── glad/
-├── nlohmann/
-└── tinyfiledialogs/
-
-````
+    ├── SFML-2.6.1/
+    ├── imgui-docking/
+    ├── imgui-sfml-2.6.x/
+    ├── glad/
+    ├── nlohmann/
+    └── tinyfiledialogs/
+```
 
 ---
 

@@ -255,7 +255,59 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/util/gl_debug/GLDebugFilter.h"
     "include/util/gl_debug/GLDebugFormatter.h"
     "include/util/gl_debug/GLDebugCallback.h"
- "include/apps/quicksort_visualizer/QuicksortVisualizerState.h" "src/apps/quicksort_visualizer/QuicksortVisualizerState.cpp" "src/apps/quicksort_visualizer/QuicksortVisualizerStateFactory.cpp" "include/apps/quicksort_visualizer/threading/LogicThreadController.h" "src/apps/quicksort_visualizer/threading/LogicThreadController.cpp" "include/apps/quicksort_visualizer/visualization/GridConfig.h" "include/apps/quicksort_visualizer/visualization/GridTransform.h" "src/apps/quicksort_visualizer/visualization/GridTransform.cpp" "include/apps/quicksort_visualizer/ui/GridPanel.h" "src/apps/quicksort_visualizer/ui/GridPanel.cpp" "include/apps/quicksort_visualizer/ui/ControlPanel.h" "src/apps/quicksort_visualizer/ui/ControlPanel.cpp" "include/apps/quicksort_visualizer/input/GridInputHandler.h" "src/apps/quicksort_visualizer/input/GridInputHandler.cpp" "include/apps/quicksort_visualizer/data/SortElement.h" "include/apps/quicksort_visualizer/data/ElementCollection.h" "src/apps/quicksort_visualizer/data/ElementCollection.cpp" "include/apps/quicksort_visualizer/ui/ElementRenderer.h" "src/apps/quicksort_visualizer/ui/ElementRenderer.cpp" "include/apps/quicksort_visualizer/ui/AmountInputPopup.h" "src/apps/quicksort_visualizer/ui/AmountInputPopup.cpp" "include/apps/quicksort_visualizer/data/SwapOperation.h" "include/apps/quicksort_visualizer/data/SwapQueue.h" "src/apps/quicksort_visualizer/data/SwapQueue.cpp" "include/apps/quicksort_visualizer/algorithm/QuicksortAlgorithm.h" "src/apps/quicksort_visualizer/algorithm/QuicksortAlgorithm.cpp" "include/apps/quicksort_visualizer/animation/SwapAnimator.h" "src/apps/quicksort_visualizer/animation/SwapAnimator.cpp" "include/apps/quicksort_visualizer/audio/SwapSoundGenerator.h" "src/apps/quicksort_visualizer/audio/SwapSoundGenerator.cpp")
+
+    # ==========================================================
+    # ============ QUICKSORT VISUALIZER APPLICATION ===========
+    # ==========================================================
+
+    # ------------------------- APP ROOT -----------------------
+    "src/apps/quicksort_visualizer/QuicksortVisualizerState.cpp"
+    "src/apps/quicksort_visualizer/QuicksortVisualizerStateFactory.cpp"
+    "include/apps/quicksort_visualizer/QuicksortVisualizerState.h"
+
+    # ----------------------- THREADING ------------------------
+    "src/apps/quicksort_visualizer/threading/LogicThreadController.cpp"
+    "include/apps/quicksort_visualizer/threading/LogicThreadController.h"
+
+    # -------------------- VISUALIZATION CORE ------------------
+    "include/apps/quicksort_visualizer/visualization/GridConfig.h"
+    "src/apps/quicksort_visualizer/visualization/GridTransform.cpp"
+    "include/apps/quicksort_visualizer/visualization/GridTransform.h"
+
+    # --------------------------- INPUT ------------------------
+    "src/apps/quicksort_visualizer/input/GridInputHandler.cpp"
+    "include/apps/quicksort_visualizer/input/GridInputHandler.h"
+
+    # ---------------------------- DATA ------------------------
+    "include/apps/quicksort_visualizer/data/SortElement.h"
+    "src/apps/quicksort_visualizer/data/ElementCollection.cpp"
+    "include/apps/quicksort_visualizer/data/ElementCollection.h"
+    "include/apps/quicksort_visualizer/data/SwapOperation.h"
+    "src/apps/quicksort_visualizer/data/SwapQueue.cpp"
+    "include/apps/quicksort_visualizer/data/SwapQueue.h"
+
+    # -------------------------- ALGORITHM ---------------------
+    "src/apps/quicksort_visualizer/algorithm/QuicksortAlgorithm.cpp"
+    "include/apps/quicksort_visualizer/algorithm/QuicksortAlgorithm.h"
+
+    # ------------------------- ANIMATION ----------------------
+    "src/apps/quicksort_visualizer/animation/SwapAnimator.cpp"
+    "include/apps/quicksort_visualizer/animation/SwapAnimator.h"
+
+    # ---------------------------- AUDIO -----------------------
+    "src/apps/quicksort_visualizer/audio/SwapSoundGenerator.cpp"
+    "include/apps/quicksort_visualizer/audio/SwapSoundGenerator.h"
+
+    # ----------------------------- UI -------------------------
+    "src/apps/quicksort_visualizer/ui/GridPanel.cpp"
+    "include/apps/quicksort_visualizer/ui/GridPanel.h"
+    "src/apps/quicksort_visualizer/ui/ControlPanel.cpp"
+    "include/apps/quicksort_visualizer/ui/ControlPanel.h"
+    "src/apps/quicksort_visualizer/ui/ElementRenderer.cpp"
+    "include/apps/quicksort_visualizer/ui/ElementRenderer.h"
+    "src/apps/quicksort_visualizer/ui/AmountInputPopup.cpp"
+    "include/apps/quicksort_visualizer/ui/AmountInputPopup.h"
+)
 
 if(MSVC) # If using the VS compiler...
 
