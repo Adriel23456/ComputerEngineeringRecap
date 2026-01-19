@@ -1,0 +1,11 @@
+; =======================================================
+; MOV instruction (register move)
+; Expected result: REG3 = 16 (copy of REG2)
+; =======================================================
+MOVI REG1, #1              ; REG1 = 1
+MOVI REG2, #16             ; REG2 = 16
+MOV REG3, REG2             ; REG3 = REG2 = 16
+NOP
+NOP
+NOP
+SWI                        ; Final state: REG1 = 1, REG2 = 1

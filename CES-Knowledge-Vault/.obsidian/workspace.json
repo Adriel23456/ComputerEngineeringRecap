@@ -1,0 +1,209 @@
+{
+  "main": {
+    "id": "f279a1b143db1f70",
+    "type": "split",
+    "children": [
+      {
+        "id": "23fd7199dc04f486",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f4c1206df121a0c0",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "9c70527e114948c5",
+    "type": "split",
+    "children": [
+      {
+        "id": "b7d692dab632a247",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "84d3235176a5ae4b",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "db16e484f5c7cb1a",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "3affe3fbcfbbf357",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "825d4fa8716a355e",
+    "type": "split",
+    "children": [
+      {
+        "id": "6bb6defe4507f10f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "651482cb177f60a4",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "README.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for README"
+            }
+          },
+          {
+            "id": "85460fac7dc49ea8",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "README.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from README"
+            }
+          },
+          {
+            "id": "fa2c1834295a6989",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "c2ac073a0c18f349",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "README.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of README"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "bases:Create new base": false,
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "templater-obsidian:Templater": false
+    }
+  },
+  "active": "f4c1206df121a0c0",
+  "lastOpenFiles": [
+    "VAULT_README.md",
+    "01AtomicLevel/Electron.md",
+    "99Inbox/Example.md",
+    "06KernelLevel/SO.md",
+    "05ArchitectureLevel/ISA.md",
+    "05ArchitectureLevel/Microarchitecture.md",
+    "06KernelLevel/Stack&Heap.md",
+    "07ProgramLevel/C&C++.md",
+    "07ProgramLevel/Compiler.md",
+    "06KernelLevel/VirtualPagination.md",
+    "08CloudLevel/ArchitectureOfBigSystems.md",
+    "99Inbox/aa.md",
+    "99Inbox/so.md",
+    "04LogicLevel/ALUComponent.md",
+    "03DiscreteLevel/LogicGates.md",
+    "02AnalogLevel/SimpleCircuits.md",
+    "09ProyectStructure/Scrum/User Story.md",
+    "09ProyectStructure/Scrum/Requerimientos No Funcionales.md",
+    "09ProyectStructure/Scrum/Requerimientos Funcionales.md",
+    "09ProyectStructure/Scrum/Requerimientos de Sistema.md",
+    "09ProyectStructure/Scrum/Requerimientos de Negocio.md",
+    "09ProyectStructure/Scrum/Entrevistas.md",
+    "09ProyectStructure/Scrum/Definition of Done (DoD).md",
+    "09ProyectStructure/Scrum/Estándares de Programación.md",
+    "09ProyectStructure/Scrum/Taskboard.md",
+    "10AI/Ventana de Contexto.md",
+    "10AI",
+    "09ProyectStructure/Design&Architecture",
+    "09ProyectStructure/Scrum",
+    "09ProyectStructure",
+    "CE1116/00_Inbox",
+    "CE1116",
+    "99Inbox",
+    "00Templates",
+    "08CloudLevel",
+    "07ProgramLevel",
+    "Untitled.canvas"
+  ]
+}

@@ -1,0 +1,142 @@
+START:    
+    ; Dispatch specific code based on PEID
+    CMPI SIDS, #0
+    BEQ .SETUP_PE0
+    CMPI SIDS, #1
+    BEQ .SETUP_PE1
+    CMPI SIDS, #2
+    BEQ .SETUP_PE2
+    CMPI SIDS, #3
+    BEQ .SETUP_PE3
+    SWI                         ; Invalid PEID - terminate execution
+
+; =========================
+; PE0: E (after LDR) -> S (when PE1 performs LDR) -> M (after its own STR)
+; then transitions to I when PE1 performs STR
+; =========================
+.SETUP_PE0:
+    ; 1) PE0: first LDR -> E
+    MOVI  REG2, #16
+    LDR   REG1, [REG2]          ; Miss -> BusRd -> E (no sharers)
+
+    ; Wait for PE1 to perform LDR (both move to S)
+    NOP ; x24
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+
+    ; 3) PE0: STR -> BusUpgr (S->M) and invalidates PE1
+    FMOVI REG1, #42.0
+    STR   REG1, [REG2]
+
+    ; Wait for PE1 to perform its STR (PE0 will become I after that STR)
+    NOP ; x24
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+
+    SWI
+
+; =========================
+; PE1: I -> S (LDR) -> I (when PE0 performs STR)
+;      -> M (own STR: C2C transfer from PE0:M)
+; =========================
+.SETUP_PE1:
+    ; Allow PE0 to run first until its LDR
+    NOP ; x8
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+
+    ; 2) PE1: LDR same address -> S/S (downgrades PE0 from E to S)
+    MOVI  REG2, #16
+    LDR   REG1, [REG2]
+
+    ; Wait for PE0 to perform STR (I transition for this PE)
+    NOP ; x16
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+
+    ; 4) PE1: STR from I -> BusRdX, C2C from PE0:M,
+    ;    invalidates PE0, PE1 transitions to M
+    FMOVI REG1, #84.0
+    STR   REG1, [REG2]
+
+    ; Observation margin
+    NOP ; x12
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+    NOP
+
+    SWI
+
+; Other PEs do not participate
+.SETUP_PE2:
+    SWI
+.SETUP_PE3:
+    SWI

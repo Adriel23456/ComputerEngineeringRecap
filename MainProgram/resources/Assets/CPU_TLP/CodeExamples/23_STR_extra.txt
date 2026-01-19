@@ -1,0 +1,12 @@
+; =======================================================
+; STR with offset (store to memory with displacement)
+; Stores REG1 into memory[16 + 8] = memory[24]
+; Expected result: Memory[24] = 16.0
+; =======================================================
+FMOVI REG1, #16.0          ; REG1 = 16.0
+MOVI REG2, #16             ; REG2 = 16 (base address)
+STR REG1, [REG2, #8]       ; Memory[16 + 8] = Memory[24] = REG1 = 16.0
+NOP
+NOP
+NOP
+SWI                        ; Final state: REG1 = 16.0, REG2 = 16, Memory[24] = 16.0

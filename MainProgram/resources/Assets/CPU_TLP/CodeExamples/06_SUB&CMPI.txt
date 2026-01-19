@@ -1,0 +1,21 @@
+; =======================================================
+; Comparison and Branching
+; =======================================================
+MOVI REG4, #55           ; REG4 = 55 (Comparison value)
+SUB  REG8, REG2, REG4    ; REG8 = REG2 - REG4
+CMPI REG8, #0            ; Compare REG8 with 0
+BEQ  .EQUAL_LABEL        ; If Z=1 (REG8 == 0), branch to .EQUAL_LABEL
+; If values are not equal
+B    .NOTEQUAL_LABEL     ; Unconditional branch
+.EQUAL_LABEL:
+    MOVI REG5, #1        ; Success flag: REG5 = 1
+    B .END_LABEL
+.NOTEQUAL_LABEL:
+    MOVI REG5, #0        ; Failure flag: REG5 = 0
+    B .END_LABEL
+.END_LABEL:
+NOP
+NOP
+NOP
+NOP
+SWI

@@ -1,0 +1,12 @@
+; =======================================================
+; LDR without offset (load from memory)
+; Loads into REG1 the value from memory[16] (likely 0)
+; Expected result: REG1 = value_at_memory[16] (depends on initial state)
+; =======================================================
+FMOVI REG1, #16.0          ; REG1 = 16.0
+MOVI REG2, #16             ; REG2 = 16 (base address)
+LDR REG1, [REG2]           ; REG1 = Memory[16] (likely 0 if not initialized)
+NOP
+NOP
+NOP
+SWI                        ; Final state: REG1 = Memory[16], REG2 = 16
