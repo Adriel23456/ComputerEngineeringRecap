@@ -13,6 +13,7 @@
 #include "apps/quicksort_visualizer/visualization/GridConfig.h"
 #include "apps/quicksort_visualizer/data/ElementCollection.h"
 #include "apps/quicksort_visualizer/data/SwapQueue.h"
+#include "apps/quicksort_visualizer/data/SwapOperation.h"
 #include "apps/quicksort_visualizer/ui/GridPanel.h"
 #include "apps/quicksort_visualizer/ui/ControlPanel.h"
 #include "apps/quicksort_visualizer/ui/ElementRenderer.h"
@@ -20,6 +21,7 @@
 #include "apps/quicksort_visualizer/input/GridInputHandler.h"
 #include "apps/quicksort_visualizer/animation/SwapAnimator.h"
 #include "apps/quicksort_visualizer/audio/SwapSoundGenerator.h"
+#include "systems/audio/AudioManager.h"
 #include "core/fsm/StateManager.h"
 #include "states/MainMenuState.h"
 #include "imgui.h"
@@ -72,7 +74,8 @@ namespace {
 // ============================================================================
 
 QuicksortVisualizerState::QuicksortVisualizerState(StateManager* stateManager,
-    sf::RenderWindow* window)
+    sf::RenderWindow* window,
+    AudioManager* audioManager)
     : State(stateManager, window)
     , m_logicThread(nullptr)
     , m_gridTransform(nullptr)
@@ -84,8 +87,10 @@ QuicksortVisualizerState::QuicksortVisualizerState(StateManager* stateManager,
     , m_inputHandler(nullptr)
     , m_swapAnimator(nullptr)
     , m_soundGenerator(nullptr)
+    , m_audioManager(audioManager)
     , m_initialized(false)
     , m_sortingActive(false)
+    , m_verificationActive(false)
     , m_elementCount(quicksort::config::GridConfig::DEFAULT_ELEMENT_COUNT)
     , m_currentElementWidth(20.0f)
     , m_currentElementGap(2.0f)
@@ -107,12 +112,10 @@ QuicksortVisualizerState::QuicksortVisualizerState(StateManager* stateManager,
 QuicksortVisualizerState::~QuicksortVisualizerState() {
     std::cout << "[QuicksortVisualizer] Shutting down...\n";
 
-    // Stop any running sort
     if (m_logicThread) {
         m_logicThread->cancelSorting();
     }
 
-    // Shutdown in reverse order of creation
     m_soundGenerator.reset();
     m_swapAnimator.reset();
     m_inputHandler.reset();
@@ -136,48 +139,25 @@ QuicksortVisualizerState::~QuicksortVisualizerState() {
 // ============================================================================
 
 bool QuicksortVisualizerState::initializeComponents() {
-    // Verify window
     if (m_window == nullptr) {
         logInitStatus("RenderWindow", false);
         return false;
     }
     logInitStatus("RenderWindow reference", true);
 
-    // Initialize shader
     getBackgroundShader();
     logInitStatus("Background shader", g_shaderLoaded);
 
-    // Initialize logic thread
-    if (!initializeLogicThread()) {
-        return false;
-    }
+    if (!initializeLogicThread()) return false;
+    if (!initializeDataStructures()) return false;
+    if (!initializeVisualization()) return false;
+    if (!initializeAnimation()) return false;
+    if (!initializeAudio()) return false;
 
-    // Initialize data structures
-    if (!initializeDataStructures()) {
-        return false;
-    }
-
-    // Initialize visualization components
-    if (!initializeVisualization()) {
-        return false;
-    }
-
-    // Initialize animation
-    if (!initializeAnimation()) {
-        return false;
-    }
-
-    // Initialize audio
-    if (!initializeAudio()) {
-        return false;
-    }
-
-    // Setup callbacks
     setupControlCallbacks();
     setupPopupCallbacks();
     setupAnimatorCallbacks();
 
-    // Generate initial random values and reset view for first time only
     regenerateElements();
     if (m_gridTransform) {
         m_gridTransform->resetView();
@@ -207,7 +187,6 @@ bool QuicksortVisualizerState::initializeDataStructures() {
         return false;
     }
     logInitStatus("Element Collection", true);
-
     return true;
 }
 
@@ -216,51 +195,27 @@ bool QuicksortVisualizerState::initializeVisualization() {
         quicksort::config::GridConfig::DEFAULT_GRID_WIDTH,
         quicksort::config::GridConfig::DEFAULT_GRID_HEIGHT
     );
-
-    if (!m_gridTransform) {
-        logInitStatus("Grid Transform", false);
-        return false;
-    }
+    if (!m_gridTransform) { logInitStatus("Grid Transform", false); return false; }
     logInitStatus("Grid Transform", true);
 
     m_gridPanel = std::make_unique<quicksort::ui::GridPanel>(*m_gridTransform);
-
-    if (!m_gridPanel) {
-        logInitStatus("Grid Panel", false);
-        return false;
-    }
+    if (!m_gridPanel) { logInitStatus("Grid Panel", false); return false; }
     logInitStatus("Grid Panel", true);
 
     m_elementRenderer = std::make_unique<quicksort::ui::ElementRenderer>(*m_gridTransform);
-
-    if (!m_elementRenderer) {
-        logInitStatus("Element Renderer", false);
-        return false;
-    }
+    if (!m_elementRenderer) { logInitStatus("Element Renderer", false); return false; }
     logInitStatus("Element Renderer", true);
 
     m_controlPanel = std::make_unique<quicksort::ui::ControlPanel>();
-
-    if (!m_controlPanel) {
-        logInitStatus("Control Panel", false);
-        return false;
-    }
+    if (!m_controlPanel) { logInitStatus("Control Panel", false); return false; }
     logInitStatus("Control Panel", true);
 
     m_amountPopup = std::make_unique<quicksort::ui::AmountInputPopup>();
-
-    if (!m_amountPopup) {
-        logInitStatus("Amount Input Popup", false);
-        return false;
-    }
+    if (!m_amountPopup) { logInitStatus("Amount Input Popup", false); return false; }
     logInitStatus("Amount Input Popup", true);
 
     m_inputHandler = std::make_unique<quicksort::input::GridInputHandler>(*m_gridTransform);
-
-    if (!m_inputHandler) {
-        logInitStatus("Input Handler", false);
-        return false;
-    }
+    if (!m_inputHandler) { logInitStatus("Input Handler", false); return false; }
     logInitStatus("Input Handler", true);
 
     return true;
@@ -274,9 +229,7 @@ bool QuicksortVisualizerState::initializeAnimation() {
         return false;
     }
 
-    // Set animation speed (adjust for visual appeal)
-    m_swapAnimator->setSpeed(2.0f);
-
+    m_swapAnimator->setBaseSpeed(1.0f);
     logInitStatus("Swap Animator", true);
     return true;
 }
@@ -289,8 +242,9 @@ bool QuicksortVisualizerState::initializeAudio() {
         return false;
     }
 
-    // Set initial volume (integrate with your existing SFX system)
-    m_soundGenerator->setVolume(0.3f);
+    // Link to AudioManager for SFX volume control
+    m_soundGenerator->setAudioManager(m_audioManager);
+    m_soundGenerator->setVolume(0.3f);  // Fallback volume
     m_soundGenerator->setEnabled(true);
 
     logInitStatus("Swap Sound Generator", true);
@@ -327,14 +281,20 @@ void QuicksortVisualizerState::setupPopupCallbacks() {
 }
 
 void QuicksortVisualizerState::setupAnimatorCallbacks() {
-    // Set callback for when swap should be applied to element data
     m_swapAnimator->setSwapCallback([this](uint32_t indexA, uint32_t indexB) {
         onSwapData(indexA, indexB);
         });
 
-    // Set callback for playing swap sound
     m_swapAnimator->setSoundCallback([this](const quicksort::data::SwapOperation& swap) {
         onPlaySwapSound(swap);
+        });
+
+    m_swapAnimator->setVerificationSoundCallback([this](uint32_t index, uint32_t total) {
+        onPlayVerificationSound(index, total);
+        });
+
+    m_swapAnimator->setVerificationCompleteCallback([this]() {
+        onVerificationComplete();
         });
 }
 
@@ -352,24 +312,21 @@ void QuicksortVisualizerState::logInitStatus(const std::string& componentName, b
 // ============================================================================
 
 void QuicksortVisualizerState::onRandomValues() {
-    if (m_sortingActive) return;
-
+    if (m_sortingActive || m_verificationActive) return;
     std::cout << "[QuicksortVisualizer] Generating " << m_elementCount << " random values...\n";
     regenerateElements();
 }
 
 void QuicksortVisualizerState::onSetAmount() {
-    if (m_sortingActive) return;
-
+    if (m_sortingActive || m_verificationActive) return;
     std::cout << "[QuicksortVisualizer] Opening amount input dialog...\n";
-
     if (m_amountPopup) {
         m_amountPopup->open(m_elementCount);
     }
 }
 
 void QuicksortVisualizerState::onStartQuicksort() {
-    if (m_sortingActive) return;
+    if (m_sortingActive || m_verificationActive) return;
 
     std::cout << "[QuicksortVisualizer] Starting quicksort...\n";
 
@@ -378,24 +335,19 @@ void QuicksortVisualizerState::onStartQuicksort() {
         return;
     }
 
-    // Reset animator
     if (m_swapAnimator) {
         m_swapAnimator->reset();
+        m_swapAnimator->setElementCount(m_elements->getCount());
     }
 
-    // Set element count for sound scaling
     if (m_soundGenerator) {
         m_soundGenerator->setElementCount(m_elements->getCount());
     }
 
-    // Extract values for sorting
     std::vector<double> values = extractValuesForSorting();
 
-    // Start sorting on logic thread
     if (m_logicThread->startSorting(values)) {
         m_sortingActive = true;
-
-        // Update control panel
         if (m_controlPanel) {
             m_controlPanel->setSortingActive(true);
         }
@@ -415,13 +367,10 @@ void QuicksortVisualizerState::onResetView() {
 
 void QuicksortVisualizerState::onAmountAccepted(uint32_t newAmount) {
     std::cout << "[QuicksortVisualizer] Amount accepted: " << newAmount << "\n";
-
     m_elementCount = newAmount;
-
     if (m_controlPanel) {
         m_controlPanel->setElementCount(m_elementCount);
     }
-
     regenerateElements();
 }
 
@@ -434,16 +383,38 @@ void QuicksortVisualizerState::onAmountCancelled() {
 // ============================================================================
 
 void QuicksortVisualizerState::onSwapData(uint32_t indexA, uint32_t indexB) {
-    // Apply swap to element collection
     if (m_elements) {
         m_elements->swapElements(indexA, indexB);
     }
 }
 
 void QuicksortVisualizerState::onPlaySwapSound(const quicksort::data::SwapOperation& swap) {
-    // Play sound for this swap
     if (m_soundGenerator) {
         m_soundGenerator->playSwapSound(swap);
+    }
+}
+
+void QuicksortVisualizerState::onPlayVerificationSound(uint32_t index, uint32_t total) {
+    if (m_soundGenerator) {
+        m_soundGenerator->playVerificationSound(index, total);
+    }
+}
+
+void QuicksortVisualizerState::onVerificationComplete() {
+    std::cout << "[QuicksortVisualizer] Verification sweep complete!\n";
+
+    m_verificationActive = false;
+
+    if (m_elementRenderer) {
+        m_elementRenderer->clearAnimationState();
+    }
+
+    if (m_logicThread) {
+        m_logicThread->reset();
+    }
+
+    if (m_controlPanel) {
+        m_controlPanel->setSortingActive(false);
     }
 }
 
@@ -452,31 +423,38 @@ void QuicksortVisualizerState::onPlaySwapSound(const quicksort::data::SwapOperat
 // ============================================================================
 
 void QuicksortVisualizerState::processSortingUpdate(float deltaTime) {
-    if (!m_sortingActive) return;
+    if (!m_sortingActive && !m_verificationActive) return;
 
-    // Update animator
     if (m_swapAnimator) {
         m_swapAnimator->update(deltaTime);
 
-        // Update renderer with animation state
+        const auto& animState = m_swapAnimator->getState();
+
         if (m_elementRenderer) {
-            m_elementRenderer->setAnimationState(m_swapAnimator->getState());
+            if (m_swapAnimator->isVerifying()) {
+                m_elementRenderer->setVerificationIndex(animState.verificationIndex, true);
+            }
+            else {
+                m_elementRenderer->setVerificationIndex(0, false);
+                bool isAnimating = m_swapAnimator->isAnimating();
+                m_elementRenderer->setAnimationState(
+                    animState.indexA,
+                    animState.indexB,
+                    animState.alpha,
+                    isAnimating
+                );
+            }
         }
 
-        // If not currently animating, try to get next swap from queue
-        if (!m_swapAnimator->isAnimating()) {
-            // Get swap queue from logic thread
+        // If not currently animating (and not verifying), try to get next swap
+        if (!m_swapAnimator->isAnimating() && !m_swapAnimator->isVerifying() && m_sortingActive) {
             auto& swapQueue = m_logicThread->getSwapQueue();
-
-            // Try to get next swap
             auto nextSwap = swapQueue.tryPop();
 
             if (nextSwap.has_value()) {
-                // Start animating this swap
                 m_swapAnimator->startSwap(nextSwap.value());
             }
             else if (swapQueue.isFullyProcessed()) {
-                // All done!
                 onSortingComplete();
             }
         }
@@ -484,23 +462,24 @@ void QuicksortVisualizerState::processSortingUpdate(float deltaTime) {
 }
 
 void QuicksortVisualizerState::onSortingComplete() {
-    std::cout << "[QuicksortVisualizer] Sorting visualization complete!\n";
+    std::cout << "[QuicksortVisualizer] Sorting complete! Starting verification...\n";
 
     m_sortingActive = false;
 
-    // Clear animation state
-    if (m_elementRenderer) {
-        m_elementRenderer->clearAnimationState();
+    // Start verification sweep
+    startVerificationSweep();
+}
+
+void QuicksortVisualizerState::startVerificationSweep() {
+    if (!m_elements || m_elements->isEmpty()) {
+        onVerificationComplete();
+        return;
     }
 
-    // Reset logic thread for next sort
-    if (m_logicThread) {
-        m_logicThread->reset();
-    }
+    m_verificationActive = true;
 
-    // Update control panel
-    if (m_controlPanel) {
-        m_controlPanel->setSortingActive(false);
+    if (m_swapAnimator) {
+        m_swapAnimator->startVerification(m_elements->getCount());
     }
 }
 
@@ -509,17 +488,15 @@ void QuicksortVisualizerState::onSortingComplete() {
 // ============================================================================
 
 void QuicksortVisualizerState::regenerateElements() {
-    if (!m_elements) {
-        return;
-    }
+    if (!m_elements) return;
 
     m_elements->generateRandom(m_elementCount);
-
     m_currentElementWidth = m_elements->getRecommendedElementWidth();
     m_currentElementGap = m_elements->getRecommendedElementGap();
 
     if (m_elementRenderer) {
         m_elementRenderer->setElementGap(m_currentElementGap);
+        m_elementRenderer->clearAnimationState();
     }
 
     updateGridSize();
@@ -530,13 +507,10 @@ void QuicksortVisualizerState::regenerateElements() {
 }
 
 void QuicksortVisualizerState::updateGridSize() {
-    if (!m_elements || !m_gridTransform) {
-        return;
-    }
+    if (!m_elements || !m_gridTransform) return;
 
     float gridWidth = m_elements->calculateGridWidth(m_currentElementWidth, m_currentElementGap);
     float gridHeight = quicksort::config::GridConfig::DEFAULT_GRID_HEIGHT;
-
     m_gridTransform->setGridSize(gridWidth, gridHeight);
 
     std::cout << "[QuicksortVisualizer] Grid size updated to: "
@@ -545,16 +519,13 @@ void QuicksortVisualizerState::updateGridSize() {
 
 std::vector<double> QuicksortVisualizerState::extractValuesForSorting() const {
     std::vector<double> values;
-
     if (m_elements && !m_elements->isEmpty()) {
         uint32_t count = m_elements->getCount();
         values.reserve(count);
-
         for (uint32_t i = 0; i < count; ++i) {
             values.push_back(static_cast<double>(m_elements->getElement(i).value));
         }
     }
-
     return values;
 }
 
@@ -563,32 +534,30 @@ std::vector<double> QuicksortVisualizerState::extractValuesForSorting() const {
 // ============================================================================
 
 void QuicksortVisualizerState::handleEvent(sf::Event& event) {
-    // Allow ESC to cancel sorting
     if (event.type == sf::Event::KeyPressed) {
         if (event.key.code == sf::Keyboard::Escape) {
-            if (m_sortingActive && m_logicThread) {
-                std::cout << "[QuicksortVisualizer] Cancelling sort...\n";
+            if ((m_sortingActive || m_verificationActive) && m_logicThread) {
+                std::cout << "[QuicksortVisualizer] Cancelling...\n";
                 m_logicThread->cancelSorting();
-                onSortingComplete();
+                m_sortingActive = false;
+                m_verificationActive = false;
+                if (m_swapAnimator) m_swapAnimator->reset();
+                if (m_elementRenderer) m_elementRenderer->clearAnimationState();
+                if (m_controlPanel) m_controlPanel->setSortingActive(false);
             }
             return;
         }
     }
 
-    // Don't process other events if popup is open
-    if (m_amountPopup && m_amountPopup->isOpen()) {
-        return;
-    }
+    if (m_amountPopup && m_amountPopup->isOpen()) return;
 
-    // Don't allow back navigation during sorting
     if (event.type == sf::Event::KeyPressed) {
-        if (event.key.code == sf::Keyboard::BackSpace && !m_sortingActive) {
+        if (event.key.code == sf::Keyboard::BackSpace && !m_sortingActive && !m_verificationActive) {
             m_stateManager->queueNextState(
                 std::make_unique<MainMenuState>(m_stateManager, m_window)
             );
             return;
         }
-
         if (event.key.code == sf::Keyboard::R) {
             onResetView();
             return;
@@ -597,10 +566,8 @@ void QuicksortVisualizerState::handleEvent(sf::Event& event) {
 }
 
 void QuicksortVisualizerState::update(float deltaTime) {
-    // Process sorting animation
     processSortingUpdate(deltaTime);
 
-    // Don't process grid input if popup is open
     if (!m_amountPopup || !m_amountPopup->isOpen()) {
         if (m_inputHandler && m_gridPanel) {
             m_inputHandler->processInput(
@@ -611,15 +578,13 @@ void QuicksortVisualizerState::update(float deltaTime) {
         }
     }
 
-    // Update grid transform animations
     if (m_gridTransform) {
         m_gridTransform->update(deltaTime);
     }
 
-    // Update control panel state
     if (m_controlPanel && m_logicThread) {
         m_controlPanel->setThreadState(m_logicThread->getState());
-        m_controlPanel->setSortingActive(m_sortingActive);
+        m_controlPanel->setSortingActive(m_sortingActive || m_verificationActive);
     }
 }
 
@@ -630,16 +595,13 @@ void QuicksortVisualizerState::render() {
     float controlPanelHeight = displaySize.y * CONTROL_PANEL_HEIGHT_RATIO;
     float gridPanelHeight = displaySize.y - controlPanelHeight - (PANEL_PADDING * 3);
 
-    // Render grid panel
     if (m_gridPanel) {
         ImVec2 gridPos(PANEL_PADDING, PANEL_PADDING);
         ImVec2 gridSize(displaySize.x - (PANEL_PADDING * 2), gridPanelHeight);
-
         m_gridPanel->render(gridPos, gridSize, m_elements.get(), m_elementRenderer.get(),
             m_currentElementWidth);
     }
 
-    // Render control panel
     if (m_controlPanel) {
         float controlY = displaySize.y - controlPanelHeight - PANEL_PADDING;
         ImVec2 controlPos(PANEL_PADDING, controlY);
@@ -647,7 +609,6 @@ void QuicksortVisualizerState::render() {
         m_controlPanel->render(controlPos, controlSize);
     }
 
-    // Render popup (if open)
     if (m_amountPopup) {
         m_amountPopup->render();
     }

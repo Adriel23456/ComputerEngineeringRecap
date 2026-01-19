@@ -68,7 +68,7 @@ namespace quicksort {
 
             if (ImGui::Begin("##ControlPanel", nullptr, flags)) {
                 // Calculate button dimensions
-                float availableWidth = size.x - 40.0f;  // Account for padding
+                float availableWidth = size.x - 40.0f;
                 float buttonWidth = (availableWidth - BUTTON_SPACING * 3) / 4.0f;
                 float buttonHeight = size.y - STATUS_HEIGHT - 45.0f;
 
@@ -81,7 +81,7 @@ namespace quicksort {
                 ImGui::Separator();
                 ImGui::Spacing();
 
-                renderStatus();
+                renderStatus(size.x - 40.0f);  // Pass available width
             }
             ImGui::End();
 
@@ -93,7 +93,6 @@ namespace quicksort {
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 8));
 
-            // Determine if buttons should be disabled
             bool disableDataButtons = m_sortingActive;
             bool disableStartButton = m_sortingActive;
 
@@ -182,50 +181,84 @@ namespace quicksort {
             ImGui::PopStyleVar(2);
         }
 
-        void ControlPanel::renderStatus() {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.75f, 0.8f, 1.0f));
+        void ControlPanel::renderStatus(float availableWidth) {
+            // Prepare text strings
+            char elementsText[64];
+            snprintf(elementsText, sizeof(elementsText), "Elements: %u", m_elementCount);
 
-            // Element count
-            ImGui::Text("Elements: %u", m_elementCount);
+            std::string statusLabel = "Status: " + getThreadStateString();
+            const char* sortingText = "[SORTING IN PROGRESS]";
 
-            ImGui::SameLine(200);
+            // Calculate text widths
+            ImVec2 elementsSize = ImGui::CalcTextSize(elementsText);
+            ImVec2 statusSize = ImGui::CalcTextSize(statusLabel.c_str());
+            ImVec2 sortingSize = ImGui::CalcTextSize(sortingText);
 
-            // Thread state with color coding
-            ImGui::Text("Status: ");
-            ImGui::SameLine();
-
+            // Get state color
             ImVec4 stateColor;
             switch (m_threadState) {
             case ThreadState::Idle:
-                stateColor = ImVec4(0.5f, 0.8f, 0.5f, 1.0f);  // Green
+                stateColor = ImVec4(0.5f, 0.8f, 0.5f, 1.0f);
                 break;
             case ThreadState::Running:
-                stateColor = ImVec4(1.0f, 0.8f, 0.3f, 1.0f);  // Yellow
+                stateColor = ImVec4(1.0f, 0.8f, 0.3f, 1.0f);
                 break;
             case ThreadState::Completed:
-                stateColor = ImVec4(0.4f, 0.7f, 1.0f, 1.0f);  // Blue
+                stateColor = ImVec4(0.4f, 0.7f, 1.0f, 1.0f);
                 break;
             case ThreadState::Error:
-                stateColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);  // Red
+                stateColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
                 break;
             default:
-                stateColor = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);  // Gray
+                stateColor = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
                 break;
             }
 
+            // Calculate positions
+            float leftX = ImGui::GetCursorPosX();
+            float centerX = leftX + (availableWidth - statusSize.x) * 0.5f;
+            float rightX = leftX + availableWidth - sortingSize.x;
+
+            // Ensure minimum spacing (50px)
+            float minSpacing = 50.0f;
+
+            // Draw Elements (left)
+            ImGui::SetCursorPosX(leftX);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.75f, 0.8f, 1.0f));
+            ImGui::Text("%s", elementsText);
+            ImGui::PopStyleColor();
+
+            // Draw Status (center)
+            // Make sure it doesn't overlap with Elements
+            float elementsEnd = leftX + elementsSize.x + minSpacing;
+            float actualCenterX = std::max(centerX, elementsEnd);
+
+            ImGui::SameLine();
+            ImGui::SetCursorPosX(actualCenterX);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.75f, 0.8f, 1.0f));
+            ImGui::Text("Status: ");
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine();
             ImGui::PushStyleColor(ImGuiCol_Text, stateColor);
             ImGui::Text("%s", getThreadStateString().c_str());
             ImGui::PopStyleColor();
 
-            // Show sorting indicator if active
+            // Draw [SORTING IN PROGRESS] (right) - only if sorting
             if (m_sortingActive) {
-                ImGui::SameLine(400);
+                // Make sure it doesn't overlap with Status
+                float statusEnd = actualCenterX + statusSize.x + minSpacing;
+                float actualRightX = std::max(rightX, statusEnd);
+
+                // Ensure it stays within bounds
+                actualRightX = std::min(actualRightX, leftX + availableWidth - sortingSize.x);
+
+                ImGui::SameLine();
+                ImGui::SetCursorPosX(actualRightX);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.3f, 1.0f));
-                ImGui::Text("[SORTING IN PROGRESS]");
+                ImGui::Text("%s", sortingText);
                 ImGui::PopStyleColor();
             }
-
-            ImGui::PopStyleColor();
         }
 
         std::string ControlPanel::getThreadStateString() const {

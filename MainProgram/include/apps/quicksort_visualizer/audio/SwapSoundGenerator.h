@@ -8,19 +8,19 @@
  * @file SwapSoundGenerator.h
  * @brief Generates and plays swap sounds for visualization.
  *
- * Creates procedural audio tones that increase in pitch as sorting progresses.
- * Uses SFML audio for playback.
- *
- * @note Design Principles:
- *   - SRP: Only handles sound generation and playback
- *   - Integrates with existing SFX volume system
+ * Uses a sound pool to prevent audio collision artifacts when
+ * sounds are played in rapid succession.
  */
 
 #include "apps/quicksort_visualizer/data/SwapOperation.h"
 #include <SFML/Audio.hpp>
 #include <vector>
+#include <array>
 #include <memory>
 #include <cstdint>
+
+ // Forward declaration
+class AudioManager;
 
 namespace quicksort {
     namespace audio {
@@ -28,6 +28,9 @@ namespace quicksort {
         /**
          * @class SwapSoundGenerator
          * @brief Generates and plays procedural sounds for swap operations.
+         *
+         * Uses a pool of sound objects to allow overlapping sounds without
+         * interruption artifacts.
          */
         class SwapSoundGenerator {
         public:
@@ -35,17 +38,10 @@ namespace quicksort {
             // Construction
             // ========================================================================
 
-            /**
-             * @brief Constructs the sound generator.
-             */
             SwapSoundGenerator();
-
-            /**
-             * @brief Destructor.
-             */
             ~SwapSoundGenerator() = default;
 
-            // Non-copyable (owns SFML resources)
+            // Non-copyable
             SwapSoundGenerator(const SwapSoundGenerator&) = delete;
             SwapSoundGenerator& operator=(const SwapSoundGenerator&) = delete;
 
@@ -53,47 +49,23 @@ namespace quicksort {
             // Configuration
             // ========================================================================
 
-            /**
-             * @brief Sets the base element count for pitch scaling.
-             * @param count Number of elements being sorted.
-             */
+            void setAudioManager(AudioManager* audioManager);
             void setElementCount(uint32_t count);
-
-            /**
-             * @brief Sets the volume (0.0 to 1.0).
-             * @param volume Volume level.
-             */
             void setVolume(float volume);
-
-            /**
-             * @brief Enables or disables sound.
-             * @param enabled Whether to play sounds.
-             */
             void setEnabled(bool enabled);
 
             // ========================================================================
             // Sound Playback
             // ========================================================================
 
-            /**
-             * @brief Plays a sound for a swap operation.
-             * @param swap The swap operation (used for pitch calculation).
-             */
             void playSwapSound(const data::SwapOperation& swap);
-
-            /**
-             * @brief Stops any playing sounds.
-             */
+            void playVerificationSound(uint32_t elementIndex, uint32_t totalElements);
             void stop();
 
             // ========================================================================
             // Initialization
             // ========================================================================
 
-            /**
-             * @brief Initializes audio resources.
-             * @return true if successful.
-             */
             bool initialize();
 
         private:
@@ -101,48 +73,51 @@ namespace quicksort {
             // Internal Methods
             // ========================================================================
 
-            /**
-             * @brief Generates a sine wave tone.
-             * @param frequency Frequency in Hz.
-             * @param duration Duration in seconds.
-             * @param samples Output sample buffer.
-             */
             void generateTone(float frequency, float duration, std::vector<sf::Int16>& samples);
-
-            /**
-             * @brief Calculates frequency for a swap based on progress.
-             * @param swap The swap operation.
-             * @return Frequency in Hz.
-             */
             float calculateFrequency(const data::SwapOperation& swap) const;
-
-            /**
-             * @brief Applies an envelope to prevent clicking.
-             * @param samples The sample buffer to modify.
-             * @param attackSamples Number of attack samples.
-             * @param releaseSamples Number of release samples.
-             */
+            float calculateVerificationFrequency(uint32_t index, uint32_t total) const;
             void applyEnvelope(std::vector<sf::Int16>& samples,
                 size_t attackSamples,
                 size_t releaseSamples);
+            float getEffectiveVolume() const;
+
+            /**
+             * @brief Finds an available sound slot in the pool.
+             * @return Index of available slot, or reuses oldest if all busy.
+             */
+            size_t findAvailableSoundSlot();
+
+            /**
+             * @brief Plays a sound with the given samples.
+             * @param samples Audio samples to play.
+             */
+            void playSound(const std::vector<sf::Int16>& samples);
 
             // ========================================================================
             // Data Members
             // ========================================================================
 
-            sf::SoundBuffer m_soundBuffer;      ///< Current sound buffer
-            sf::Sound m_sound;                   ///< Sound player
+            AudioManager* m_audioManager;
 
-            float m_volume;                      ///< Volume (0.0 - 1.0)
-            bool m_enabled;                      ///< Whether sound is enabled
-            uint32_t m_elementCount;             ///< Element count for scaling
-            bool m_initialized;                  ///< Whether audio is initialized
+            // Sound pool to prevent audio collisions
+            static constexpr size_t SOUND_POOL_SIZE = 8;  ///< Number of concurrent sounds
+            std::array<sf::SoundBuffer, SOUND_POOL_SIZE> m_soundBuffers;
+            std::array<sf::Sound, SOUND_POOL_SIZE> m_sounds;
+            size_t m_nextSoundIndex;  ///< Round-robin index for sound pool
+
+            float m_fallbackVolume;
+            bool m_enabled;
+            uint32_t m_elementCount;
+            bool m_initialized;
 
             // Sound parameters
-            static constexpr float MIN_FREQUENCY = 220.0f;   ///< Starting frequency (A3)
-            static constexpr float MAX_FREQUENCY = 880.0f;   ///< Ending frequency (A5)
-            static constexpr float TONE_DURATION = 0.05f;    ///< Duration in seconds
-            static constexpr unsigned int SAMPLE_RATE = 44100; ///< Audio sample rate
+            static constexpr float MIN_FREQUENCY = 220.0f;
+            static constexpr float MAX_FREQUENCY = 880.0f;
+            static constexpr float VERIFICATION_MIN_FREQ = 330.0f;
+            static constexpr float VERIFICATION_MAX_FREQ = 1320.0f;
+            static constexpr float TONE_DURATION = 0.035f;        ///< Shorter duration
+            static constexpr float VERIFICATION_DURATION = 0.015f; ///< Very short for sweep
+            static constexpr unsigned int SAMPLE_RATE = 44100;
         };
 
     } // namespace audio

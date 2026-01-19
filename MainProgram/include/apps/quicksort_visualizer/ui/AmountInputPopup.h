@@ -142,8 +142,8 @@ namespace quicksort {
             std::string m_errorMessage;        ///< Current error message (empty if valid)
 
             // Layout constants - INCREASED SIZE
-            static constexpr float POPUP_WIDTH = 480.0f;
-            static constexpr float POPUP_HEIGHT = 410.0f;
+            static constexpr float POPUP_WIDTH = 470.0f;
+            static constexpr float POPUP_HEIGHT = 450.0f;
             static constexpr float BUTTON_WIDTH = 120.0f;
             static constexpr float BUTTON_HEIGHT = 40.0f;
         };

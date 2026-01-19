@@ -89,7 +89,7 @@ bool Application::initialize() {
     // Step 5: Initialize state manager with initial state
     m_stateManager = std::make_unique<StateManager>();
     m_stateManager->setCurrentState(
-        std::make_unique<MainMenuState>(m_stateManager.get(), &m_window)
+        std::make_unique<MainMenuState>(m_stateManager.get(), &m_window, m_audio.get())
     );
 
     // Step 6: Create settings overlay

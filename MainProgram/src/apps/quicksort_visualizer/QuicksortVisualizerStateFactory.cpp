@@ -18,17 +18,19 @@
 #include "core/fsm/State.h"
 #include <memory>
 
- /**
-  * @brief Creates a new QuicksortVisualizerState instance.
-  *
-  * This factory function is declared in the main menu state to avoid
-  * tight coupling between the menu and the visualizer implementation.
-  *
-  * @param stateManager Pointer to the application's state manager.
-  * @param window Pointer to the main render window.
-  * @return Unique pointer to the newly created QuicksortVisualizerState.
-  */
+// Forward declaration
+class AudioManager;
+
+/**
+ * @brief Creates a new QuicksortVisualizerState instance.
+ *
+ * @param stateManager Pointer to the application's state manager.
+ * @param window Pointer to the main render window.
+ * @param audio Pointer to the audio manager for SFX volume control.
+ * @return Unique pointer to the newly created QuicksortVisualizerState.
+ */
 std::unique_ptr<State> CreateQuicksortVisualizerState(StateManager* stateManager,
-    sf::RenderWindow* window) {
-    return std::make_unique<QuicksortVisualizerState>(stateManager, window);
+    sf::RenderWindow* window,
+    AudioManager* audio) {
+    return std::make_unique<QuicksortVisualizerState>(stateManager, window, audio);
 }

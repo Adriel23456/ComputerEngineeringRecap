@@ -14,6 +14,9 @@
 #include "core/fsm/State.h"
 #include <memory>
 
+// Forward declaration
+class AudioManager;
+
  /**
   * @brief Creates a new CpuTLPSharedCacheState instance.
   * @param stateManager Pointer to state manager.
@@ -21,6 +24,8 @@
   * @return Unique pointer to the created state.
   */
 std::unique_ptr<State> CreateCpuTLPSharedCacheState(StateManager* stateManager,
-    sf::RenderWindow* window) {
-    return std::make_unique<CpuTLPSharedCacheState>(stateManager, window);
+    sf::RenderWindow* window,
+    AudioManager* audio) {
+    // Pass audio if that state needs it, or ignore it
+    return std::make_unique<CpuTLPSharedCacheState>(stateManager, window /*, audio */);
 }

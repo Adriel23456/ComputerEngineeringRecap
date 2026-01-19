@@ -17,9 +17,9 @@
 #include <memory>
 #include <algorithm>
 
- // Forward declaration for factory function
-std::unique_ptr<State> CreateCpuTLPSharedCacheState(StateManager*, sf::RenderWindow*);
-std::unique_ptr<State> CreateQuicksortVisualizerState(StateManager*, sf::RenderWindow*);
+ // Forward declaration for factory functions (now with AudioManager)
+std::unique_ptr<State> CreateCpuTLPSharedCacheState(StateManager*, sf::RenderWindow*, AudioManager*);
+std::unique_ptr<State> CreateQuicksortVisualizerState(StateManager*, sf::RenderWindow*, AudioManager*);
 
 // ============================================================================
 // Shader Background Implementation
@@ -85,8 +85,10 @@ namespace {
 // Construction
 // ============================================================================
 
-MainMenuState::MainMenuState(StateManager* stateManager, sf::RenderWindow* window)
+MainMenuState::MainMenuState(StateManager* stateManager, sf::RenderWindow* window,
+    AudioManager* audio)
     : State(stateManager, window)
+    , m_audio(audio)
 {
     m_menuItems = {
         "CPU TLP with Shared Cache",
@@ -200,17 +202,15 @@ bool MainMenuState::createAutoFitButton(const char* label, float targetWidth, fl
 void MainMenuState::handleMenuSelection(const std::string& itemName) {
     if (itemName == "CPU TLP with Shared Cache") {
         m_stateManager->queueNextState(
-            CreateCpuTLPSharedCacheState(m_stateManager, m_window)
+            CreateCpuTLPSharedCacheState(m_stateManager, m_window, m_audio)
         );
     }
     else if (itemName == "Quicksort") {
-        // Navigate to Quicksort Visualizer state
         m_stateManager->queueNextState(
-            CreateQuicksortVisualizerState(m_stateManager, m_window)
+            CreateQuicksortVisualizerState(m_stateManager, m_window, m_audio)
         );
     }
     else {
-        // Generic program state for other menu items (e.g., Tomasulo)
         m_stateManager->queueNextState(
             std::make_unique<ProgramState>(m_stateManager, m_window, itemName)
         );

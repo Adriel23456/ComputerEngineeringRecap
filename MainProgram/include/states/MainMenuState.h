@@ -20,6 +20,9 @@
 #include <vector>
 #include <string>
 
+// Forward declarations
+class AudioManager;
+
  /**
   * @class MainMenuState
   * @brief Application main menu state.
@@ -34,7 +37,8 @@ public:
      * @param stateManager Pointer to state manager for transitions.
      * @param window Pointer to render window.
      */
-    MainMenuState(StateManager* stateManager, sf::RenderWindow* window);
+    MainMenuState(StateManager* stateManager, sf::RenderWindow* window,
+        AudioManager* audio = nullptr);
 
     ~MainMenuState() override = default;
 
@@ -82,4 +86,5 @@ private:
     void handleMenuSelection(const std::string& itemName);
 
     std::vector<std::string> m_menuItems; ///< List of menu options
+    AudioManager* m_audio;  ///< Pointer to audio manager for passing to child states
 };
