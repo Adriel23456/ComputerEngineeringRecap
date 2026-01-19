@@ -6,17 +6,18 @@
 
 /**
  * @file ControlPanel.h
- * @brief UI component for the control button panel.
+ * @brief UI component for control buttons and status display.
  *
- * Provides buttons for user interaction with the visualizer:
- * - Random Values: Generate random data
- * - Set Amount: Configure element count
- * - Start Quicksort: Begin sorting
+ * Provides buttons for:
+ * - Random Values generation
+ * - Set Amount (element count)
+ * - Start Quicksort
+ * - Reset View
  *
  * @note Design Principles:
- *   - SRP: Only handles control panel rendering and button callbacks
+ *   - SRP: Only handles control panel UI
  *   - OCP: New buttons can be added without modifying existing code
- *   - DIP: Uses callbacks instead of direct dependencies
+ *   - DIP: Uses callbacks for actions (no direct dependencies)
  */
 
 #include "apps/quicksort_visualizer/threading/LogicThreadController.h"
@@ -33,23 +34,17 @@ namespace quicksort {
         /**
          * @struct ControlPanelCallbacks
          * @brief Callbacks for control panel button actions.
-         *
-         * Separates the button actions from the panel implementation,
-         * allowing the state class to handle the actual logic.
          */
         struct ControlPanelCallbacks {
-            std::function<void()> onRandomValues;   ///< Called when "Random Values" clicked
-            std::function<void()> onSetAmount;      ///< Called when "Set Amount" clicked
-            std::function<void()> onStartQuicksort; ///< Called when "Start Quicksort" clicked
-            std::function<void()> onResetView;      ///< Called when "Reset View" clicked
+            std::function<void()> onRandomValues;    ///< Generate random values
+            std::function<void()> onSetAmount;       ///< Open amount dialog
+            std::function<void()> onStartQuicksort;  ///< Start sorting
+            std::function<void()> onResetView;       ///< Reset view
         };
 
         /**
          * @class ControlPanel
-         * @brief Renders the control panel with action buttons.
-         *
-         * Layout: Horizontal row of evenly-spaced buttons
-         * Height: 15% of total window height (configured externally)
+         * @brief Renders and handles control panel UI.
          */
         class ControlPanel {
         public:
@@ -57,14 +52,7 @@ namespace quicksort {
             // Construction
             // ========================================================================
 
-            /**
-             * @brief Constructs the control panel.
-             */
             ControlPanel();
-
-            /**
-             * @brief Destructor.
-             */
             ~ControlPanel() = default;
 
             // ========================================================================
@@ -72,22 +60,28 @@ namespace quicksort {
             // ========================================================================
 
             /**
-             * @brief Sets the callback functions for button actions.
-             * @param callbacks Struct containing all callback functions.
+             * @brief Sets callback functions for button actions.
+             * @param callbacks Struct containing all callbacks.
              */
             void setCallbacks(const ControlPanelCallbacks& callbacks);
 
             /**
-             * @brief Updates the thread state for UI feedback.
-             * @param state Current state of the logic thread.
+             * @brief Updates the displayed element count.
+             * @param count Current element count.
+             */
+            void setElementCount(uint32_t count);
+
+            /**
+             * @brief Updates the thread state display.
+             * @param state Current thread state.
              */
             void setThreadState(ThreadState state);
 
             /**
-             * @brief Sets the current element count for display.
-             * @param count Number of elements.
+             * @brief Sets whether sorting is in progress (disables most buttons).
+             * @param sorting Whether sorting is active.
              */
-            void setElementCount(uint32_t count);
+            void setSortingActive(bool sorting);
 
             // ========================================================================
             // Rendering
@@ -95,42 +89,32 @@ namespace quicksort {
 
             /**
              * @brief Renders the control panel.
-             * @param position Top-left position of the panel.
-             * @param size Size of the panel.
+             * @param position Top-left position.
+             * @param size Panel size.
              */
             void render(const ImVec2& position, const ImVec2& size);
 
         private:
             // ========================================================================
-            // Rendering Helpers
+            // Internal Rendering
             // ========================================================================
 
-            /**
-             * @brief Creates a styled control button.
-             * @param label Button text.
-             * @param width Button width.
-             * @param height Button height.
-             * @param enabled Whether button is clickable.
-             * @return true if button was clicked.
-             */
-            bool createButton(const char* label, float width, float height, bool enabled = true);
-
-            /**
-             * @brief Renders thread status indicator.
-             */
-            void renderThreadStatus();
+            void renderButtons(float buttonWidth, float buttonHeight);
+            void renderStatus();
+            std::string getThreadStateString() const;
 
             // ========================================================================
             // Data Members
             // ========================================================================
 
-            ControlPanelCallbacks m_callbacks;  ///< Button action callbacks
-            ThreadState m_threadState;          ///< Current thread state
-            uint32_t m_elementCount;            ///< Current element count
+            ControlPanelCallbacks m_callbacks;
+            uint32_t m_elementCount;
+            ThreadState m_threadState;
+            bool m_sortingActive;
 
             // Layout constants
-            static constexpr float BUTTON_SPACING = 20.0f;
-            static constexpr float PADDING = 10.0f;
+            static constexpr float BUTTON_SPACING = 15.0f;
+            static constexpr float STATUS_HEIGHT = 30.0f;
         };
 
     } // namespace ui

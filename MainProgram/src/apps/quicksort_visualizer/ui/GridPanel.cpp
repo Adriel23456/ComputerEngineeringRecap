@@ -8,6 +8,8 @@
  */
 
 #include "apps/quicksort_visualizer/ui/GridPanel.h"
+#include "apps/quicksort_visualizer/ui/ElementRenderer.h"
+#include "apps/quicksort_visualizer/data/ElementCollection.h"
 #include "apps/quicksort_visualizer/visualization/GridConfig.h"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -37,7 +39,10 @@ namespace quicksort {
         // Rendering
         // ============================================================================
 
-        void GridPanel::render(const ImVec2& position, const ImVec2& size) {
+        void GridPanel::render(const ImVec2& position, const ImVec2& size,
+            const data::ElementCollection* elements,
+            ElementRenderer* renderer,
+            float elementWidth) {
             ImGui::SetNextWindowPos(position, ImGuiCond_Always);
             ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 
@@ -82,19 +87,18 @@ namespace quicksort {
                 // Update transform viewport size
                 m_transform.setViewportSize(m_contentSize.x, m_contentSize.y);
 
-                // Check hover state using direct mouse position check
+                // Check hover state
                 ImVec2 mousePos = ImGui::GetMousePos();
                 m_isHovered = (mousePos.x >= contentMin.x && mousePos.x <= contentMax.x &&
                     mousePos.y >= contentMin.y && mousePos.y <= contentMax.y);
 
-                // Create an invisible button covering the content area to capture input
+                // Create invisible button to capture input
                 ImGui::SetCursorScreenPos(contentMin);
                 ImGui::InvisibleButton("##GridContent",
                     ImVec2(m_contentSize.x, m_contentSize.y),
                     ImGuiButtonFlags_MouseButtonLeft |
                     ImGuiButtonFlags_MouseButtonRight);
 
-                // Combine hover checks for reliability
                 m_isContentHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) || m_isHovered;
 
                 // Get draw list for custom rendering
@@ -108,10 +112,19 @@ namespace quicksort {
                     renderGridLines(drawList, contentMin, contentMax);
                 }
 
-                renderBorder(drawList, contentMin, contentMax);
-                renderPlaceholder(contentMin, contentMax);
+                // Render elements if provided
+                if (elements && renderer && !elements->isEmpty()) {
+                    Vec2 gridSize = m_transform.getGridSize();
+                    renderer->render(drawList, *elements, contentMin, elementWidth, gridSize.y);
+                }
+                else {
+                    // Show placeholder if no elements
+                    renderPlaceholder(contentMin, contentMax);
+                }
 
-                // Render coordinate info directly on the draw list (inside the window)
+                renderBorder(drawList, contentMin, contentMax);
+
+                // Render coordinate info
                 if (m_showCoordinates) {
                     renderCoordinateInfo(drawList, contentMin);
                 }
@@ -161,7 +174,6 @@ namespace quicksort {
         void GridPanel::renderBackground(ImDrawList* drawList,
             const ImVec2& contentMin,
             const ImVec2& contentMax) {
-            // Solid background fill
             drawList->AddRectFilled(
                 contentMin, contentMax,
                 IM_COL32(
@@ -176,18 +188,14 @@ namespace quicksort {
         void GridPanel::renderGridLines(ImDrawList* drawList,
             const ImVec2& contentMin,
             const ImVec2& contentMax) {
-            // Get visible grid region
             Rect visibleRect = m_transform.getVisibleGridRect();
             float zoom = m_transform.getZoom();
 
-            // Determine grid spacing based on zoom level
             float majorSpacing = config::GridConfig::MAJOR_GRID_SPACING;
             float minorSpacing = config::GridConfig::MINOR_GRID_SPACING;
 
-            // Adjust spacing for zoom (hide minor lines when zoomed out)
             bool showMinorLines = (zoom >= 0.5f);
 
-            // Colors
             ImU32 majorColor = IM_COL32(
                 static_cast<int>(config::GridConfig::GRID_LINE_COLOR[0] * 255),
                 static_cast<int>(config::GridConfig::GRID_LINE_COLOR[1] * 255),
@@ -201,20 +209,16 @@ namespace quicksort {
                 static_cast<int>(config::GridConfig::GRID_LINE_COLOR[3] * 255 * 0.3f)
             );
 
-            // Calculate starting points (aligned to grid)
             float startX = std::floor(visibleRect.x / majorSpacing) * majorSpacing;
             float startY = std::floor(visibleRect.y / majorSpacing) * majorSpacing;
 
-            // Draw minor grid lines first (if visible)
             if (showMinorLines) {
                 float minorStartX = std::floor(visibleRect.x / minorSpacing) * minorSpacing;
                 float minorStartY = std::floor(visibleRect.y / minorSpacing) * minorSpacing;
 
                 for (float gx = minorStartX; gx <= visibleRect.right(); gx += minorSpacing) {
-                    // Skip if this is a major line
                     if (std::fmod(std::abs(gx), majorSpacing) < 0.01f) continue;
 
-                    // gridToScreen returns viewport-local coords, add contentMin for screen coords
                     Vec2 viewportPos = m_transform.gridToScreen(Vec2(gx, 0));
                     float screenX = contentMin.x + viewportPos.x;
 
@@ -228,7 +232,6 @@ namespace quicksort {
                 }
 
                 for (float gy = minorStartY; gy <= visibleRect.bottom(); gy += minorSpacing) {
-                    // Skip if this is a major line
                     if (std::fmod(std::abs(gy), majorSpacing) < 0.01f) continue;
 
                     Vec2 viewportPos = m_transform.gridToScreen(Vec2(0, gy));
@@ -244,7 +247,6 @@ namespace quicksort {
                 }
             }
 
-            // Draw major grid lines
             for (float gx = startX; gx <= visibleRect.right(); gx += majorSpacing) {
                 Vec2 viewportPos = m_transform.gridToScreen(Vec2(gx, 0));
                 float screenX = contentMin.x + viewportPos.x;
@@ -287,15 +289,11 @@ namespace quicksort {
         }
 
         void GridPanel::renderGridBounds(ImDrawList* drawList, const ImVec2& contentMin) {
-            // Draw the actual grid content bounds (0,0 to gridWidth,gridHeight)
             Vec2 gridSize = m_transform.getGridSize();
 
-            // Convert grid corners to viewport-local coordinates
             Vec2 topLeftViewport = m_transform.gridToScreen(Vec2(0, 0));
             Vec2 bottomRightViewport = m_transform.gridToScreen(gridSize);
 
-            // Convert viewport-local coords to screen coords by adding content position
-            // FIX: Previously the calculation was wrong, causing ~12 pixel offset
             ImVec2 boundsMin(
                 contentMin.x + topLeftViewport.x,
                 contentMin.y + topLeftViewport.y
@@ -305,28 +303,21 @@ namespace quicksort {
                 contentMin.y + bottomRightViewport.y
             );
 
-            // Draw grid bounds rectangle (slightly visible)
             ImU32 boundsColor = IM_COL32(60, 80, 120, 100);
             drawList->AddRectFilled(boundsMin, boundsMax, boundsColor);
 
-            // Draw bounds border
             ImU32 boundsBorderColor = IM_COL32(80, 100, 150, 200);
             drawList->AddRect(boundsMin, boundsMax, boundsBorderColor, 0.0f, 0, 2.0f);
         }
 
         void GridPanel::renderCoordinateInfo(ImDrawList* drawList, const ImVec2& contentMin) {
-            // Render info panel directly using the draw list (no separate ImGui window)
-            // This avoids focus/input issues completely
-
             ImGuiIO& io = ImGui::GetIO();
             ImVec2 mousePos = io.MousePos;
 
-            // Panel position and sizing
             const float padding = 8.0f;
             const float panelX = contentMin.x + 10.0f;
             const float panelY = contentMin.y + 10.0f;
 
-            // Prepare text lines
             char line1[64], line2[64], line3[64], line4[64];
             Vec2 gridSize = m_transform.getGridSize();
             Rect visible = m_transform.getVisibleGridRect();
@@ -334,12 +325,9 @@ namespace quicksort {
             snprintf(line1, sizeof(line1), "Grid: %.0fx%.0f", gridSize.x, gridSize.y);
             snprintf(line2, sizeof(line2), "Zoom: %.1f%%", m_transform.getZoom() * 100.0f);
 
-            // Mouse position (only if hovering)
             bool showMouse = m_isContentHovered;
             if (showMouse) {
-                // Convert mouse screen position to viewport-local position
                 Vec2 viewportPos(mousePos.x - m_contentPosition.x, mousePos.y - m_contentPosition.y);
-                // Convert viewport position to grid coordinates
                 Vec2 gridPos = m_transform.screenToGrid(viewportPos);
                 snprintf(line3, sizeof(line3), "Mouse: (%.1f, %.1f)", gridPos.x, gridPos.y);
             }
@@ -347,13 +335,11 @@ namespace quicksort {
             snprintf(line4, sizeof(line4), "View: (%.0f,%.0f)-(%.0f,%.0f)",
                 visible.x, visible.y, visible.right(), visible.bottom());
 
-            // Calculate text sizes
             ImVec2 size1 = ImGui::CalcTextSize(line1);
             ImVec2 size2 = ImGui::CalcTextSize(line2);
             ImVec2 size3 = showMouse ? ImGui::CalcTextSize(line3) : ImVec2(0, 0);
             ImVec2 size4 = ImGui::CalcTextSize(line4);
 
-            // Calculate panel size
             float maxWidth = std::max({ size1.x, size2.x, size3.x, size4.x });
             float lineHeight = ImGui::GetTextLineHeightWithSpacing();
             float separatorHeight = showMouse ? 4.0f : 0.0f;
@@ -363,7 +349,6 @@ namespace quicksort {
             float panelWidth = maxWidth + padding * 2;
             float panelHeight = totalHeight + padding * 2;
 
-            // Draw panel background
             ImVec2 panelMin(panelX, panelY);
             ImVec2 panelMax(panelX + panelWidth, panelY + panelHeight);
 
@@ -375,7 +360,6 @@ namespace quicksort {
             drawList->AddRectFilled(panelMin, panelMax, bgColor, 4.0f);
             drawList->AddRect(panelMin, panelMax, borderColor, 4.0f, 0, 1.0f);
 
-            // Draw text lines
             float textX = panelX + padding;
             float textY = panelY + padding;
 
@@ -386,7 +370,6 @@ namespace quicksort {
             textY += lineHeight;
 
             if (showMouse) {
-                // Draw separator
                 drawList->AddLine(
                     ImVec2(panelX + padding, textY),
                     ImVec2(panelX + panelWidth - padding, textY),
@@ -402,8 +385,7 @@ namespace quicksort {
         }
 
         void GridPanel::renderPlaceholder(const ImVec2& contentMin, const ImVec2& contentMax) {
-            // Center text placeholder - will be removed in Step 4 when elements are added
-            const char* text = "Drag to pan | Scroll to zoom | Elements will appear here";
+            const char* text = "Click 'Random Values' to generate elements";
             ImVec2 textSize = ImGui::CalcTextSize(text);
 
             ImVec2 center(

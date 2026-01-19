@@ -12,10 +12,10 @@
  * - Background rendering
  * - Grid lines
  * - Coordinate display
- * - Future: Element bars
+ * - Element rendering (delegated to ElementRenderer)
  *
  * @note Design Principles:
- *   - SRP: Only handles grid rendering
+ *   - SRP: Only handles grid panel rendering
  *   - DIP: Depends on GridTransform abstraction for coordinates
  *   - OCP: Can be extended with new visual elements
  */
@@ -24,23 +24,23 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 
- // Forward declarations - ImDrawList is in global namespace from imgui
+ // Forward declarations
 struct ImDrawList;
 struct ImVec2;
 
 namespace quicksort {
+
+    namespace data {
+        class ElementCollection;
+    }
+
     namespace ui {
+
+        class ElementRenderer;
 
         /**
          * @class GridPanel
          * @brief Renders the visualization grid with pan/zoom support.
-         *
-         * This class handles:
-         * - ImGui window setup and positioning
-         * - Grid background and border rendering
-         * - Grid line drawing (major/minor)
-         * - Coordinate info display
-         * - Mouse interaction feedback
          */
         class GridPanel {
         public:
@@ -48,18 +48,10 @@ namespace quicksort {
             // Construction
             // ========================================================================
 
-            /**
-             * @brief Constructs the grid panel.
-             * @param transform Reference to the coordinate transform (shared with input handler).
-             */
             explicit GridPanel(GridTransform& transform);
-
-            /**
-             * @brief Destructor.
-             */
             ~GridPanel() = default;
 
-            // Non-copyable (holds reference)
+            // Non-copyable
             GridPanel(const GridPanel&) = delete;
             GridPanel& operator=(const GridPanel&) = delete;
 
@@ -68,58 +60,32 @@ namespace quicksort {
             // ========================================================================
 
             /**
-             * @brief Renders the grid panel.
+             * @brief Renders the grid panel with elements.
              * @param position Top-left position of the panel.
              * @param size Size of the panel.
+             * @param elements Element collection to render (can be nullptr).
+             * @param renderer Element renderer to use (can be nullptr).
+             * @param elementWidth Width of each element bar.
              */
-            void render(const ImVec2& position, const ImVec2& size);
+            void render(const ImVec2& position, const ImVec2& size,
+                const data::ElementCollection* elements = nullptr,
+                ElementRenderer* renderer = nullptr,
+                float elementWidth = 20.0f);
 
             // ========================================================================
             // State Queries
             // ========================================================================
 
-            /**
-             * @brief Checks if mouse is over the grid content area.
-             * @return true if mouse is hovering over grid.
-             */
             bool isHovered() const;
-
-            /**
-             * @brief Checks if mouse is over the grid content (updated each frame).
-             *
-             * This uses ImGui's current frame hover state, making it reliable
-             * for input handling within the same frame.
-             *
-             * @return true if mouse is currently over content area.
-             */
             bool isContentHovered() const;
-
-            /**
-             * @brief Gets the content region position (inside padding/borders).
-             * @return Content area top-left in screen coordinates.
-             */
             Vec2 getContentPosition() const;
-
-            /**
-             * @brief Gets the content region size.
-             * @return Content area dimensions.
-             */
             Vec2 getContentSize() const;
 
             // ========================================================================
             // Visual Options
             // ========================================================================
 
-            /**
-             * @brief Enables or disables grid line rendering.
-             * @param show Whether to show grid lines.
-             */
             void setShowGridLines(bool show);
-
-            /**
-             * @brief Enables or disables coordinate info overlay.
-             * @param show Whether to show coordinates.
-             */
             void setShowCoordinates(bool show);
 
         private:
@@ -127,71 +93,37 @@ namespace quicksort {
             // Rendering Helpers
             // ========================================================================
 
-            /**
-             * @brief Renders the grid background.
-             * @param drawList ImGui draw list for rendering.
-             * @param contentMin Top-left of content area.
-             * @param contentMax Bottom-right of content area.
-             */
             void renderBackground(ImDrawList* drawList,
                 const ImVec2& contentMin,
                 const ImVec2& contentMax);
 
-            /**
-             * @brief Renders grid lines.
-             * @param drawList ImGui draw list for rendering.
-             * @param contentMin Top-left of content area.
-             * @param contentMax Bottom-right of content area.
-             */
             void renderGridLines(ImDrawList* drawList,
                 const ImVec2& contentMin,
                 const ImVec2& contentMax);
 
-            /**
-             * @brief Renders the grid border.
-             * @param drawList ImGui draw list for rendering.
-             * @param contentMin Top-left of content area.
-             * @param contentMax Bottom-right of content area.
-             */
             void renderBorder(ImDrawList* drawList,
                 const ImVec2& contentMin,
                 const ImVec2& contentMax);
 
-            /**
-             * @brief Renders the grid content bounds indicator.
-             * @param drawList ImGui draw list for rendering.
-             * @param contentMin Top-left of content area.
-             */
             void renderGridBounds(ImDrawList* drawList,
                 const ImVec2& contentMin);
 
-            /**
-             * @brief Renders coordinate information overlay directly on draw list.
-             * @param drawList ImGui draw list for rendering.
-             * @param contentMin Top-left of content area.
-             */
             void renderCoordinateInfo(ImDrawList* drawList, const ImVec2& contentMin);
 
-            /**
-             * @brief Renders the placeholder text (for Step 3).
-             * @param contentMin Top-left of content area.
-             * @param contentMax Bottom-right of content area.
-             */
             void renderPlaceholder(const ImVec2& contentMin, const ImVec2& contentMax);
 
             // ========================================================================
             // Data Members
             // ========================================================================
 
-            GridTransform& m_transform;     ///< Reference to coordinate transform
-            bool m_isHovered;               ///< Whether mouse is over content (legacy)
-            bool m_isContentHovered;        ///< Whether mouse is over content (current frame)
-            Vec2 m_contentPosition;         ///< Cached content position
-            Vec2 m_contentSize;             ///< Cached content size
+            GridTransform& m_transform;
+            bool m_isHovered;
+            bool m_isContentHovered;
+            Vec2 m_contentPosition;
+            Vec2 m_contentSize;
 
-            // Visual options
-            bool m_showGridLines;           ///< Whether to render grid lines
-            bool m_showCoordinates;         ///< Whether to show coordinate overlay
+            bool m_showGridLines;
+            bool m_showCoordinates;
         };
 
     } // namespace ui

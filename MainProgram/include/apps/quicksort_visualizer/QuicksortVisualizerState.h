@@ -14,6 +14,11 @@
  * - Grid panel (rendering)
  * - Control panel (buttons)
  * - Input handler (mouse events)
+ * - Element collection (sort data)
+ * - Element renderer (visualization)
+ * - Amount input popup (element count dialog)
+ * - Swap animator (animation state machine)
+ * - Swap sound generator (audio feedback)
  *
  * @note Design Principles:
  *   - SRP: Coordinates components, doesn't implement their logic
@@ -22,6 +27,7 @@
  */
 
 #include "core/fsm/State.h"
+#include "apps/quicksort_visualizer/data/SwapOperation.h"
 #include <memory>
 #include <string>
 #include <cstdint>
@@ -34,12 +40,24 @@ namespace quicksort {
     class LogicThreadController;
     class GridTransform;
 
+    namespace data {
+        class ElementCollection;
+        class SwapQueue;
+    }
     namespace ui {
         class GridPanel;
         class ControlPanel;
+        class ElementRenderer;
+        class AmountInputPopup;
     }
     namespace input {
         class GridInputHandler;
+    }
+    namespace animation {
+        class SwapAnimator;
+    }
+    namespace audio {
+        class SwapSoundGenerator;
     }
 }
 
@@ -77,7 +95,12 @@ private:
     bool initializeComponents();
     bool initializeLogicThread();
     bool initializeVisualization();
+    bool initializeDataStructures();
+    bool initializeAnimation();
+    bool initializeAudio();
     void setupControlCallbacks();
+    void setupPopupCallbacks();
+    void setupAnimatorCallbacks();
     void logInitStatus(const std::string& componentName, bool success);
 
     // ========================================================================
@@ -88,6 +111,48 @@ private:
     void onSetAmount();
     void onStartQuicksort();
     void onResetView();
+
+    // ========================================================================
+    // Popup Callbacks
+    // ========================================================================
+
+    void onAmountAccepted(uint32_t newAmount);
+    void onAmountCancelled();
+
+    // ========================================================================
+    // Animation Callbacks
+    // ========================================================================
+
+    void onSwapData(uint32_t indexA, uint32_t indexB);
+    void onPlaySwapSound(const quicksort::data::SwapOperation& swap);
+
+    // ========================================================================
+    // Sorting Logic
+    // ========================================================================
+
+    /**
+     * @brief Processes swap queue and updates animations.
+     * @param deltaTime Time since last update.
+     */
+    void processSortingUpdate(float deltaTime);
+
+    /**
+     * @brief Called when sorting completes.
+     */
+    void onSortingComplete();
+
+    // ========================================================================
+    // Helper Methods
+    // ========================================================================
+
+    void updateGridSize();
+    void regenerateElements();
+
+    /**
+     * @brief Extracts values from elements for sorting.
+     * @return Vector of double values.
+     */
+    std::vector<double> extractValuesForSorting() const;
 
     // ========================================================================
     // Rendering
@@ -105,16 +170,30 @@ private:
     // Visualization logic (no UI dependencies)
     std::unique_ptr<quicksort::GridTransform> m_gridTransform;
 
+    // Data structures
+    std::unique_ptr<quicksort::data::ElementCollection> m_elements;
+
     // UI components
     std::unique_ptr<quicksort::ui::GridPanel> m_gridPanel;
     std::unique_ptr<quicksort::ui::ControlPanel> m_controlPanel;
+    std::unique_ptr<quicksort::ui::ElementRenderer> m_elementRenderer;
+    std::unique_ptr<quicksort::ui::AmountInputPopup> m_amountPopup;
 
     // Input handling
     std::unique_ptr<quicksort::input::GridInputHandler> m_inputHandler;
 
+    // Animation
+    std::unique_ptr<quicksort::animation::SwapAnimator> m_swapAnimator;
+
+    // Audio
+    std::unique_ptr<quicksort::audio::SwapSoundGenerator> m_soundGenerator;
+
     // State
     bool m_initialized;
+    bool m_sortingActive;
     uint32_t m_elementCount;
+    float m_currentElementWidth;
+    float m_currentElementGap;
 
     // Layout constants
     static constexpr float CONTROL_PANEL_HEIGHT_RATIO = 0.15f;

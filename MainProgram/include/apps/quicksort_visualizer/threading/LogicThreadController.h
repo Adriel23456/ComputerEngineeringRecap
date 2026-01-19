@@ -6,51 +6,43 @@
 
 /**
  * @file LogicThreadController.h
- * @brief Controller for the OpenMP-based logic thread.
+ * @brief Manages the OpenMP-based logic thread for sorting algorithms.
  *
- * Manages the lifecycle of the logic thread that will execute the quicksort
- * algorithm. The main thread handles visualization while this controller
- * manages algorithm execution on a separate thread.
+ * Provides a dedicated thread for running sorting algorithms while
+ * the main thread handles UI and rendering.
  *
  * @note Design Principles:
- *   - SRP: Only manages thread lifecycle and coordination
- *   - OCP: Can be extended for different algorithms without modification
- *   - DIP: Visualization depends on abstract thread interface
+ *   - SRP: Only manages thread lifecycle and task execution
+ *   - DIP: Depends on abstractions (SwapQueue, QuicksortAlgorithm)
  */
 
+#include "apps/quicksort_visualizer/data/SwapQueue.h"
+#include "apps/quicksort_visualizer/algorithm/QuicksortAlgorithm.h"
 #include <atomic>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
 #include <functional>
-#include <string>
 
 namespace quicksort {
 
     /**
      * @enum ThreadState
-     * @brief Represents the current state of the logic thread.
+     * @brief Current state of the logic thread.
      */
     enum class ThreadState {
-        Uninitialized,  ///< Thread has not been created yet
-        Idle,           ///< Thread is ready but not executing
-        Running,        ///< Thread is actively executing algorithm
-        Paused,         ///< Thread execution is paused
-        Stopped,        ///< Thread has been stopped
-        Error           ///< Thread encountered an error
+        Uninitialized,  ///< Thread not yet created
+        Idle,           ///< Thread waiting for work
+        Running,        ///< Thread executing sorting
+        Completed,      ///< Sorting finished
+        ShuttingDown,   ///< Thread shutting down
+        Error           ///< Error occurred
     };
 
     /**
      * @class LogicThreadController
-     * @brief Manages the OpenMP logic thread for algorithm execution.
-     *
-     * This class provides:
-     * - Thread initialization and verification
-     * - Thread-safe state management using atomics
-     * - Safe console logging without race conditions
-     * - Coordination between main (render) and logic threads
-     *
-     * Thread Safety:
-     * - All public methods are thread-safe
-     * - State is managed using std::atomic
-     * - Console output uses OpenMP critical sections
+     * @brief Controls the dedicated sorting thread.
      */
     class LogicThreadController {
     public:
@@ -58,131 +50,113 @@ namespace quicksort {
         // Construction / Destruction
         // ========================================================================
 
-        /**
-         * @brief Constructs the logic thread controller.
-         *
-         * Does not start the thread - call initialize() to start.
-         */
         LogicThreadController();
-
-        /**
-         * @brief Destructor - ensures thread is properly stopped.
-         */
         ~LogicThreadController();
 
-        // Prevent copying - controller owns thread resources
+        // Non-copyable
         LogicThreadController(const LogicThreadController&) = delete;
         LogicThreadController& operator=(const LogicThreadController&) = delete;
 
         // ========================================================================
-        // Thread Lifecycle
+        // Lifecycle Management
         // ========================================================================
 
         /**
-         * @brief Initializes the OpenMP logic thread.
-         *
-         * Spawns the logic thread and verifies successful initialization.
-         * Thread-safe debug messages are printed to console.
-         *
-         * @return true if thread initialized successfully.
+         * @brief Initializes the logic thread.
+         * @return true if initialization succeeded.
          */
         bool initialize();
 
         /**
-         * @brief Shuts down the logic thread.
-         *
-         * Signals the thread to stop and waits for completion.
+         * @brief Shuts down the logic thread gracefully.
          */
         void shutdown();
 
+        // ========================================================================
+        // Sorting Control
+        // ========================================================================
+
         /**
-         * @brief Checks if the logic thread is initialized and ready.
-         * @return true if thread is initialized and not in error state.
+         * @brief Starts sorting the given values.
+         * @param values Vector of values to sort (will be copied).
+         * @return true if sorting started successfully.
          */
-        bool isInitialized() const;
+        bool startSorting(const std::vector<double>& values);
+
+        /**
+         * @brief Requests cancellation of current sorting.
+         */
+        void cancelSorting();
+
+        /**
+         * @brief Checks if sorting is currently in progress.
+         * @return true if sorting.
+         */
+        bool isSorting() const;
+
+        /**
+         * @brief Checks if sorting has completed.
+         * @return true if completed.
+         */
+        bool isCompleted() const;
 
         // ========================================================================
-        // State Management
+        // State Access
         // ========================================================================
 
         /**
          * @brief Gets the current thread state.
-         * @return Current ThreadState value.
+         * @return Current state.
          */
         ThreadState getState() const;
 
         /**
-         * @brief Gets a human-readable string for the current state.
-         * @return State description string.
+         * @brief Gets the swap queue for consuming swap operations.
+         * @return Reference to swap queue.
          */
-        std::string getStateString() const;
+        data::SwapQueue& getSwapQueue();
 
         /**
-         * @brief Checks if the thread is currently running an algorithm.
-         * @return true if thread state is Running.
+         * @brief Gets the swap queue (const).
+         * @return Const reference to swap queue.
          */
-        bool isRunning() const;
-
-        // ========================================================================
-        // OpenMP Information
-        // ========================================================================
+        const data::SwapQueue& getSwapQueue() const;
 
         /**
-         * @brief Gets the number of available OpenMP threads.
-         * @return Number of threads OpenMP can use.
+         * @brief Resets the controller for a new sorting session.
          */
-        static int getAvailableThreadCount();
-
-        /**
-         * @brief Gets the OpenMP version string.
-         * @return OpenMP version information.
-         */
-        static std::string getOpenMPVersion();
-
-        // ========================================================================
-        // Thread-Safe Logging
-        // ========================================================================
-
-        /**
-         * @brief Logs a message to console in a thread-safe manner.
-         *
-         * Uses OpenMP critical section to prevent interleaved output.
-         *
-         * @param message The message to log.
-         * @param prefix Optional prefix (default: "[LogicThread]").
-         */
-        static void threadSafeLog(const std::string& message,
-            const std::string& prefix = "[LogicThread]");
+        void reset();
 
     private:
         // ========================================================================
-        // Internal State
+        // Internal Methods
         // ========================================================================
 
         /**
-         * @brief Sets the thread state atomically.
-         * @param newState The new state to set.
+         * @brief Thread worker function.
          */
-        void setState(ThreadState newState);
+        void threadWorker();
 
         /**
-         * @brief Performs OpenMP environment verification.
-         * @return true if OpenMP is properly configured.
+         * @brief Executes the sorting task.
          */
-        bool verifyOpenMPEnvironment();
-
-        /**
-         * @brief Logs OpenMP configuration details.
-         */
-        void logOpenMPConfiguration();
+        void executeSorting();
 
         // ========================================================================
         // Data Members
         // ========================================================================
 
-        std::atomic<ThreadState> m_state;       ///< Current thread state (atomic for thread safety)
-        std::atomic<bool> m_shutdownRequested;  ///< Flag to signal thread shutdown
-        std::atomic<int> m_logicThreadId;       ///< ID of the logic thread (set by OpenMP)
+        std::thread m_thread;                    ///< The worker thread
+        std::atomic<ThreadState> m_state;        ///< Current state
+        std::atomic<bool> m_shouldExit;          ///< Exit signal
+        std::atomic<bool> m_hasTask;             ///< Task pending flag
+
+        std::mutex m_mutex;                      ///< Mutex for condition variable
+        std::condition_variable m_condition;     ///< Condition for task signaling
+
+        data::SwapQueue m_swapQueue;             ///< Queue for swap operations
+        std::unique_ptr<algorithm::QuicksortAlgorithm> m_algorithm; ///< Sorting algorithm
+        std::vector<double> m_valuesToSort;      ///< Values to sort (copied)
     };
 
 } // namespace quicksort

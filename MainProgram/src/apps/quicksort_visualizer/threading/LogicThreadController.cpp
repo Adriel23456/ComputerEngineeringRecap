@@ -5,16 +5,14 @@
 /**
  * @file LogicThreadController.cpp
  * @brief Implementation of the LogicThreadController class.
- *
- * Provides OpenMP-based thread management for the quicksort algorithm.
- * All console output is protected by critical sections to ensure
- * thread-safe logging without race conditions.
  */
 
 #include "apps/quicksort_visualizer/threading/LogicThreadController.h"
-#include <omp.h>
 #include <iostream>
-#include <sstream>
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 namespace quicksort {
 
@@ -23,295 +21,230 @@ namespace quicksort {
     // ============================================================================
 
     LogicThreadController::LogicThreadController()
-        : m_state(ThreadState::Uninitialized)
-        , m_shutdownRequested(false)
-        , m_logicThreadId(-1)
+        : m_thread()
+        , m_state(ThreadState::Uninitialized)
+        , m_shouldExit(false)
+        , m_hasTask(false)
+        , m_mutex()
+        , m_condition()
+        , m_swapQueue()
+        , m_algorithm(nullptr)
+        , m_valuesToSort()
     {
-        threadSafeLog("Controller created.", "[LogicThread]");
     }
 
     LogicThreadController::~LogicThreadController() {
         shutdown();
-        threadSafeLog("Controller destroyed.", "[LogicThread]");
     }
 
     // ============================================================================
-    // Thread Lifecycle
+    // Lifecycle Management
     // ============================================================================
 
     bool LogicThreadController::initialize() {
-        // Prevent re-initialization
         if (m_state.load() != ThreadState::Uninitialized) {
-            threadSafeLog("WARNING: Attempted to initialize already initialized thread.");
+            std::cerr << "[LogicThread] Already initialized\n";
             return false;
         }
 
-        threadSafeLog("========================================");
-        threadSafeLog("Initializing OpenMP Logic Thread");
-        threadSafeLog("========================================");
+        try {
+            // Create the algorithm instance
+            m_algorithm = std::make_unique<algorithm::QuicksortAlgorithm>(m_swapQueue);
 
-        // Verify OpenMP environment first
-        if (!verifyOpenMPEnvironment()) {
-            setState(ThreadState::Error);
-            threadSafeLog("ERROR: OpenMP environment verification failed!");
-            return false;
-        }
+            // Start the worker thread
+            m_shouldExit.store(false);
+            m_hasTask.store(false);
+            m_thread = std::thread(&LogicThreadController::threadWorker, this);
 
-        // Log OpenMP configuration
-        logOpenMPConfiguration();
+            m_state.store(ThreadState::Idle);
 
-        // Test OpenMP parallel execution
-        threadSafeLog("Testing OpenMP parallel execution...");
+#ifdef _OPENMP
+            std::cout << "[LogicThread] Initialized with OpenMP support (max threads: "
+                << omp_get_max_threads() << ")\n";
+#else
+            std::cout << "[LogicThread] Initialized (OpenMP not available)\n";
+#endif
 
-        bool initSuccess = false;
-
-        // Use OpenMP parallel section to verify threading works
-#pragma omp parallel num_threads(2)
-        {
-            int threadId = omp_get_thread_num();
-            int totalThreads = omp_get_num_threads();
-
-#pragma omp critical(console_output)
-            {
-                std::cout << "[LogicThread] Thread " << threadId
-                    << " of " << totalThreads << " reporting." << std::endl;
-            }
-
-            // Thread 0 is the main thread, Thread 1 will be our logic thread
-            if (threadId == 1) {
-#pragma omp critical(console_output)
-                {
-                    std::cout << "[LogicThread] Logic thread (ID: " << threadId
-                        << ") initialized successfully!" << std::endl;
-                }
-            }
-
-            // Synchronize all threads before continuing
-#pragma omp barrier
-
-#pragma omp single
-            {
-                initSuccess = true;
-            }
-        }
-
-        if (initSuccess) {
-            setState(ThreadState::Idle);
-            threadSafeLog("========================================");
-            threadSafeLog("OpenMP Logic Thread READY");
-            threadSafeLog("State: Idle (waiting for commands)");
-            threadSafeLog("========================================");
             return true;
         }
-        else {
-            setState(ThreadState::Error);
-            threadSafeLog("ERROR: Failed to initialize OpenMP parallel region!");
+        catch (const std::exception& e) {
+            std::cerr << "[LogicThread] Initialization failed: " << e.what() << "\n";
+            m_state.store(ThreadState::Error);
             return false;
         }
     }
 
     void LogicThreadController::shutdown() {
-        ThreadState currentState = m_state.load();
-
-        if (currentState == ThreadState::Uninitialized ||
-            currentState == ThreadState::Stopped) {
-            return; // Nothing to shutdown
+        if (m_state.load() == ThreadState::Uninitialized) {
+            return;
         }
 
-        threadSafeLog("Shutting down logic thread...");
-        m_shutdownRequested.store(true);
+        std::cout << "[LogicThread] Shutting down...\n";
 
-        // Wait for any running operations to complete
-        // (In future steps, this will signal the sorting algorithm to stop)
+        // Signal thread to exit
+        m_state.store(ThreadState::ShuttingDown);
+        m_shouldExit.store(true);
 
-        setState(ThreadState::Stopped);
-        threadSafeLog("Logic thread shutdown complete.");
-    }
+        // Cancel any running sorting
+        if (m_algorithm) {
+            m_algorithm->requestCancel();
+        }
 
-    bool LogicThreadController::isInitialized() const {
-        ThreadState state = m_state.load();
-        return state != ThreadState::Uninitialized && state != ThreadState::Error;
+        // Wake up thread if waiting
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_hasTask.store(true);
+        }
+        m_condition.notify_one();
+
+        // Wait for thread to finish
+        if (m_thread.joinable()) {
+            m_thread.join();
+        }
+
+        m_algorithm.reset();
+        m_state.store(ThreadState::Uninitialized);
+
+        std::cout << "[LogicThread] Shutdown complete\n";
     }
 
     // ============================================================================
-    // State Management
+    // Sorting Control
+    // ============================================================================
+
+    bool LogicThreadController::startSorting(const std::vector<double>& values) {
+        ThreadState currentState = m_state.load();
+
+        if (currentState != ThreadState::Idle && currentState != ThreadState::Completed) {
+            std::cerr << "[LogicThread] Cannot start sorting - thread not ready\n";
+            return false;
+        }
+
+        if (values.empty()) {
+            std::cerr << "[LogicThread] Cannot sort empty array\n";
+            return false;
+        }
+
+        // Reset state
+        m_swapQueue.reset();
+
+        // Copy values to sort
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_valuesToSort = values;
+            m_hasTask.store(true);
+        }
+
+        m_state.store(ThreadState::Running);
+        m_condition.notify_one();
+
+        std::cout << "[LogicThread] Started sorting " << values.size() << " elements\n";
+        return true;
+    }
+
+    void LogicThreadController::cancelSorting() {
+        if (m_algorithm) {
+            m_algorithm->requestCancel();
+        }
+    }
+
+    bool LogicThreadController::isSorting() const {
+        return m_state.load() == ThreadState::Running;
+    }
+
+    bool LogicThreadController::isCompleted() const {
+        return m_state.load() == ThreadState::Completed;
+    }
+
+    // ============================================================================
+    // State Access
     // ============================================================================
 
     ThreadState LogicThreadController::getState() const {
         return m_state.load();
     }
 
-    std::string LogicThreadController::getStateString() const {
-        switch (m_state.load()) {
-        case ThreadState::Uninitialized: return "Uninitialized";
-        case ThreadState::Idle:          return "Idle";
-        case ThreadState::Running:       return "Running";
-        case ThreadState::Paused:        return "Paused";
-        case ThreadState::Stopped:       return "Stopped";
-        case ThreadState::Error:         return "Error";
-        default:                         return "Unknown";
+    data::SwapQueue& LogicThreadController::getSwapQueue() {
+        return m_swapQueue;
+    }
+
+    const data::SwapQueue& LogicThreadController::getSwapQueue() const {
+        return m_swapQueue;
+    }
+
+    void LogicThreadController::reset() {
+        // Cancel any running sorting first
+        cancelSorting();
+
+        // Wait for completion if running
+        while (m_state.load() == ThreadState::Running) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-    }
 
-    bool LogicThreadController::isRunning() const {
-        return m_state.load() == ThreadState::Running;
-    }
+        // Reset queue
+        m_swapQueue.reset();
 
-    void LogicThreadController::setState(ThreadState newState) {
-        ThreadState oldState = m_state.exchange(newState);
-
-        if (oldState != newState) {
-            std::ostringstream oss;
-            oss << "State transition: ";
-
-            // Convert old state to string
-            switch (oldState) {
-            case ThreadState::Uninitialized: oss << "Uninitialized"; break;
-            case ThreadState::Idle:          oss << "Idle"; break;
-            case ThreadState::Running:       oss << "Running"; break;
-            case ThreadState::Paused:        oss << "Paused"; break;
-            case ThreadState::Stopped:       oss << "Stopped"; break;
-            case ThreadState::Error:         oss << "Error"; break;
-            default:                         oss << "Unknown"; break;
-            }
-
-            oss << " -> ";
-
-            // Convert new state to string
-            switch (newState) {
-            case ThreadState::Uninitialized: oss << "Uninitialized"; break;
-            case ThreadState::Idle:          oss << "Idle"; break;
-            case ThreadState::Running:       oss << "Running"; break;
-            case ThreadState::Paused:        oss << "Paused"; break;
-            case ThreadState::Stopped:       oss << "Stopped"; break;
-            case ThreadState::Error:         oss << "Error"; break;
-            default:                         oss << "Unknown"; break;
-            }
-
-            threadSafeLog(oss.str());
+        // Set back to idle
+        if (m_state.load() == ThreadState::Completed) {
+            m_state.store(ThreadState::Idle);
         }
     }
 
     // ============================================================================
-    // OpenMP Information
+    // Internal Methods
     // ============================================================================
 
-    int LogicThreadController::getAvailableThreadCount() {
-        return omp_get_max_threads();
-    }
+    void LogicThreadController::threadWorker() {
+        std::cout << "[LogicThread] Worker thread started\n";
 
-    std::string LogicThreadController::getOpenMPVersion() {
-        std::ostringstream oss;
-
-        // OpenMP version is encoded in _OPENMP macro as YYYYMM
-#ifdef _OPENMP
-        int version = _OPENMP;
-        int year = version / 100;
-        int month = version % 100;
-        oss << "OpenMP " << year << "." << month;
-
-        // Add human-readable version
-        if (version >= 201811) {
-            oss << " (5.0+)";
-        }
-        else if (version >= 201511) {
-            oss << " (4.5)";
-        }
-        else if (version >= 201307) {
-            oss << " (4.0)";
-        }
-        else if (version >= 201107) {
-            oss << " (3.1)";
-        }
-        else if (version >= 200805) {
-            oss << " (3.0)";
-        }
-        else if (version >= 200505) {
-            oss << " (2.5)";
-        }
-        else {
-            oss << " (2.0 or earlier)";
-        }
-#else
-        oss << "OpenMP not available";
-#endif
-
-        return oss.str();
-    }
-
-    // ============================================================================
-    // Thread-Safe Logging
-    // ============================================================================
-
-    void LogicThreadController::threadSafeLog(const std::string& message,
-        const std::string& prefix) {
-        // Use OpenMP critical section to ensure atomic console output
-        // This prevents interleaved output from multiple threads
-#pragma omp critical(console_output)
+        while (!m_shouldExit.load()) {
+            // Wait for task
             {
-                std::cout << prefix << " " << message << std::endl;
+                std::unique_lock<std::mutex> lock(m_mutex);
+                m_condition.wait(lock, [this] {
+                    return m_hasTask.load() || m_shouldExit.load();
+                    });
             }
-    }
 
-    // ============================================================================
-    // Internal Helpers
-    // ============================================================================
+            if (m_shouldExit.load()) {
+                break;
+            }
 
-    bool LogicThreadController::verifyOpenMPEnvironment() {
-#ifndef _OPENMP
-        threadSafeLog("ERROR: OpenMP is not enabled in this build!");
-        threadSafeLog("Please ensure OpenMP is enabled in CMakeLists.txt");
-        return false;
-#endif
-
-        // Verify we can get thread information
-        int maxThreads = omp_get_max_threads();
-        if (maxThreads < 1) {
-            threadSafeLog("ERROR: OpenMP reports 0 available threads!");
-            return false;
+            if (m_hasTask.load()) {
+                m_hasTask.store(false);
+                executeSorting();
+            }
         }
 
-        // Verify parallel execution is possible
-        bool parallelEnabled = (omp_get_max_threads() > 1) ||
-            (omp_get_num_procs() >= 1);
-
-        if (!parallelEnabled) {
-            threadSafeLog("WARNING: Parallel execution may not be available.");
-        }
-
-        return true;
+        std::cout << "[LogicThread] Worker thread exiting\n";
     }
 
-    void LogicThreadController::logOpenMPConfiguration() {
-        threadSafeLog("--- OpenMP Configuration ---");
+    void LogicThreadController::executeSorting() {
+        if (!m_algorithm) {
+            m_state.store(ThreadState::Error);
+            return;
+        }
 
-        std::ostringstream oss;
+        try {
+            // Execute quicksort
+            m_algorithm->execute(m_valuesToSort);
 
-        // Version
-        oss << "Version: " << getOpenMPVersion();
-        threadSafeLog(oss.str());
-        oss.str("");
+            // Check if cancelled
+            if (m_algorithm->isCancelled()) {
+                std::cout << "[LogicThread] Sorting cancelled after "
+                    << m_algorithm->getSwapCount() << " swaps\n";
+            }
+            else {
+                std::cout << "[LogicThread] Sorting completed with "
+                    << m_algorithm->getSwapCount() << " swaps\n";
+            }
 
-        // Max threads
-        oss << "Max threads: " << omp_get_max_threads();
-        threadSafeLog(oss.str());
-        oss.str("");
-
-        // Number of processors
-        oss << "Available processors: " << omp_get_num_procs();
-        threadSafeLog(oss.str());
-        oss.str("");
-
-        // Dynamic adjustment
-        oss << "Dynamic threads: " << (omp_get_dynamic() ? "enabled" : "disabled");
-        threadSafeLog(oss.str());
-        oss.str("");
-
-        // Nested parallelism
-        oss << "Nested parallelism: " << (omp_get_nested() ? "enabled" : "disabled");
-        threadSafeLog(oss.str());
-
-        threadSafeLog("----------------------------");
+            m_state.store(ThreadState::Completed);
+        }
+        catch (const std::exception& e) {
+            std::cerr << "[LogicThread] Sorting error: " << e.what() << "\n";
+            m_state.store(ThreadState::Error);
+        }
     }
 
 } // namespace quicksort
