@@ -37,7 +37,7 @@ namespace {
         ".Loop:\n"
         "\tADD REG2, REG2, REG1\n"
         "\tADDI REG1, REG1, #1\n"
-        "\tCMPI REG1, #10001\n"
+        "\tCMPI REG1, #10000\n"
         "\tBLT .Loop\n"
         "SWI\n";
 
