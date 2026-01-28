@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "e5b0ab290df41003",
+        "id": "a8abefadc302a071",
         "type": "tabs",
         "children": [
           {
-            "id": "144af1662a4546b7",
+            "id": "a44985e929a0f008",
             "type": "leaf",
             "state": {
               "type": "empty",
@@ -74,7 +74,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 391.5
+    "width": 425.5
   },
   "right": {
     "id": "825d4fa8716a355e",
@@ -166,14 +166,18 @@
       "templater-obsidian:Templater": false
     }
   },
-  "active": "144af1662a4546b7",
+  "active": "a44985e929a0f008",
   "lastOpenFiles": [
-    "07CloudLevel/ArchitectureOfBigSystems.md",
-    "98Images/038-Logic78.png",
-    "98Images/041-Logic81.png",
-    "98Images/040-Logic80.png",
-    "03LogicLevel/040-Arithmetic Circuits Adders Subtractors and Overflow.md",
+    "09Artificial_Intelligence/Embeddings.md",
+    "04ArchitectureLevel/044-RAM and ROM Memory Technologies.md",
+    "04ArchitectureLevel/043-Performance Metrics CPI IPC and Execution Time.md",
+    "04ArchitectureLevel/042-Computer Architecture History and Evolution.md",
+    "04ArchitectureLevel/114-Warehouse Scale Computers and HPC.md",
+    "04ArchitectureLevel/102-NUMA Architecture and Memory Placement.md",
+    "04ArchitectureLevel/103-Cache Coherence Problem and Solutions.md",
+    "04ArchitectureLevel/103.1-Memory Consistency vs Cache Coherence + Atomics and Fences.md",
     "03LogicLevel/041-ALU Architecture Operations Flags and Control Signals.md",
+    "03LogicLevel/040-Arithmetic Circuits Adders Subtractors and Overflow.md",
     "03LogicLevel/039-FSM Finite State Machines Moore and Mealy Models.md",
     "03LogicLevel/038-Registers Counters and Shift Registers Common Sequential Building Blocks.md",
     "03LogicLevel/037-D Latches and D Flip Flops Memory at the Bit Level.md",
@@ -185,8 +189,15 @@
     "03LogicLevel/031-Logic Gates Boolean Algebra and Truth Tables.md",
     "03LogicLevel/030-CMOS Inverter The Fundamental Digital Building Block.md",
     "03LogicLevel/029-From Analog Voltages to Digital Bits.md",
-    "VAULT_README.md",
-    "Synchronization Propagation Delay and Timing Vocabulary.md",
+    "02AnalogLevel/014-Circuit Symbols Schematics and What a Circuit Even Is.md",
+    "02AnalogLevel/015-Ohms Law and KCL KVL The Core Laws of Circuit Analysis.md",
+    "02AnalogLevel/028-PCB Development with Autodesk EAGLE From Schematic to Gerbers.md",
+    "02AnalogLevel/027-Real World Analog Effects Parasitics Noise Loading and Bandwidth.md",
+    "02AnalogLevel/026-Analog Building Blocks Op Amps Feedback and Stability Big Picture.md",
+    "Ohm’s Law + KCL",
+    "98Images/038-Logic78.png",
+    "98Images/041-Logic81.png",
+    "98Images/040-Logic80.png",
     "98Images/039-Logic79.png",
     "98Images/034-Logic73.png",
     "98Images/038-Logic77.png",
@@ -194,16 +205,6 @@
     "98Images/036-Logic75.png",
     "98Images/035-Logic74.png",
     "98Images/033-Logic72.png",
-    "03LogicLevel/ALUComponent.md",
-    "03LogicLevel/LogicGates.md",
-    "00Templates/Atomic Template.md",
-    "01AtomicLevel/004-Valence Electrons & Chemical Bonding (focus on Si).md",
-    "01AtomicLevel/003-Energy Quantization & the Electron-Volt (eV).md",
-    "01AtomicLevel/002-Electron Configuration (Aufbau + Pauli + Hund).md",
-    "01AtomicLevel/000-Atomic Structure & Charge.md",
-    "01AtomicLevel/001-Quantum Numbers & Atomic Orbitals.md",
-    "01AtomicLevel/013-SI Units & Prefixes (for Electronics and Physics).md",
-    "01AtomicLevel/012-Magnetic Field, Lorentz Force, and the Hall Effect.md",
     "99Inbox/Ohm’s Law + KCL",
     "98Images",
     "09Artificial_Intelligence",
@@ -213,7 +214,6 @@
     "CE1116/00_Inbox",
     "CE1116",
     "99Inbox",
-    "00Templates",
     "Untitled.canvas"
   ]
 }

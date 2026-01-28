@@ -34,7 +34,7 @@ A schematic is NOT the physical layout. It’s a **logical graph**:
 ![[014-Analog27.png]]
 
 ## 🔗 Connections
-- [[Ohm’s Law + KCL/KVL The Core Laws of Circuit Analysis]]
+- [[015-Ohms Law and KCL KVL The Core Laws of Circuit Analysis]]
 - [[017-Passive Components R L C Ideal vs Real Models]]
 - [[023-Diodes and the PN Junction The First Nonlinear Device]]
 - [[024-BJTs Current Controlled Amplification and Pi Small Signal Model]]

@@ -51,5 +51,4 @@ Inside every logic gate is some threshold-like behavior:
 ## 🔗 Connections
 - [[031-Logic Gates Boolean Algebra and Truth Tables]]
 - [[034-Noise Margins Logic Thresholds and Signal Integrity]]
-- [[Synchronization Propagation Delay and Timing Vocabulary]]
 - [[030-CMOS Inverter The Fundamental Digital Building Block]]
