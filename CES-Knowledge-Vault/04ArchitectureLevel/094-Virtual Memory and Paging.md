@@ -177,4 +177,3 @@ Advantages:
 - [[096-Translation Lookaside Buffer TLB]]
 - [[095-Memory Management Unit MMU]]
 - [[086-Memory Hierarchy Principles and Locality]]
-- [[Page Table Organization and Hierarchy]]

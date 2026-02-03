@@ -4,17 +4,103 @@
     "type": "split",
     "children": [
       {
-        "id": "a8abefadc302a071",
+        "id": "89a4a7e4ec8b99ab",
         "type": "tabs",
         "children": [
           {
-            "id": "a44985e929a0f008",
+            "id": "4bbba238588286df",
+            "type": "leaf",
+            "pinned": true,
+            "state": {
+              "type": "graph",
+              "state": {},
+              "pinned": true,
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          },
+          {
+            "id": "e429b1f6888fafef",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "09AILayer/248-Context Window Limitations.md",
+                "mode": "source",
+                "source": true
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "248-Context Window Limitations"
+            }
+          },
+          {
+            "id": "371e71473f8a04eb",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "09AILayer/243-Transformer Architecture.md",
+                "mode": "source",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "243-Transformer Architecture"
+            }
+          },
+          {
+            "id": "2ae99681704f83c1",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "09AILayer/244-Attention Mechanism.md",
+                "mode": "source",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "244-Attention Mechanism"
+            }
+          },
+          {
+            "id": "afb2b3eb0b5c9d3f",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "09AILayer/247-Embeddings and Vector Representations.md",
+                "mode": "source",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "247-Embeddings and Vector Representations"
+            }
+          },
+          {
+            "id": "5e94c2955dee215c",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "09AILayer/252-RLHF and Alignment Methods.md",
+                "mode": "source",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "252-RLHF and Alignment Methods"
+            }
+          },
+          {
+            "id": "439521c7d42d523f",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "09AILayer/242-Neural Networks Fundamentals.md",
+                "mode": "source",
+                "source": true
+              },
+              "icon": "lucide-file",
+              "title": "242-Neural Networks Fundamentals"
             }
           }
         ]
@@ -74,7 +160,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 425.5
+    "width": 331.5
   },
   "right": {
     "id": "825d4fa8716a355e",
@@ -166,54 +252,54 @@
       "templater-obsidian:Templater": false
     }
   },
-  "active": "a44985e929a0f008",
+  "active": "4bbba238588286df",
   "lastOpenFiles": [
-    "09Artificial_Intelligence/Embeddings.md",
-    "04ArchitectureLevel/044-RAM and ROM Memory Technologies.md",
-    "04ArchitectureLevel/043-Performance Metrics CPI IPC and Execution Time.md",
-    "04ArchitectureLevel/042-Computer Architecture History and Evolution.md",
-    "04ArchitectureLevel/114-Warehouse Scale Computers and HPC.md",
-    "04ArchitectureLevel/102-NUMA Architecture and Memory Placement.md",
-    "04ArchitectureLevel/103-Cache Coherence Problem and Solutions.md",
-    "04ArchitectureLevel/103.1-Memory Consistency vs Cache Coherence + Atomics and Fences.md",
+    "09AILayer/242-Neural Networks Fundamentals.md",
+    "09AILayer/252-RLHF and Alignment Methods.md",
+    "09AILayer/247-Embeddings and Vector Representations.md",
+    "09AILayer/244-Attention Mechanism.md",
+    "09AILayer/243-Transformer Architecture.md",
+    "09AILayer/248-Context Window Limitations.md",
+    "09AILayer/253-Hierarchical Reasoning Model HRM.md",
+    "09AILayer/251-LLM Training Pipeline.md",
+    "09AILayer/250-GPT Architecture and Variants.md",
+    "09AILayer/249-Large Language Models LLMs.md",
+    "09AILayer/246-Tokenization and Subword Encoding.md",
+    "09AILayer/245-Multi-Head Attention.md",
+    "04ArchitectureLevel/059-Endianness Little Endian vs Big Endian.md",
+    "04ArchitectureLevel/060-CISC vs RISC Design Philosophy.md",
+    "04ArchitectureLevel/054-ISA Instruction Set Architecture Fundamentals.md",
+    "04ArchitectureLevel/053-Parallelism Levels BLP ILP DLP TLP.md",
+    "04ArchitectureLevel/050-Harvard Architecture and Modified Harvard.md",
     "03LogicLevel/041-ALU Architecture Operations Flags and Control Signals.md",
     "03LogicLevel/040-Arithmetic Circuits Adders Subtractors and Overflow.md",
     "03LogicLevel/039-FSM Finite State Machines Moore and Mealy Models.md",
-    "03LogicLevel/038-Registers Counters and Shift Registers Common Sequential Building Blocks.md",
     "03LogicLevel/037-D Latches and D Flip Flops Memory at the Bit Level.md",
-    "03LogicLevel/036-Synchronization Setup Hold and Clocking Basics.md",
-    "03LogicLevel/035-Propagation Delay and Glitches Hazards in Combinational Logic.md",
     "03LogicLevel/034-Noise Margins Logic Thresholds and Signal Integrity.md",
-    "03LogicLevel/033-Combinational Logic Design From Truth Table to Gate Level.md",
-    "03LogicLevel/032-Boolean Simplification Identities De Morgan and K Map Strategy.md",
-    "03LogicLevel/031-Logic Gates Boolean Algebra and Truth Tables.md",
-    "03LogicLevel/030-CMOS Inverter The Fundamental Digital Building Block.md",
-    "03LogicLevel/029-From Analog Voltages to Digital Bits.md",
-    "02AnalogLevel/014-Circuit Symbols Schematics and What a Circuit Even Is.md",
-    "02AnalogLevel/015-Ohms Law and KCL KVL The Core Laws of Circuit Analysis.md",
-    "02AnalogLevel/028-PCB Development with Autodesk EAGLE From Schematic to Gerbers.md",
-    "02AnalogLevel/027-Real World Analog Effects Parasitics Noise Loading and Bandwidth.md",
-    "02AnalogLevel/026-Analog Building Blocks Op Amps Feedback and Stability Big Picture.md",
-    "Ohm’s Law + KCL",
-    "98Images/038-Logic78.png",
-    "98Images/041-Logic81.png",
-    "98Images/040-Logic80.png",
-    "98Images/039-Logic79.png",
-    "98Images/034-Logic73.png",
-    "98Images/038-Logic77.png",
-    "98Images/037-Logic76.png",
-    "98Images/036-Logic75.png",
-    "98Images/035-Logic74.png",
-    "98Images/033-Logic72.png",
-    "99Inbox/Ohm’s Law + KCL",
-    "98Images",
-    "09Artificial_Intelligence",
-    "08ProyectStructure/Design&Architecture",
-    "08ProyectStructure/Scrum",
-    "08ProyectStructure",
-    "CE1116/00_Inbox",
-    "CE1116",
-    "99Inbox",
+    "07CloudLevel/183-IaaS vs PaaS vs SaaS.md",
+    "07CloudLevel/190-Horizontal and Vertical Scaling in Cloud.md",
+    "07CloudLevel/205-Serverless Computing.md",
+    "07CloudLevel/195-Throughput as Quality Attribute.md",
+    "98Images/03Logic/030-Logic62.png",
+    "98Images/02Analog/014-Analog27.png",
+    "98Images/01Atomic/000-Atomic1.png",
+    "98Images/09AILayer",
+    "98Images/08ProyectStructure",
+    "98Images/07Cloud",
+    "98Images/06Program",
+    "98Images/05Kernel",
+    "98Images/04Architecture",
+    "98Images/03Logic",
+    "98Images/02Analog",
+    "98Images/01Atomic",
+    "99Inbox/I",
+    "98Images/03Logic/038-Logic78.png",
+    "98Images/03Logic/041-Logic81.png",
+    "98Images/03Logic/040-Logic80.png",
+    "98Images/03Logic/039-Logic79.png",
+    "98Images/03Logic/034-Logic73.png",
+    "98Images/03Logic/038-Logic77.png",
+    "98Images/03Logic/037-Logic76.png",
     "Untitled.canvas"
   ]
 }

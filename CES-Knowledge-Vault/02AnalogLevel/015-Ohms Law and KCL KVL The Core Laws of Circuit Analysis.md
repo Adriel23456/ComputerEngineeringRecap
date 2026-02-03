@@ -52,3 +52,4 @@ These are consequences of:
 - [[016-Equivalent Circuits Thevenin Norton Superposition Source Transformations]]
 - [[017-Passive Components R L C Ideal vs Real Models]]
 - [[018-AC Steady State Sinusoids Phasors Impedance and Power]]
+- [[012-Magnetic Field, Lorentz Force, and the Hall Effect]]

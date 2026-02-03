@@ -209,3 +209,4 @@ May use separate shifter unit for complex shifts.
 - [[065-Pipeline MIPS Five Stage Design]]
 - [[047-Datapath Components and Organization]]
 - [[054-ISA Instruction Set Architecture Fundamentals]]
+- [[041-ALU Architecture Operations Flags and Control Signals]]
