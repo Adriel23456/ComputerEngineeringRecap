@@ -1,6 +1,6 @@
-# Computer Science Engineering Recap (CSE Recap)
+# Computer Engineering Recap (CE Recap)
 
-A **comprehensive C++ recap project** that consolidates and reimplements the core concepts, systems, and architectural patterns studied throughout a **Computer Engineering (CSE)** degree.
+A **comprehensive C++ recap project** that consolidates and reimplements the core concepts, systems, and architectural patterns studied throughout a **Computer Engineering (CE)** degree.
 
 This repository is designed as a **modular, extensible simulation framework** built with **C++17**, **CMake**, and **Visual Studio 2026**, following modern software engineering practices such as **MVCC**, strict separation of concerns, and clean architectural layering.
 
