@@ -6,14 +6,14 @@
 ; Vector B: addresses 0xC00 - 0xFFF (128 * 8 = 1024 bytes)
 ;
 ; Each PE processes 32 elements:
-;   PE0: elements 031
-;   PE1: elements 3263
-;   PE2: elements 6495
-;   PE3: elements 96127
+;   PE0: elements 0–31
+;   PE1: elements 32–63
+;   PE2: elements 64–95
+;   PE3: elements 96–127
 ;
 ; Memory for results:
-;   Flags:    0x1000, 0x1008, 0x1010, 0x1018 (PE0PE3)
-;   Partials: 0x1020, 0x1028, 0x1030, 0x1038 (PE0PE3)
+;   Flags:    0x1000, 0x1008, 0x1010, 0x1018 (PE0–PE3)
+;   Partials: 0x1020, 0x1028, 0x1030, 0x1038 (PE0–PE3)
 ; ================================================================
 
 START:    
@@ -30,7 +30,7 @@ START:
     SWI                         ; Invalid PEID - terminate execution
 
 ; ================================================================
-; SETUP PE0 - Processes elements 031
+; SETUP PE0 - Processes elements 0–31
 ; ================================================================
 .SETUP_PE0:
     ; IMPORTANT: Configure LOWER_REG first, then UPPER_REG
@@ -121,7 +121,7 @@ START:
     SWI
 
 ; ================================================================
-; SETUP PE1 - Processes elements 3263
+; SETUP PE1 - Processes elements 32–63
 ; ================================================================
 .SETUP_PE1:
     MOVL LOWER_REG, .END_PE1
@@ -165,7 +165,7 @@ START:
     SWI
 
 ; ================================================================
-; SETUP PE2 - Processes elements 6495
+; SETUP PE2 - Processes elements 64–95
 ; ================================================================
 .SETUP_PE2:
     MOVL LOWER_REG, .END_PE2
@@ -209,7 +209,7 @@ START:
     SWI
 
 ; ================================================================
-; SETUP PE3 - Processes elements 96127
+; SETUP PE3 - Processes elements 96–127
 ; ================================================================
 .SETUP_PE3:
     MOVL LOWER_REG, .END_PE3

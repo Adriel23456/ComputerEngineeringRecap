@@ -20,90 +20,21 @@
             }
           },
           {
-            "id": "e429b1f6888fafef",
+            "id": "ecd4c12beb4aef33",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "09AILayer/248-Context Window Limitations.md",
+                "file": "09AILayer/245-Multi-Head Attention.md",
                 "mode": "source",
-                "source": true
+                "source": false
               },
               "icon": "lucide-file",
-              "title": "248-Context Window Limitations"
-            }
-          },
-          {
-            "id": "371e71473f8a04eb",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "09AILayer/243-Transformer Architecture.md",
-                "mode": "source",
-                "source": true
-              },
-              "icon": "lucide-file",
-              "title": "243-Transformer Architecture"
-            }
-          },
-          {
-            "id": "2ae99681704f83c1",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "09AILayer/244-Attention Mechanism.md",
-                "mode": "source",
-                "source": true
-              },
-              "icon": "lucide-file",
-              "title": "244-Attention Mechanism"
-            }
-          },
-          {
-            "id": "afb2b3eb0b5c9d3f",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "09AILayer/247-Embeddings and Vector Representations.md",
-                "mode": "source",
-                "source": true
-              },
-              "icon": "lucide-file",
-              "title": "247-Embeddings and Vector Representations"
-            }
-          },
-          {
-            "id": "5e94c2955dee215c",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "09AILayer/252-RLHF and Alignment Methods.md",
-                "mode": "source",
-                "source": true
-              },
-              "icon": "lucide-file",
-              "title": "252-RLHF and Alignment Methods"
-            }
-          },
-          {
-            "id": "439521c7d42d523f",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "09AILayer/242-Neural Networks Fundamentals.md",
-                "mode": "source",
-                "source": true
-              },
-              "icon": "lucide-file",
-              "title": "242-Neural Networks Fundamentals"
+              "title": "245-Multi-Head Attention"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -252,20 +183,26 @@
       "templater-obsidian:Templater": false
     }
   },
-  "active": "4bbba238588286df",
+  "active": "ecd4c12beb4aef33",
   "lastOpenFiles": [
-    "09AILayer/242-Neural Networks Fundamentals.md",
-    "09AILayer/252-RLHF and Alignment Methods.md",
-    "09AILayer/247-Embeddings and Vector Representations.md",
+    "09AILayer/246-Tokenization and Subword Encoding.md",
     "09AILayer/244-Attention Mechanism.md",
     "09AILayer/243-Transformer Architecture.md",
-    "09AILayer/248-Context Window Limitations.md",
-    "09AILayer/253-Hierarchical Reasoning Model HRM.md",
+    "09AILayer/242-Neural Networks Fundamentals.md",
+    "06ProgramLevel/168-Object Oriented Programming Fundamentals.md",
+    "06ProgramLevel/169-Programming Paradigms Overview.md",
+    "06ProgramLevel/167-Recursion Fundamentals.md",
+    "06ProgramLevel/166-Python Virtual Environments.md",
+    "06ProgramLevel/165-Python Fundamentals.md",
+    "06ProgramLevel/162-C Language Fundamentals and Data Types.md",
     "09AILayer/251-LLM Training Pipeline.md",
+    "09AILayer/252-RLHF and Alignment Methods.md",
+    "09AILayer/253-Hierarchical Reasoning Model HRM.md",
     "09AILayer/250-GPT Architecture and Variants.md",
     "09AILayer/249-Large Language Models LLMs.md",
-    "09AILayer/246-Tokenization and Subword Encoding.md",
     "09AILayer/245-Multi-Head Attention.md",
+    "09AILayer/247-Embeddings and Vector Representations.md",
+    "09AILayer/248-Context Window Limitations.md",
     "04ArchitectureLevel/059-Endianness Little Endian vs Big Endian.md",
     "04ArchitectureLevel/060-CISC vs RISC Design Philosophy.md",
     "04ArchitectureLevel/054-ISA Instruction Set Architecture Fundamentals.md",
@@ -274,12 +211,6 @@
     "03LogicLevel/041-ALU Architecture Operations Flags and Control Signals.md",
     "03LogicLevel/040-Arithmetic Circuits Adders Subtractors and Overflow.md",
     "03LogicLevel/039-FSM Finite State Machines Moore and Mealy Models.md",
-    "03LogicLevel/037-D Latches and D Flip Flops Memory at the Bit Level.md",
-    "03LogicLevel/034-Noise Margins Logic Thresholds and Signal Integrity.md",
-    "07CloudLevel/183-IaaS vs PaaS vs SaaS.md",
-    "07CloudLevel/190-Horizontal and Vertical Scaling in Cloud.md",
-    "07CloudLevel/205-Serverless Computing.md",
-    "07CloudLevel/195-Throughput as Quality Attribute.md",
     "98Images/03Logic/030-Logic62.png",
     "98Images/02Analog/014-Analog27.png",
     "98Images/01Atomic/000-Atomic1.png",
