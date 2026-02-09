@@ -45,7 +45,6 @@ bin/
 lib/
 
 # MSVC configuration-specific folders
-Debug/
 Release/
 RelWithDebInfo/
 MinSizeRel/
@@ -93,3 +92,8 @@ MinSizeRel/
 # Uncomment only if these folders are generated at build/runtime
 # resources/cache/
 # resources/generated/
+
+# NEVER ignore headers
+!include/**
+!**/*.h
+!**/*.hpp
