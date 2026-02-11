@@ -1,54 +1,46 @@
+cmake_minimum_required(VERSION 3.25) # Bumped to 3.25 for better CUDA 13 support
 
+# ============================================================================
+# 1. CUDA PRE-CONFIGURATION (Critical for VS 2026 and CUDA v13.1)
+# ============================================================================
+set(CMAKE_CUDA_COMPILER "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.1/bin/nvcc.exe")
+set(CUDAToolkit_ROOT "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v13.1")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -allow-unsupported-compiler")
 
-cmake_minimum_required(VERSION 3.16)
+# ============================================================================
+# 2. PROJECT DEFINITION
+# ============================================================================
+project(mygame LANGUAGES C CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_ARCHITECTURES native)
 
-#! ! ! ! ! ! !
-#set this to true to ship the game!
-#basically this will change the RESOURCES_PATH to be the local path
-#! ! ! ! ! ! !
-#DELETE THE OUT FOLDER AFTER CHANGING THIS BECAUSE VISUAL STUDIO DOESN'T SEEM TO RECOGNIZE THIS CHANGE AND REBUILD!
+# ============================================================================
+# 3. GLOBAL OPTIONS AND LIBRARIES
+# ============================================================================
 option(PRODUCTION_BUILD "Make this a production build!" OFF)
-#DELETE THE OUT FOLDER AFTER CHANGING THIS BECAUSE VISUAL STUDIO DOESN'T SEEM TO RECOGNIZE THIS CHANGE AND REBUILD!
 
+# Fixed: Single line to handle both runtime profiles
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>$<$<NOT:$<CONFIG:Debug>>:Release>")
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Release>:Release>")
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE) #link time optimization
-
-# Ensure SFML is built as static libraries
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build SFML as static libraries" FORCE)
-
-#for imgui-sfml
 set(IMGUI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/imgui-docking/imgui")
 
-if(MSVC) 
-	add_compile_options(/arch:AVX2) #make sure SIMD optimizations take place
+if(MSVC)
+    # We use a generator expression so /arch:AVX2 only affects C++ and not CUDA
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/arch:AVX2>")
 endif()
 
-project(mygame LANGUAGES C CXX) 
-
-#Await CUDA support for VS 2026
-#CUDA)
-
-#set(CMAKE_CUDA_STANDARD 17)
-#set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-#set(CMAKE_CUDA_ARCHITECTURES native)
-
-#find_package(CUDAToolkit REQUIRED)
-
-# Enable OpenMP support
+# Find required packages
+find_package(CUDAToolkit REQUIRED)
 find_package(OpenMP REQUIRED)
-if(OpenMP_CXX_FOUND)
-    message(STATUS "OpenMP found - Version: ${OpenMP_CXX_VERSION}")
-    message(STATUS "OpenMP CXX flags: ${OpenMP_CXX_FLAGS}")
-else()
-    message(FATAL_ERROR "OpenMP not found! OpenMP is required for this project.")
-endif()
 
-#Add SFML, and here you would add other libraries if needed!
+# ============================================================================
+# 4. SUBDIRECTORIES (Third-party libraries)
+# ============================================================================
 add_subdirectory(thirdparty/SFML-2.6.1)
 add_subdirectory(thirdparty/imgui-docking)
 add_subdirectory(thirdparty/imgui-sfml-2.6.x)
@@ -56,30 +48,12 @@ add_subdirectory(thirdparty/glad)
 add_subdirectory(thirdparty/nlohmann)
 add_subdirectory(thirdparty/tinyfiledialogs)
 
-
-# MY_SOURCES is defined to be a list of all the source files for my game 
-# DON'T ADD THE SOURCES BY HAND, they are already added with this macro
+# ============================================================================
+# 5. EXECUTABLE CONFIGURATION
+# ============================================================================
 file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-
 add_executable("${CMAKE_PROJECT_NAME}")
-
-set_property(TARGET "${CMAKE_PROJECT_NAME}" PROPERTY CXX_STANDARD 17)
-
-
-
-if(PRODUCTION_BUILD)
-	# setup the ASSETS_PATH macro to be in the root folder of your exe
-	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC RESOURCES_PATH="./resources/") 
-
-	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC PRODUCTION_BUILD=1) 
-
-else()
-	# This is useful to get an ASSETS_PATH in your IDE during development
-	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC RESOURCES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/")
-	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC PRODUCTION_BUILD=0) 
-
-endif()
 
 target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     ${MY_SOURCES}
@@ -111,13 +85,13 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/core/resources/TextureCache.h"
 
     # ==========================================================
-    # =========================== SYSTEMS =====================
+    # =========================== SYSTEMS ======================
     # ==========================================================
     "src/systems/audio/AudioManager.cpp"
     "include/systems/audio/AudioManager.h"
 
     # ==========================================================
-    # ============================ STATES =====================
+    # ============================ STATES ======================
     # ==========================================================
     "src/states/MainMenuState.cpp"
     "src/states/ProgramState.cpp"
@@ -125,14 +99,14 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/states/ProgramState.h"
 
     # ==========================================================
-    # ============================ UI =========================
+    # ============================ UI ==========================
     # ==========================================================
 
     # ------------------------ OVERLAYS ------------------------
     "src/ui/overlays/SettingsOverlay.cpp"
     "include/ui/overlays/SettingsOverlay.h"
 
-    # -------------------- OVERLAY PANELS ---------------------
+    # -------------------- OVERLAY PANELS ----------------------
     "src/ui/overlays/panels/VideoSettingsPanel.cpp"
     "src/ui/overlays/panels/AudioSettingsPanel.cpp"
     "src/ui/overlays/panels/CreditsPanel.cpp"
@@ -151,18 +125,18 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tlp_shared_cache/CpuTLPSharedCacheState.h"
 
     # ==========================================================
-    # ========================= SIMULATION ====================
+    # ========================= SIMULATION =====================
     # ==========================================================
 
-    # ------------------------ ASSEMBLER ----------------------
+    # ------------------------ ASSEMBLER -----------------------
     "src/apps/cpu_tlp_shared_cache/simulation/assembler/Assembler.cpp"
     "include/apps/cpu_tlp_shared_cache/simulation/assembler/Assembler.h"
 
-    # --------------------------- BUS -------------------------
+    # --------------------------- BUS --------------------------
     "src/apps/cpu_tlp_shared_cache/simulation/bus/InterconnectBus.cpp"
     "include/apps/cpu_tlp_shared_cache/simulation/bus/InterconnectBus.h"
 
-    # -------------------------- CACHE ------------------------
+    # -------------------------- CACHE -------------------------
     "src/apps/cpu_tlp_shared_cache/simulation/cache/L1Cache.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/cache/L1FSM.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/cache/L1Snoop.cpp"
@@ -171,17 +145,17 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tlp_shared_cache/simulation/cache/L1Snoop.h"
     "include/apps/cpu_tlp_shared_cache/simulation/cache/L1Utils.h"
 
-    # -------------------------- DEBUG ------------------------
+    # -------------------------- DEBUG -------------------------
     "include/apps/cpu_tlp_shared_cache/simulation/debug/TLPDebug.h"
     "include/apps/cpu_tlp_shared_cache/simulation/debug/TLPDebugHelpers.h"
 
-    # -------------------------- MEMORY -----------------------
+    # -------------------------- MEMORY ------------------------
     "src/apps/cpu_tlp_shared_cache/simulation/memory/InstructionMemoryComponent.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/memory/SharedMemory.cpp"
     "include/apps/cpu_tlp_shared_cache/simulation/memory/InstructionMemoryComponent.h"
     "include/apps/cpu_tlp_shared_cache/simulation/memory/SharedMemory.h"
 
-    # ------------------------- PROCESSOR ---------------------
+    # ------------------------- PROCESSOR ----------------------
     "src/apps/cpu_tlp_shared_cache/simulation/processor/InterconnectComponent.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/processor/L1Component.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/processor/SharedMemoryComponent.cpp"
@@ -192,7 +166,7 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tlp_shared_cache/simulation/processor/SharedMemoryComponent.h"
     "include/apps/cpu_tlp_shared_cache/simulation/processor/PEComponent.h"
 
-    # -------------------- PROCESSOR - PE ---------------------
+    # -------------------- PROCESSOR - PE ----------------------
     "src/apps/cpu_tlp_shared_cache/simulation/processor/pe/RegisterFile.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/processor/pe/ALU.cpp"
     "src/apps/cpu_tlp_shared_cache/simulation/processor/pe/ControlUnit.cpp"
@@ -204,10 +178,10 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tlp_shared_cache/simulation/processor/pe/HazardUnit.h"
 
     # ==========================================================
-    # ============================ UI =========================
+    # ============================ UI ==========================
     # ==========================================================
 
-    # --------------------------- VIEWS -----------------------
+    # --------------------------- VIEWS ------------------------
     "src/apps/cpu_tlp_shared_cache/ui/views/AnalysisDataView.cpp"
     "src/apps/cpu_tlp_shared_cache/ui/views/CompilerView.cpp"
     "src/apps/cpu_tlp_shared_cache/ui/views/GeneralView.cpp"
@@ -218,7 +192,7 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tlp_shared_cache/ui/views/ICpuTLPView.h"
     "include/apps/cpu_tlp_shared_cache/ui/views/RAMView.h"
 
-    # --------------------- VIEWS - PROCESSOR -----------------
+    # --------------------- VIEWS - PROCESSOR ------------------
     "src/apps/cpu_tlp_shared_cache/ui/views/processor/PECPUView.cpp"
     "src/apps/cpu_tlp_shared_cache/ui/views/processor/PERegView.cpp"
     "src/apps/cpu_tlp_shared_cache/ui/views/processor/PEMemView.cpp"
@@ -226,7 +200,7 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tlp_shared_cache/ui/views/processor/PERegView.h"
     "include/apps/cpu_tlp_shared_cache/ui/views/processor/PEMemView.h"
 
-    # -------------------------- WIDGETS ----------------------
+    # -------------------------- WIDGETS -----------------------
     "src/apps/cpu_tlp_shared_cache/ui/widgets/CacheMemTable.cpp"
     "src/apps/cpu_tlp_shared_cache/ui/widgets/InstructionDisassembler.cpp"
     "src/apps/cpu_tlp_shared_cache/ui/widgets/MemCacheTable.cpp"
@@ -242,11 +216,11 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tlp_shared_cache/ui/widgets/ZoomPanImage.h"
 
     # ==========================================================
-    # ============================ UTILS ======================
+    # ============================ UTILS =======================
     # ==========================================================
     "include/util/ErrorReporting.h"
 
-    # ----------------------- GL DEBUG ------------------------
+    # ----------------------- GL DEBUG -------------------------
     "src/util/gl_debug/GLDebugOutput.cpp"
     "src/util/gl_debug/GLDebugFilter.cpp"
     "src/util/gl_debug/GLDebugFormatter.cpp"
@@ -257,7 +231,7 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/util/gl_debug/GLDebugCallback.h"
 
     # ==========================================================
-    # ============ QUICKSORT VISUALIZER APPLICATION ===========
+    # ============ QUICKSORT VISUALIZER APPLICATION ============
     # ==========================================================
 
     # ------------------------- APP ROOT -----------------------
@@ -307,32 +281,54 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/quicksort_visualizer/ui/ElementRenderer.h"
     "src/apps/quicksort_visualizer/ui/AmountInputPopup.cpp"
     "include/apps/quicksort_visualizer/ui/AmountInputPopup.h"
+
+    # ----------------------------- CUDA ------------------------
+    "src/cuda/CudaTest.cu"
+    "include/cuda/CudaTest.cuh"
+
+    # ==========================================================
+    # ===================== CPU TOMASULO UI ====================
+    # ==========================================================
+    "include/apps/cpu_tomasulo/ui/views/ITomasuloView.h"
+    "include/apps/cpu_tomasulo/CpuTomasuloState.h"
+    "src/apps/cpu_tomasulo/CpuTomasuloState.cpp"
+    "src/apps/cpu_tomasulo/CpuTomasuloStateFactory.cpp"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloMainView.h"
+    "src/apps/cpu_tomasulo/ui/views/TomasuloMainView.cpp"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloCompilerView.h"
+    "src/apps/cpu_tomasulo/ui/views/TomasuloCompilerView.cpp"
 )
 
-if(MSVC) # If using the VS compiler...
-
-	target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC _CRT_SECURE_NO_WARNINGS)
-
-
-	#YOU CAN REMOVE THE CONSOLE WITH THIS LINE! YOU CAN EVEN DO AN IF PRODUCTION_BUILD TO REMOVE IT ONLY IN PRODUCTION BUILDS
-	#set_target_properties("${CMAKE_PROJECT_NAME}" PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup") #no console
-
+# Build definitions depending on build type
+if(PRODUCTION_BUILD)
+    target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC RESOURCES_PATH="./resources/")
+    target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC PRODUCTION_BUILD=1)
+else()
+    target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC RESOURCES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/")
+    target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC PRODUCTION_BUILD=0)
 endif()
 
+if(MSVC)
+    target_compile_definitions("${CMAKE_PROJECT_NAME}" PUBLIC _CRT_SECURE_NO_WARNINGS)
+endif()
+
+# ============================================================================
+# 6. INCLUDES AND FINAL LINKING
+# ============================================================================
 target_include_directories("${CMAKE_PROJECT_NAME}" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 
-# Link SFML libraries statically, Here wou would add other libraries!
-target_link_libraries("${CMAKE_PROJECT_NAME}" 
-	sfml-graphics 
-	sfml-window 
-	sfml-system 
-	sfml-audio 
-	sfml-network
-	imgui
-	ImGui-SFML::ImGui-SFML
-	glad
-	nlohmann
-	tinyfiledialogs
+target_link_libraries("${CMAKE_PROJECT_NAME}"
+    PRIVATE
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
+    sfml-network
+    imgui
+    ImGui-SFML::ImGui-SFML
+    glad
+    nlohmann
+    tinyfiledialogs
     OpenMP::OpenMP_CXX
-	#CUDA::cudart
+    CUDA::cudart
 )

@@ -1,12 +1,12 @@
 {
     "audio": {
         "bgm": 12,
-        "sfx": 23
+        "sfx": 4
     },
     "framerate": 60,
     "resolution": {
-        "height": 800,
-        "width": 1280
+        "height": 900,
+        "width": 1600
     },
     "screenMode": "window",
     "vsync": false
