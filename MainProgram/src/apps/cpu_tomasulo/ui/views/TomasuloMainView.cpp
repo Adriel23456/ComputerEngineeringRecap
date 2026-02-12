@@ -1,111 +1,149 @@
 /**
  * @file TomasuloMainView.cpp
- * @brief Implementation of TomasuloMainView.
+ * @brief Implementation of the refactored TomasuloMainView.
  */
 
 #include "apps/cpu_tomasulo/ui/views/TomasuloMainView.h"
+#include "apps/cpu_tomasulo/ui/components/BorderRenderer.h"
 #include "core/resources/TextureCache.h"
+
 #include "imgui.h"
+#include <SFML/Graphics.hpp>
 #include <iostream>
 #include <algorithm>
-#include <cstdio>
 
- // ============================================================================
- // Slot Layout Definitions (image-pixel coordinates, 1465x1123)
- // ============================================================================
+ // ════════════════════════════════════════════════════════════════
+ // Slot layout (image-pixel coordinates) — unchanged
+ // ════════════════════════════════════════════════════════════════
 
 const std::array<TomasuloMainView::SlotDef, TomasuloMainView::SLOT_COUNT>
 TomasuloMainView::s_slotDefs = { {
-        // ── Issue (1) ───────────────────────────────────────────────────
-        { 568.0f,  205.0f,  200.0f, 30.0f, "Issue" },
+    { 185.0f,  165.0f,  200.0f, 30.0f, "Issue"      },
+    { 660.0f,  145.0f,  110.0f, 25.0f, "SB0"        },
+    { 660.0f,  235.0f,  110.0f, 25.0f, "SB1"        },
+    { 660.0f,  325.0f,  110.0f, 25.0f, "LB0"        },
+    { 660.0f,  415.0f,  110.0f, 25.0f, "LB1"        },
+    { 660.0f,  505.0f,  110.0f, 25.0f, "LB2"        },
+    { 660.0f,  605.0f,  140.0f, 25.0f, "RS_IntALU0" },
+    { 660.0f,  695.0f,  140.0f, 25.0f, "RS_IntALU1" },
+    { 660.0f,  785.0f,  140.0f, 25.0f, "RS_FPALU0"  },
+    { 660.0f,  875.0f,  140.0f, 25.0f, "RS_IntMUL0" },
+    { 660.0f,  965.0f,  140.0f, 25.0f, "RS_FPMUL0"  },
+    { 660.0f, 1055.0f,  140.0f, 25.0f, "RS_Branch0" },
+    { 1265.0f, 405.0f,  180.0f, 28.0f, "CDB_A"      },
+    { 1265.0f, 445.0f,  180.0f, 28.0f, "CDB_B"      },
+} };
 
-        // ── Execute (11) — SB0 starts at y=105, then 125px spacing ─────
+// ════════════════════════════════════════════════════════════════
+// Construction / Labels
+// ════════════════════════════════════════════════════════════════
 
-        // SB0, SB1
-        { 1060.0f,  145.0f,  110.0f, 25.0f, "SB0" },
-        { 1060.0f,  235.0f,  110.0f, 25.0f, "SB1" },
-
-        // LB0, LB1, LB2
-        { 1060.0f,  325.0f,  110.0f, 25.0f, "LB0" },
-        { 1060.0f,  415.0f,  110.0f, 25.0f, "LB1" },
-        { 1060.0f,  505.0f,  110.0f, 25.0f, "LB2" },
-
-        // RS_IntALU0, RS_IntALU1
-        { 1060.0f,  605.0f,  140.0f, 25.0f, "RS_IntALU0" },
-        { 1060.0f,  695.0f,  140.0f, 25.0f, "RS_IntALU1" },
-
-        // RS_FPALU0
-        { 1060.0f,  785.0f,  140.0f, 25.0f, "RS_FPALU0" },
-
-        // RS_IntMUL0
-        { 1060.0f, 875.0f,  140.0f, 25.0f, "RS_IntMUL0" },
-
-        // RS_FPMUL0
-        { 1060.0f, 965.0f,  140.0f, 25.0f, "RS_FPMUL0" },
-
-        // RS_Branch0
-        { 1060.0f, 1055.0f,  140.0f, 25.0f, "RS_Branch0" },
-
-        // ── Commit (2 CDB) ─────────────────────────────────────────────
-        { 1645.0f, 155.0f,  180.0f, 28.0f, "CDB_A" },
-        { 1645.0f, 195.0f,  180.0f, 28.0f, "CDB_B" },
-    } };
-
-// ============================================================================
-// Construction
-// ============================================================================
-
-TomasuloMainView::TomasuloMainView() {
-    clearLabels();
-}
+TomasuloMainView::TomasuloMainView() { clearLabels(); }
 
 void TomasuloMainView::clearLabels() {
-    for (auto& l : m_labels) {
-        l = "---";
-    }
+    for (auto& l : m_labels) l = "---";
 }
 
-// ============================================================================
-// Label Setters
-// ============================================================================
-
 void TomasuloMainView::setLabel(Slot slot, const std::string& text) {
-    if (slot >= 0 && slot < SLOT_COUNT) {
-        m_labels[slot] = text;
-    }
+    if (slot >= 0 && slot < SLOT_COUNT) m_labels[slot] = text;
 }
 
 void TomasuloMainView::setLabels(const std::array<std::string, SLOT_COUNT>& labels) {
     m_labels = labels;
 }
 
-// ============================================================================
+// ════════════════════════════════════════════════════════════════
 // Texture Loading
-// ============================================================================
+// ════════════════════════════════════════════════════════════════
 
 void TomasuloMainView::ensureLoaded() {
     if (!m_tex) {
         const std::string path = std::string(RESOURCES_PATH)
             + "Assets/CPU_TOMASULO/DiagramVersions/GeneralViewOfCPU.png";
-
         m_tex = TextureCache::instance().get(path);
-
-        if (!m_tex) {
-            std::cout << "[TomasuloMainView] Could not load texture: "
-                << path << "\n";
-        }
-
-        // Configure viewer: no zoom by default, show 90% of image,
-        // allow dragging down to 50% visible
-        m_viewer.setZoomEnabled(false);
-        m_viewer.setLockedVisibleFraction(0.90f);
-        m_viewer.setMinVisibleFraction(0.50f);
+        if (!m_tex)
+            std::cout << "[TomasuloMainView] Could not load texture: " << path << "\n";
     }
 }
 
-// ============================================================================
-// Rendering
-// ============================================================================
+// ════════════════════════════════════════════════════════════════
+// Slot Color (Open/Closed — easy to extend or override)
+// ════════════════════════════════════════════════════════════════
+
+ImU32 TomasuloMainView::slotBorderColor(int i) {
+    constexpr ImU32 ISSUE_CLR = IM_COL32(100, 200, 255, 220);
+    constexpr ImU32 EXECUTE_CLR = IM_COL32(255, 200, 100, 220);
+    constexpr ImU32 COMMIT_CLR = IM_COL32(100, 255, 150, 220);
+
+    if (i == ISSUE)                         return ISSUE_CLR;
+    if (i >= SB0 && i <= RS_BRANCH0)        return EXECUTE_CLR;
+    return COMMIT_CLR;
+}
+
+// ════════════════════════════════════════════════════════════════
+// Reset Button — rendered as a floating overlay window so it
+// sits above the InvisibleButton input layer and is clickable.
+// ════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════
+// Reset Button — drawn on the FOREGROUND draw list so it's
+// guaranteed to render above all canvas content.  Input is
+// handled manually (hit-test + mouse click).
+// ════════════════════════════════════════════════════════════════
+
+void TomasuloMainView::drawResetButton(const ImVec2& canvasP0,
+    const ImVec2& canvasSize) {
+    const float btnW = 80.0f;
+    const float btnH = 30.0f;
+    const float margin = 14.0f;
+    const float round = 6.0f;
+
+    const ImVec2 btnP0(
+        canvasP0.x + canvasSize.x - btnW - margin,
+        canvasP0.y + canvasSize.y - btnH - margin);
+    const ImVec2 btnP1(btnP0.x + btnW, btnP0.y + btnH);
+
+    // ── Hit test ──────────────────────────────────────────────
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    const bool hovered =
+        mouse.x >= btnP0.x && mouse.x <= btnP1.x &&
+        mouse.y >= btnP0.y && mouse.y <= btnP1.y;
+    const bool clicked = hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+
+    if (clicked)
+        m_camera.reset();
+
+    // ── Draw on foreground (always on top) ────────────────────
+    ImDrawList* fg = ImGui::GetForegroundDrawList();
+
+    ImU32 bgColor;
+    if (clicked)
+        bgColor = IM_COL32(80, 140, 200, 230);
+    else if (hovered)
+        bgColor = IM_COL32(60, 80, 120, 210);
+    else
+        bgColor = IM_COL32(30, 30, 40, 180);
+
+    fg->AddRectFilled(btnP0, btnP1, bgColor, round);
+    fg->AddRect(btnP0, btnP1, IM_COL32(210, 240, 255, 80), round, 0, 1.0f);
+
+    // ── Centered text ─────────────────────────────────────────
+    const char* label = "RESET";
+    const ImVec2 textSz = ImGui::CalcTextSize(label);
+    const ImVec2 textPos(
+        btnP0.x + (btnW - textSz.x) * 0.5f,
+        btnP0.y + (btnH - textSz.y) * 0.5f);
+
+    fg->AddText(textPos, IM_COL32(210, 240, 255, 255), label);
+
+    // ── Prevent canvas pan when clicking the button ───────────
+    if (hovered)
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+}
+
+// ════════════════════════════════════════════════════════════════
+// Main Render
+// ════════════════════════════════════════════════════════════════
 
 void TomasuloMainView::render() {
     ensureLoaded();
@@ -116,70 +154,66 @@ void TomasuloMainView::render() {
         return;
     }
 
-    m_viewer.renderWithOverlay(*m_tex, "##TomasuloMainViewer",
-        [this](const ImVec2& origin, float scale, ImDrawList* dl) {
-            renderOverlay(origin, scale, dl);
-        }
-    );
-}
+    ImGuiIO& io = ImGui::GetIO();
+    const float dt = io.DeltaTime;
+    ImDrawList* dl = ImGui::GetWindowDrawList();
 
-// ============================================================================
-// Overlay Drawing
-// ============================================================================
+    const ImVec2 canvasP0 = ImGui::GetCursorScreenPos();
+    ImVec2       canvasSize = ImGui::GetContentRegionAvail();
+    if (canvasSize.x < 2.0f) canvasSize.x = 2.0f;
+    if (canvasSize.y < 2.0f) canvasSize.y = 2.0f;
 
-void TomasuloMainView::renderOverlay(const ImVec2& origin, float scale,
-    ImDrawList* dl) {
-    // Box styling
-    const ImU32 FILL = IM_COL32(0, 0, 0, 210);
-    const ImU32 TEXT_COLOR = IM_COL32(255, 255, 255, 255);
-    const float CORNER_RADIUS = 4.0f;
-    const float BORDER_THICK = 1.5f;
+    // ── Background (screen-space) ─────────────────────────────
+    m_background.draw(canvasP0, canvasSize, dl);
 
-    // Section border colors
-    const ImU32 ISSUE_BORDER = IM_COL32(100, 200, 255, 220);
-    const ImU32 EXECUTE_BORDER = IM_COL32(255, 200, 100, 220);
-    const ImU32 COMMIT_BORDER = IM_COL32(100, 255, 150, 220);
+    // ── Invisible button to capture input ─────────────────────
+    ImGui::InvisibleButton("##TomasuloCanvas", canvasSize,
+        ImGuiButtonFlags_MouseButtonLeft |
+        ImGuiButtonFlags_MouseButtonRight |
+        ImGuiButtonFlags_MouseButtonMiddle);
+    const bool hovered = ImGui::IsItemHovered();
 
-    ImFont* font = ImGui::GetFont();
-    float baseFontSz = ImGui::GetFontSize();
+    // ── World dimensions ──────────────────────────────────────
+    const sf::Vector2u texSz = m_tex->getSize();
+    const float imgW = (float)texSz.x;
+    const float imgH = (float)texSz.y;
 
-    for (int i = 0; i < SLOT_COUNT; ++i) {
-        const SlotDef& def = s_slotDefs[i];
+    const float fitScale = Camera2D::computeFitScale(
+        canvasSize.x, canvasSize.y, imgW, imgH, m_camera.config.fitFill);
 
-        ImVec2 topLeft(
-            origin.x + scale * def.x,
-            origin.y + scale * def.y
-        );
-        ImVec2 bottomRight(
-            topLeft.x + scale * def.w,
-            topLeft.y + scale * def.h
-        );
+    // ── Init camera once ──────────────────────────────────────
+    if (!m_camera.isInitialized())
+        m_camera.init(imgW, imgH);
 
-        // Choose border color by stage
-        ImU32 borderColor;
-        if (i == ISSUE)                                     borderColor = ISSUE_BORDER;
-        else if (i >= SB0 && i <= RS_BRANCH0)               borderColor = EXECUTE_BORDER;
-        else                                                 borderColor = COMMIT_BORDER;
+    // ── Input → animate → clamp ───────────────────────────────
+    if (hovered)
+        m_camera.handleInput(canvasP0, canvasSize, fitScale);
 
-        dl->AddRectFilled(topLeft, bottomRight, FILL, CORNER_RADIUS);
-        dl->AddRect(topLeft, bottomRight, borderColor, CORNER_RADIUS, 0, BORDER_THICK);
+    m_camera.clampTarget(imgW, imgH, canvasSize.x, canvasSize.y, fitScale);
+    m_camera.animate(dt);
 
-        float fontPx = std::max(10.0f, baseFontSz * scale * 1.1f);
+    // ── Compute transform ─────────────────────────────────────
+    const float  scale = m_camera.currentScale(fitScale);
+    const ImVec2 imgP0 = m_camera.worldOrigin(canvasP0, canvasSize, fitScale);
+    const ImVec2 imgP1(imgP0.x + imgW * scale, imgP0.y + imgH * scale);
 
-        const std::string& txt = m_labels[i];
-        ImVec2 textSz = font->CalcTextSizeA(fontPx, FLT_MAX, 0.0f, txt.c_str());
+    // ── Draw world (clipped to canvas) ────────────────────────
+    dl->PushClipRect(canvasP0,
+        { canvasP0.x + canvasSize.x, canvasP0.y + canvasSize.y },
+        true);
 
-        float maxTextW = (bottomRight.x - topLeft.x) - 4.0f * scale;
-        if (textSz.x > maxTextW && maxTextW > 0.0f) {
-            textSz = font->CalcTextSizeA(fontPx, maxTextW, maxTextW, txt.c_str());
-        }
+    const ImTextureID imgId = (ImTextureID)(intptr_t)m_tex->getNativeHandle();
+    dl->AddImage(imgId, imgP0, imgP1, { 0,0 }, { 1,1 }, IM_COL32(255, 255, 255, 255));
 
-        ImVec2 textPos(
-            topLeft.x + ((bottomRight.x - topLeft.x) - textSz.x) * 0.5f,
-            topLeft.y + ((bottomRight.y - topLeft.y) - textSz.y) * 0.5f
-        );
+    const float pad = 10.0f;
+    BorderRenderer::drawCool3DBorder(dl,
+        { imgP0.x - pad, imgP0.y - pad },
+        { imgP1.x + pad, imgP1.y + pad });
 
-        dl->AddText(font, fontPx, textPos, TEXT_COLOR, txt.c_str(),
-            nullptr, maxTextW > 0.0f ? maxTextW : 0.0f);
-    }
+    m_overlay.draw(dl, imgP0, scale, s_slotDefs, m_labels, slotBorderColor);
+
+    dl->PopClipRect();
+
+    // ── Reset button (above clip, always visible) ─────────────
+    drawResetButton(canvasP0, canvasSize);
 }

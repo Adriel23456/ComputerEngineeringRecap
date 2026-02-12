@@ -7,6 +7,12 @@
 #include "apps/cpu_tomasulo/ui/views/ITomasuloView.h"
 #include "apps/cpu_tomasulo/ui/views/TomasuloMainView.h"
 #include "apps/cpu_tomasulo/ui/views/TomasuloCompilerView.h"
+#include "apps/cpu_tomasulo/ui/views/TomasuloRAMView.h"
+#include "apps/cpu_tomasulo/ui/views/TomasuloICacheView.h"
+#include "apps/cpu_tomasulo/ui/views/TomasuloDCacheView.h"
+#include "apps/cpu_tomasulo/ui/views/TomasuloRegistersView.h"
+#include "apps/cpu_tomasulo/ui/views/TomasuloROBView.h"
+#include "apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.h"
 
 #include <imgui.h>
 #include <iostream>
@@ -52,12 +58,12 @@ CpuTomasuloState::~CpuTomasuloState() = default;
 void CpuTomasuloState::buildAllViews() {
     m_views[panelIndex(Panel::MainView)] = std::make_unique<TomasuloMainView>();
     m_views[panelIndex(Panel::Compiler)] = std::make_unique<TomasuloCompilerView>();
-    m_views[panelIndex(Panel::RAM)] = std::make_unique<PlaceholderView>("RAM");
-    m_views[panelIndex(Panel::ICache)] = std::make_unique<PlaceholderView>("I-Cache");
-    m_views[panelIndex(Panel::DCache)] = std::make_unique<PlaceholderView>("D-Cache");
-    m_views[panelIndex(Panel::Registers)] = std::make_unique<PlaceholderView>("Registers");
-    m_views[panelIndex(Panel::ROB)] = std::make_unique<PlaceholderView>("ROB");
-    m_views[panelIndex(Panel::DataAnalysis)] = std::make_unique<PlaceholderView>("Data Analysis");
+    m_views[panelIndex(Panel::RAM)] = std::make_unique<TomasuloRAMView>();
+    m_views[panelIndex(Panel::ICache)] = std::make_unique<TomasuloICacheView>();
+    m_views[panelIndex(Panel::DCache)] = std::make_unique<TomasuloDCacheView>();
+    m_views[panelIndex(Panel::Registers)] = std::make_unique<TomasuloRegistersView>();
+    m_views[panelIndex(Panel::ROB)] = std::make_unique<TomasuloROBView>();
+    m_views[panelIndex(Panel::DataAnalysis)] = std::make_unique<TomasuloAnalysisView>();
 }
 
 ITomasuloView* CpuTomasuloState::getView(Panel panel) {
