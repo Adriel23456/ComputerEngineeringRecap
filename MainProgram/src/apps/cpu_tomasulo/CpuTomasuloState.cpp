@@ -1,6 +1,13 @@
 /**
  * @file CpuTomasuloState.cpp
  * @brief Implementation of CpuTomasuloState.
+ *
+ * Key responsibilities:
+ * 1. buildAllViews()    — Instantiates all panel views
+ * 2. bindDataSources()  — Points table widgets at simulation data
+ * 3. wireCallbacks()    — Connects UI buttons to async controller
+ * 4. pollResults()      — Dispatches completed async results to views
+ * 5. renderContentPanel — Locks sim mutex for data-dependent panels
  */
 
 #include "apps/cpu_tomasulo/CpuTomasuloState.h"
@@ -17,6 +24,7 @@
 #include <imgui.h>
 #include <iostream>
 #include <algorithm>
+#include <mutex>
 
  // ============================================================================
  // Placeholder View
@@ -27,12 +35,10 @@ namespace {
     class PlaceholderView : public ITomasuloView {
     public:
         explicit PlaceholderView(const char* name) : m_name(name) {}
-
         void render() override {
             ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
                 "%s — (not yet implemented)", m_name);
         }
-
     private:
         const char* m_name;
     };
@@ -47,9 +53,14 @@ CpuTomasuloState::CpuTomasuloState(StateManager* sm, sf::RenderWindow* win)
     : State(sm, win)
 {
     buildAllViews();
+    m_controller.start();     // Start worker thread
+    bindDataSources();        // Point table widgets → simulation data
+    wireCallbacks();          // Connect UI buttons → async controller
 }
 
-CpuTomasuloState::~CpuTomasuloState() = default;
+CpuTomasuloState::~CpuTomasuloState() {
+    m_controller.stop();      // Join worker thread before views are destroyed
+}
 
 // ============================================================================
 // View Management
@@ -71,16 +82,109 @@ ITomasuloView* CpuTomasuloState::getView(Panel panel) {
 }
 
 // ============================================================================
+// Data Source Binding  (table widgets → simulation data, single source of truth)
+// ============================================================================
+
+void CpuTomasuloState::bindDataSources() {
+
+    // RAM table reads directly from simulation RAM
+    if (auto* ramView = dynamic_cast<TomasuloRAMView*>(getView(Panel::RAM))) {
+        ramView->getTable().bindDataSource(&m_controller.cpu().ram());
+    }
+
+    // Register table reads directly from simulation register file
+    if (auto* regView = dynamic_cast<TomasuloRegistersView*>(getView(Panel::Registers))) {
+        regView->getTable().bindDataSource(&m_controller.cpu().registers());
+    }
+}
+
+// ============================================================================
+// Callback Wiring  (UI buttons → async controller)
+// ============================================================================
+
+void CpuTomasuloState::wireCallbacks() {
+
+    // ── Compile button ──────────────────────────────────────────
+    if (auto* cv = dynamic_cast<TomasuloCompilerView*>(getView(Panel::Compiler))) {
+        cv->setCompileCallback([this](const std::string& source) {
+            m_controller.requestCompile(source);
+            });
+    }
+
+    // ── RAM Reset button ────────────────────────────────────────
+    if (auto* rv = dynamic_cast<TomasuloRAMView*>(getView(Panel::RAM))) {
+
+        rv->setResetCallback([this]() {
+            m_controller.requestResetRAM();
+            });
+
+        // ── RAM Load .bin button ────────────────────────────────
+        rv->setLoadBinaryCallback([this](const std::string& path) {
+            m_controller.requestLoadBinary(path);
+            });
+    }
+}
+
+// ============================================================================
+// Result Polling  (worker thread → UI dispatch)
+// ============================================================================
+
+void CpuTomasuloState::pollResults() {
+    if (!m_controller.hasResult()) return;
+
+    SimTaskResult result = m_controller.consumeResult();
+
+    switch (result.type) {
+
+    case SimTask::Type::Compile: {
+        if (auto* cv = dynamic_cast<TomasuloCompilerView*>(getView(Panel::Compiler))) {
+            cv->setCompileMessage(result.message, 6.0f);
+            // Clear the "Compiling..." state
+            // (m_isCompiling is private, so we just overwrite the message)
+        }
+        break;
+    }
+
+    case SimTask::Type::LoadBinary: {
+        if (auto* rv = dynamic_cast<TomasuloRAMView*>(getView(Panel::RAM))) {
+            rv->setStatusMessage(result.message, 6.0f);
+        }
+        break;
+    }
+
+    case SimTask::Type::Reset: {
+        if (auto* rv = dynamic_cast<TomasuloRAMView*>(getView(Panel::RAM))) {
+            rv->setStatusMessage(result.message, 3.0f);
+        }
+        break;
+    }
+
+    } // switch
+}
+
+// ============================================================================
+// Sim-lock Query
+// ============================================================================
+
+bool CpuTomasuloState::panelNeedsSimLock(Panel p) const {
+    return p == Panel::RAM || p == Panel::Registers;
+    // Extend this as more views read from simulation (caches, ROB, etc.)
+}
+
+// ============================================================================
 // State Interface
 // ============================================================================
 
 void CpuTomasuloState::handleEvent(sf::Event& event) {
-    if (auto* view = getView(m_selectedPanel)) {
+    if (auto* view = getView(m_selectedPanel))
         view->handleEvent(event);
-    }
 }
 
 void CpuTomasuloState::update(float deltaTime) {
+    // 1. Poll async results from the simulation worker
+    pollResults();
+
+    // 2. Update all views (timers, animations, etc.)
     for (auto& view : m_views) {
         if (view) view->update(deltaTime);
     }
@@ -158,7 +262,7 @@ void CpuTomasuloState::renderSidebar(float width, float height) {
 }
 
 // ============================================================================
-// Content Panel
+// Content Panel  (locks sim mutex for data-dependent views)
 // ============================================================================
 
 void CpuTomasuloState::renderContentPanel(float width, float height) {
@@ -168,7 +272,20 @@ void CpuTomasuloState::renderContentPanel(float width, float height) {
     ImGui::BeginChild("##TomasuloContent", ImVec2(width, height), true, flags);
 
     if (auto* view = getView(m_selectedPanel)) {
+
+        // Lock the simulation mutex for views that read sim data
+        // so the worker thread can't modify data mid-render.
+        bool locked = false;
+        if (panelNeedsSimLock(m_selectedPanel)) {
+            m_controller.mutex().lock();
+            locked = true;
+        }
+
         view->render();
+
+        if (locked) {
+            m_controller.mutex().unlock();
+        }
     }
 
     ImGui::EndChild();
@@ -196,6 +313,7 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.12f, 0.12f, 1.0f));
     if (ImGui::Button("RESET", ImVec2(wReset, BUTTON_HEIGHT))) {
         m_cycleCount = 0;
+        m_controller.requestReset();
         std::cout << "[Tomasulo] RESET pressed\n";
     }
     ImGui::PopStyleColor(3);
@@ -219,7 +337,8 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
         ImGui::PushItemWidth(inputWidth);
         int tmp = m_untilSteps;
         ImGui::InputScalar("##tomasulo_until_steps", ImGuiDataType_S32, &tmp,
-            nullptr, nullptr, nullptr, ImGuiInputTextFlags_CharsDecimal);
+            nullptr, nullptr, nullptr,
+            ImGuiInputTextFlags_CharsDecimal);
         if (tmp < 1) tmp = 1;
         m_untilSteps = tmp;
         ImGui::PopItemWidth();
@@ -297,9 +416,7 @@ bool CpuTomasuloState::createSidebarButton(const char* label, bool selected,
     bool clicked = ImGui::Button(label, ImVec2(width, height));
     ImGui::SetWindowFontScale(1.0f);
 
-    if (selected) {
-        ImGui::PopStyleColor(3);
-    }
+    if (selected) ImGui::PopStyleColor(3);
 
     return clicked;
 }
