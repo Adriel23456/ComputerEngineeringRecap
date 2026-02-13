@@ -224,7 +224,7 @@ void TomasuloSimController::processTask(const SimTask& task) {
             }
 
             std::ostringstream oss;
-            oss << "Success — Loaded " << written << " word(s) from 0x"
+            oss << "Success - Loaded " << written << " word(s) from 0x"
                 << std::hex << startAddr << std::dec << ".";
             result.success = true;
             result.message = oss.str();
@@ -242,7 +242,7 @@ void TomasuloSimController::processTask(const SimTask& task) {
         std::lock_guard<std::mutex> simLock(m_simMutex);
         m_cpu.reset();
         result.success = true;
-        result.message = "Success — CPU reset.";
+        result.message = "Success - CPU reset.";
         break;
     }
 
@@ -250,7 +250,7 @@ void TomasuloSimController::processTask(const SimTask& task) {
         std::lock_guard<std::mutex> simLock(m_simMutex);
         m_cpu.resetRAMOnly();
         result.success = true;
-        result.message = "Success — RAM reset.";
+        result.message = "Success - RAM reset.";
         break;
     }
 

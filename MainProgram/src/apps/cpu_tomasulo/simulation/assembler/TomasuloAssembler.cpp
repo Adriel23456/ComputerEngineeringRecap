@@ -448,7 +448,7 @@ AssemblyResult TomasuloAssembler::assemble(const std::string& source) const {
 
     if (result.errors.empty()) {
         result.success = true;
-        result.summary = "Success — " + std::to_string(result.instructions.size())
+        result.summary = "Success - " + std::to_string(result.instructions.size())
             + " instruction(s) assembled.";
     }
     else {

@@ -5,7 +5,7 @@
  * @brief Register file visualization table widget for Tomasulo CPU.
  *
  * Pure renderer — reads from a bound TomasuloRegisterFile data source.
- * Does NOT store its own copy of register values.
+ * Displays Value, Qi tag, Qi_valid status, plus Hex/Decimal/Double views.
  *
  * The caller MUST hold the simulation mutex while calling render().
  *
@@ -18,26 +18,18 @@
 #include <cstdint>
 #include <string>
 
-class TomasuloRegisterFile;   // forward declaration — simulation layer
+class TomasuloRegisterFile;
 
 /**
  * @class TomasuloRegTable
- * @brief Table widget for rendering Tomasulo CPU registers.
+ * @brief Table widget for rendering Tomasulo CPU registers with rename tags.
  *
- * Features:
- * - 16 registers with 4-bit binary codes
- * - Reads directly from TomasuloRegisterFile (single source of truth)
- * - Hex, Decimal, Double columns
- * - Context menu to copy values
+ * Columns: Register | Qi | Qi Valid | Hex Value | Decimal | Double
  */
 class TomasuloRegTable {
 public:
     static constexpr int kRegCount = 16;
 
-    /**
-     * @enum RegIndex
-     * @brief Register indices matching 4-bit binary encoding.
-     */
     enum RegIndex : int {
         REG0 = 0, REG1 = 1, REG2 = 2, REG3 = 3,
         REG4 = 4, REG5 = 5, REG6 = 6, REG7 = 7,
@@ -50,28 +42,12 @@ public:
 
     TomasuloRegTable();
 
-    // ── Data source binding ─────────────────────────────────────
-
-    /**
-     * @brief Binds the register data source for rendering.
-     * @param regs  Pointer to simulation register file.
-     */
     void bindDataSource(const TomasuloRegisterFile* regs);
-
-    // ── Rendering ───────────────────────────────────────────────
-
-    /**
-     * @brief Renders the register table.
-     *
-     * PRECONDITION: The caller holds the simulation mutex.
-     *
-     * @param id  ImGui widget ID.
-     */
     void render(const char* id);
 
 private:
     const TomasuloRegisterFile* m_dataSource = nullptr;
-    std::array<std::string, kRegCount> m_names{};   ///< Display names (constant)
+    std::array<std::string, kRegCount> m_names{};
 
     static std::string formatHex(uint64_t v);
 };

@@ -10,7 +10,7 @@ void TomasuloRegistersView::render() {
     ImVec2 available = ImGui::GetContentRegionAvail();
 
     ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f),
-        "Register File (16 x 64-bit)");
+        "Register File (16 x 64-bit) - Tomasulo Rename Tags");
     ImGui::Separator();
     ImGui::Dummy(ImVec2(1, 5));
 

@@ -17,22 +17,61 @@ TomasuloRegisterFile::TomasuloRegisterFile() {
 }
 
 void TomasuloRegisterFile::reset() {
-    m_regs.fill(0x0000000000000000ULL);
-    m_regs[LOWER] = 0xFFFFFFFFFFFFFFFFULL; // default for LOWER
+    for (auto& r : m_regs) {
+        r.value = 0x0000000000000000ULL;
+        r.qi = 0;
+        r.qi_valid = false;
+    }
+    m_regs[LOWER].value = 0xFFFFFFFFFFFFFFFFULL;
 }
 
 // ============================================================================
-// Index access
+// Value access (backward-compatible)
 // ============================================================================
 
 uint64_t TomasuloRegisterFile::get(int idx) const {
     if (idx < 0 || idx >= kCount) return 0;
-    return m_regs[idx];
+    return m_regs[idx].value;
 }
 
 void TomasuloRegisterFile::set(int idx, uint64_t value) {
     if (idx >= 0 && idx < kCount)
-        m_regs[idx] = value;
+        m_regs[idx].value = value;
+}
+
+// ============================================================================
+// Full entry access
+// ============================================================================
+
+const TomasuloRegEntry& TomasuloRegisterFile::getEntry(int idx) const {
+    static const TomasuloRegEntry kEmpty{};
+    if (idx < 0 || idx >= kCount) return kEmpty;
+    return m_regs[idx];
+}
+
+TomasuloRegEntry& TomasuloRegisterFile::getEntry(int idx) {
+    return m_regs[idx]; // caller is responsible for bounds
+}
+
+// ============================================================================
+// Tag access
+// ============================================================================
+
+uint8_t TomasuloRegisterFile::getQi(int idx) const {
+    if (idx < 0 || idx >= kCount) return 0;
+    return m_regs[idx].qi;
+}
+
+bool TomasuloRegisterFile::getQiValid(int idx) const {
+    if (idx < 0 || idx >= kCount) return false;
+    return m_regs[idx].qi_valid;
+}
+
+void TomasuloRegisterFile::setQi(int idx, uint8_t qi, bool valid) {
+    if (idx >= 0 && idx < kCount) {
+        m_regs[idx].qi = qi;
+        m_regs[idx].qi_valid = valid;
+    }
 }
 
 // ============================================================================
@@ -42,13 +81,13 @@ void TomasuloRegisterFile::set(int idx, uint64_t value) {
 uint64_t TomasuloRegisterFile::getByName(const std::string& name) const {
     int idx = nameToIndex(name);
     if (idx < 0) throw std::runtime_error("Unknown register name: " + name);
-    return m_regs[idx];
+    return m_regs[idx].value;
 }
 
 void TomasuloRegisterFile::setByName(const std::string& name, uint64_t value) {
     int idx = nameToIndex(name);
     if (idx < 0) throw std::runtime_error("Unknown register name: " + name);
-    m_regs[idx] = value;
+    m_regs[idx].value = value;
 }
 
 // ============================================================================

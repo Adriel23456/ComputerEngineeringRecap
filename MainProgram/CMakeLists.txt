@@ -287,17 +287,78 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/cuda/CudaTest.cuh"
 
     # ==========================================================
-    # ===================== CPU TOMASULO UI ====================
+    # ======================= CPU TOMASULO =====================
     # ==========================================================
-    "include/apps/cpu_tomasulo/ui/views/ITomasuloView.h"
+
+    # ------------------------- APP ROOT -----------------------
     "include/apps/cpu_tomasulo/CpuTomasuloState.h"
     "src/apps/cpu_tomasulo/CpuTomasuloState.cpp"
     "src/apps/cpu_tomasulo/CpuTomasuloStateFactory.cpp"
+
+    # ==========================================================
+    # ========================= SIMULATION =====================
+    # ==========================================================
+
+    # ------------------------ ASSEMBLER -----------------------
+    "include/apps/cpu_tomasulo/simulation/assembler/TomasuloAssembler.h"
+    "src/apps/cpu_tomasulo/simulation/assembler/TomasuloAssembler.cpp"
+
+    # -------------------------- MEMORY ------------------------
+    "include/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.h"
+    "src/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.cpp"
+
+    # ------------------------- PROCESSOR ----------------------
+    "include/apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.h"
+    "src/apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.cpp"
+
+    # --------------------------- CORE -------------------------
+    "include/apps/cpu_tomasulo/simulation/TomasuloCPU.h"
+    "src/apps/cpu_tomasulo/simulation/TomasuloCPU.cpp"
+    "include/apps/cpu_tomasulo/simulation/TomasuloSimController.h"
+    "src/apps/cpu_tomasulo/simulation/TomasuloSimController.cpp"
+
+    # ==========================================================
+    # ============================ UI ==========================
+    # ==========================================================
+
+    # --------------------------- VIEWS ------------------------
+    "include/apps/cpu_tomasulo/ui/views/ITomasuloView.h"
     "include/apps/cpu_tomasulo/ui/views/TomasuloMainView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloMainView.cpp"
     "include/apps/cpu_tomasulo/ui/views/TomasuloCompilerView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloCompilerView.cpp"
- "include/apps/cpu_tomasulo/ui/components/Camera2D.h" "src/apps/cpu_tomasulo/ui/components/Camera2D.cpp" "include/apps/cpu_tomasulo/ui/components/ShaderBackground.h" "src/apps/cpu_tomasulo/ui/components/ShaderBackground.cpp" "include/apps/cpu_tomasulo/ui/components/BorderRenderer.h" "src/apps/cpu_tomasulo/ui/components/BorderRenderer.cpp" "include/apps/cpu_tomasulo/ui/components/SlotOverlayRenderer.h" "include/apps/cpu_tomasulo/ui/widgets/TomasuloRamTable.h" "src/apps/cpu_tomasulo/ui/widgets/TomasuloRamTable.cpp" "include/apps/cpu_tomasulo/ui/views/TomasuloRAMView.h" "src/apps/cpu_tomasulo/ui/views/TomasuloRAMView.cpp" "include/apps/cpu_tomasulo/ui/widgets/CacheTable.h" "src/apps/cpu_tomasulo/ui/widgets/CacheTable.cpp" "include/apps/cpu_tomasulo/ui/views/TomasuloICacheView.h" "src/apps/cpu_tomasulo/ui/views/TomasuloICacheView.cpp" "include/apps/cpu_tomasulo/ui/views/TomasuloDCacheView.h" "src/apps/cpu_tomasulo/ui/views/TomasuloDCacheView.cpp" "include/apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.h" "src/apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.cpp" "include/apps/cpu_tomasulo/ui/views/TomasuloRegistersView.h" "src/apps/cpu_tomasulo/ui/views/TomasuloRegistersView.cpp" "include/apps/cpu_tomasulo/ui/widgets/ROBTable.h" "src/apps/cpu_tomasulo/ui/widgets/ROBTable.cpp" "include/apps/cpu_tomasulo/ui/views/TomasuloROBView.h" "src/apps/cpu_tomasulo/ui/views/TomasuloROBView.cpp" "include/apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.h" "src/apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.cpp" "include/apps/cpu_tomasulo/simulation/assembler/TomasuloAssembler.h" "src/apps/cpu_tomasulo/simulation/assembler/TomasuloAssembler.cpp" "include/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.h" "src/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.cpp" "include/apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.h" "src/apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.cpp" "include/apps/cpu_tomasulo/simulation/TomasuloCPU.h" "src/apps/cpu_tomasulo/simulation/TomasuloCPU.cpp"   "include/apps/cpu_tomasulo/simulation/TomasuloSimController.h" "src/apps/cpu_tomasulo/simulation/TomasuloSimController.cpp")
+    "include/apps/cpu_tomasulo/ui/views/TomasuloRAMView.h"
+    "src/apps/cpu_tomasulo/ui/views/TomasuloRAMView.cpp"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloICacheView.h"
+    "src/apps/cpu_tomasulo/ui/views/TomasuloICacheView.cpp"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloDCacheView.h"
+    "src/apps/cpu_tomasulo/ui/views/TomasuloDCacheView.cpp"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloRegistersView.h"
+    "src/apps/cpu_tomasulo/ui/views/TomasuloRegistersView.cpp"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloROBView.h"
+    "src/apps/cpu_tomasulo/ui/views/TomasuloROBView.cpp"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.h"
+    "src/apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.cpp"
+
+    # -------------------------- WIDGETS -----------------------
+    "include/apps/cpu_tomasulo/ui/widgets/TomasuloRamTable.h"
+    "src/apps/cpu_tomasulo/ui/widgets/TomasuloRamTable.cpp"
+    "include/apps/cpu_tomasulo/ui/widgets/CacheTable.h"
+    "src/apps/cpu_tomasulo/ui/widgets/CacheTable.cpp"
+    "include/apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.h"
+    "src/apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.cpp"
+    "include/apps/cpu_tomasulo/ui/widgets/ROBTable.h"
+    "src/apps/cpu_tomasulo/ui/widgets/ROBTable.cpp"
+
+    # ------------------------- COMPONENTS ---------------------
+    "include/apps/cpu_tomasulo/ui/components/Camera2D.h"
+    "src/apps/cpu_tomasulo/ui/components/Camera2D.cpp"
+    "include/apps/cpu_tomasulo/ui/components/ShaderBackground.h"
+    "src/apps/cpu_tomasulo/ui/components/ShaderBackground.cpp"
+    "include/apps/cpu_tomasulo/ui/components/BorderRenderer.h"
+    "src/apps/cpu_tomasulo/ui/components/BorderRenderer.cpp"
+    "include/apps/cpu_tomasulo/ui/components/SlotOverlayRenderer.h"
+)
 
 # Build definitions depending on build type
 if(PRODUCTION_BUILD)
