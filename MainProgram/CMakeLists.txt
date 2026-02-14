@@ -285,80 +285,110 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     # ----------------------------- CUDA ------------------------
     "src/cuda/CudaTest.cu"
     "include/cuda/CudaTest.cuh"
-
+    
     # ==========================================================
     # ======================= CPU TOMASULO =====================
     # ==========================================================
 
     # ------------------------- APP ROOT -----------------------
-    "include/apps/cpu_tomasulo/CpuTomasuloState.h"
     "src/apps/cpu_tomasulo/CpuTomasuloState.cpp"
     "src/apps/cpu_tomasulo/CpuTomasuloStateFactory.cpp"
+    "include/apps/cpu_tomasulo/CpuTomasuloState.h"
 
     # ==========================================================
     # ========================= SIMULATION =====================
     # ==========================================================
 
     # ------------------------ ASSEMBLER -----------------------
-    "include/apps/cpu_tomasulo/simulation/assembler/TomasuloAssembler.h"
     "src/apps/cpu_tomasulo/simulation/assembler/TomasuloAssembler.cpp"
+    "include/apps/cpu_tomasulo/simulation/assembler/TomasuloAssembler.h"
 
     # -------------------------- MEMORY ------------------------
-    "include/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.h"
     "src/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.cpp"
+    "include/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.h"
 
     # ------------------------- PROCESSOR ----------------------
-    "include/apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.h"
     "src/apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.cpp"
+    "include/apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.h"
 
     # --------------------------- CORE -------------------------
-    "include/apps/cpu_tomasulo/simulation/TomasuloCPU.h"
     "src/apps/cpu_tomasulo/simulation/TomasuloCPU.cpp"
-    "include/apps/cpu_tomasulo/simulation/TomasuloSimController.h"
     "src/apps/cpu_tomasulo/simulation/TomasuloSimController.cpp"
+    "include/apps/cpu_tomasulo/simulation/TomasuloCPU.h"
+    "include/apps/cpu_tomasulo/simulation/TomasuloSimController.h"
+
+    # ------------------------- PIPELINE -----------------------
+    "src/apps/cpu_tomasulo/simulation/pipeline/PC_C.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/PC_MUX.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/PC_Adder.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/TomasuloCycleCoordinator.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/I_Cache.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/Instruction_Decoder.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/Extends.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/Control_Unit.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/RegisterFilePipeline.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/ROB.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/Flags_Unit.cpp"
+
+    "include/apps/cpu_tomasulo/simulation/pipeline/TomasuloBus.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/ITomasuloComponent.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/PC_C.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/PC_MUX.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/PC_Adder.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/TomasuloCycleCoordinator.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/I_Cache.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/Instruction_Decoder.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/Extends.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/Control_Unit.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/RegisterFilePipeline.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/ROB.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/Flags_Unit.h"
 
     # ==========================================================
     # ============================ UI ==========================
     # ==========================================================
 
     # --------------------------- VIEWS ------------------------
-    "include/apps/cpu_tomasulo/ui/views/ITomasuloView.h"
-    "include/apps/cpu_tomasulo/ui/views/TomasuloMainView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloMainView.cpp"
-    "include/apps/cpu_tomasulo/ui/views/TomasuloCompilerView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloCompilerView.cpp"
-    "include/apps/cpu_tomasulo/ui/views/TomasuloRAMView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloRAMView.cpp"
-    "include/apps/cpu_tomasulo/ui/views/TomasuloICacheView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloICacheView.cpp"
-    "include/apps/cpu_tomasulo/ui/views/TomasuloDCacheView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloDCacheView.cpp"
-    "include/apps/cpu_tomasulo/ui/views/TomasuloRegistersView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloRegistersView.cpp"
-    "include/apps/cpu_tomasulo/ui/views/TomasuloROBView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloROBView.cpp"
-    "include/apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.h"
     "src/apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.cpp"
 
+    "include/apps/cpu_tomasulo/ui/views/ITomasuloView.h"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloMainView.h"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloCompilerView.h"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloRAMView.h"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloICacheView.h"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloDCacheView.h"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloRegistersView.h"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloROBView.h"
+    "include/apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.h"
+
     # -------------------------- WIDGETS -----------------------
-    "include/apps/cpu_tomasulo/ui/widgets/TomasuloRamTable.h"
     "src/apps/cpu_tomasulo/ui/widgets/TomasuloRamTable.cpp"
-    "include/apps/cpu_tomasulo/ui/widgets/CacheTable.h"
     "src/apps/cpu_tomasulo/ui/widgets/CacheTable.cpp"
-    "include/apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.h"
     "src/apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.cpp"
-    "include/apps/cpu_tomasulo/ui/widgets/ROBTable.h"
     "src/apps/cpu_tomasulo/ui/widgets/ROBTable.cpp"
 
+    "include/apps/cpu_tomasulo/ui/widgets/TomasuloRamTable.h"
+    "include/apps/cpu_tomasulo/ui/widgets/CacheTable.h"
+    "include/apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.h"
+    "include/apps/cpu_tomasulo/ui/widgets/ROBTable.h"
+
     # ------------------------- COMPONENTS ---------------------
-    "include/apps/cpu_tomasulo/ui/components/Camera2D.h"
     "src/apps/cpu_tomasulo/ui/components/Camera2D.cpp"
-    "include/apps/cpu_tomasulo/ui/components/ShaderBackground.h"
     "src/apps/cpu_tomasulo/ui/components/ShaderBackground.cpp"
-    "include/apps/cpu_tomasulo/ui/components/BorderRenderer.h"
     "src/apps/cpu_tomasulo/ui/components/BorderRenderer.cpp"
+
+    "include/apps/cpu_tomasulo/ui/components/Camera2D.h"
+    "include/apps/cpu_tomasulo/ui/components/ShaderBackground.h"
+    "include/apps/cpu_tomasulo/ui/components/BorderRenderer.h"
     "include/apps/cpu_tomasulo/ui/components/SlotOverlayRenderer.h"
-)
+ "include/apps/cpu_tomasulo/simulation/pipeline/StoreBuffer.h" "include/apps/cpu_tomasulo/simulation/pipeline/SB0.h" "include/apps/cpu_tomasulo/simulation/pipeline/SB1.h" "src/apps/cpu_tomasulo/simulation/pipeline/StoreBuffer.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/SB0.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/SB1.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/LoadBuffer.h" "include/apps/cpu_tomasulo/simulation/pipeline/LB0.h" "include/apps/cpu_tomasulo/simulation/pipeline/LB1.h" "include/apps/cpu_tomasulo/simulation/pipeline/LB2.h" "src/apps/cpu_tomasulo/simulation/pipeline/LoadBuffer.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/LB0.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/LB1.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/LB2.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/ReservationStation.h" "src/apps/cpu_tomasulo/simulation/pipeline/ReservationStation.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/RS_IntALU0.h" "include/apps/cpu_tomasulo/simulation/pipeline/RS_IntALU1.h" "include/apps/cpu_tomasulo/simulation/pipeline/RS_FPALU0.h" "include/apps/cpu_tomasulo/simulation/pipeline/RS_IntMUL0.h" "include/apps/cpu_tomasulo/simulation/pipeline/RS_FPMUL0.h" "include/apps/cpu_tomasulo/simulation/pipeline/RS_Branch0.h" "src/apps/cpu_tomasulo/simulation/pipeline/RS_Branch0.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/RS_IntALU0.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/RS_IntALU1.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/RS_FPALU0.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/RS_IntMUL0.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/RS_FPMUL0.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/AGU_Arbiter.h" "src/apps/cpu_tomasulo/simulation/pipeline/AGU_Arbiter.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/AGU.h" "src/apps/cpu_tomasulo/simulation/pipeline/AGU.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/AGU_0.h" "include/apps/cpu_tomasulo/simulation/pipeline/AGU_1.h" "src/apps/cpu_tomasulo/simulation/pipeline/AGU_0.cpp" "src/apps/cpu_tomasulo/simulation/pipeline/AGU_1.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/IntALU_Arbiter.h" "src/apps/cpu_tomasulo/simulation/pipeline/IntALU_Arbiter.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/FPALU_Arbiter.h" "src/apps/cpu_tomasulo/simulation/pipeline/FPALU_Arbiter.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/IntMUL_Arbiter.h" "src/apps/cpu_tomasulo/simulation/pipeline/IntMUL_Arbiter.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/FPMUL_Arbiter.h" "src/apps/cpu_tomasulo/simulation/pipeline/FPMUL_Arbiter.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/Branch_Arbiter.h" "src/apps/cpu_tomasulo/simulation/pipeline/Branch_Arbiter.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/IntALU.h" "src/apps/cpu_tomasulo/simulation/pipeline/IntALU.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/FPALU.h" "src/apps/cpu_tomasulo/simulation/pipeline/FPALU.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/IntMUL.h" "src/apps/cpu_tomasulo/simulation/pipeline/IntMUL.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/FPMUL.h" "src/apps/cpu_tomasulo/simulation/pipeline/FPMUL.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/Branch_Executor.h" "src/apps/cpu_tomasulo/simulation/pipeline/Branch_Executor.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/CDB_Arbiter.h" "src/apps/cpu_tomasulo/simulation/pipeline/CDB_Arbiter.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/CDB.h" "src/apps/cpu_tomasulo/simulation/pipeline/CDB.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/Memory_Arbiter.h" "src/apps/cpu_tomasulo/simulation/pipeline/Memory_Arbiter.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/D_Cache.h" "src/apps/cpu_tomasulo/simulation/pipeline/D_Cache.cpp" "include/apps/cpu_tomasulo/simulation/pipeline/Commit_Unit.h" "src/apps/cpu_tomasulo/simulation/pipeline/Commit_Unit.cpp")
 
 # Build definitions depending on build type
 if(PRODUCTION_BUILD)

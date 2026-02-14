@@ -57,7 +57,7 @@ void Camera2D::handleInput(const ImVec2& canvasP0,
 
     const float oldScale = fitScale * m_zoomTarget;
 
-    // ── Double-right-click → reset ────────────────────────────
+    // ── Double-right-click -> reset ────────────────────────────
     if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Right)) {
         reset();
         return;
@@ -178,8 +178,8 @@ void Camera2D::clampTarget(float worldW, float worldH,
 
     // visible world X range: [centerTarget.x - halfViewW, centerTarget.x + halfViewW]
     // must overlap [0, worldW] by at least overlapW.
-    //   centerTarget.x + halfViewW > overlapW       → min
-    //   centerTarget.x - halfViewW < worldW - overlapW → max
+    //   centerTarget.x + halfViewW > overlapW       -> min
+    //   centerTarget.x - halfViewW < worldW - overlapW -> max
     const float minCX = overlapW - halfViewW;
     const float maxCX = worldW - overlapW + halfViewW;
     const float minCY = overlapH - halfViewH;

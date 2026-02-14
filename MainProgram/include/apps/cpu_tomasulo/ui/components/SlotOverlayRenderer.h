@@ -19,10 +19,10 @@ public:
         const char* name;
     };
 
-    /// Signature: (slotIndex) → ImU32 border color
+    /// Signature: (slotIndex) -> ImU32 border color
     using ColorCallback = std::function<ImU32(int)>;
 
-    /// Draw all slot overlays.  `origin` and `scale` define world→screen.
+    /// Draw all slot overlays.  `origin` and `scale` define world->screen.
     template <std::size_t N>
     void draw(ImDrawList* dl,
         const ImVec2& origin,

@@ -64,8 +64,8 @@ private:
     static constexpr size_t PANEL_COUNT = static_cast<size_t>(Panel::COUNT);
 
     void buildAllViews();
-    void bindDataSources();    ///< Points table widgets → simulation data
-    void wireCallbacks();      ///< Connects buttons → async controller
+    void bindDataSources();    ///< Points table widgets -> simulation data
+    void wireCallbacks();      ///< Connects buttons -> async controller
     void pollResults();        ///< Checks for completed async tasks
 
     /** @brief True if the selected panel reads simulation state. */

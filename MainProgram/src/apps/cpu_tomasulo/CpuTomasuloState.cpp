@@ -54,8 +54,8 @@ CpuTomasuloState::CpuTomasuloState(StateManager* sm, sf::RenderWindow* win)
 {
     buildAllViews();
     m_controller.start();     // Start worker thread
-    bindDataSources();        // Point table widgets → simulation data
-    wireCallbacks();          // Connect UI buttons → async controller
+    bindDataSources();        // Point table widgets -> simulation data
+    wireCallbacks();          // Connect UI buttons -> async controller
 }
 
 CpuTomasuloState::~CpuTomasuloState() {
@@ -82,7 +82,7 @@ ITomasuloView* CpuTomasuloState::getView(Panel panel) {
 }
 
 // ============================================================================
-// Data Source Binding  (table widgets → simulation data, single source of truth)
+// Data Source Binding  (table widgets -> simulation data, single source of truth)
 // ============================================================================
 
 void CpuTomasuloState::bindDataSources() {
@@ -99,7 +99,7 @@ void CpuTomasuloState::bindDataSources() {
 }
 
 // ============================================================================
-// Callback Wiring  (UI buttons → async controller)
+// Callback Wiring  (UI buttons -> async controller)
 // ============================================================================
 
 void CpuTomasuloState::wireCallbacks() {
@@ -113,12 +113,9 @@ void CpuTomasuloState::wireCallbacks() {
 
     // ── RAM Reset button ────────────────────────────────────────
     if (auto* rv = dynamic_cast<TomasuloRAMView*>(getView(Panel::RAM))) {
-
         rv->setResetCallback([this]() {
             m_controller.requestResetRAM();
             });
-
-        // ── RAM Load .bin button ────────────────────────────────
         rv->setLoadBinaryCallback([this](const std::string& path) {
             m_controller.requestLoadBinary(path);
             });
@@ -126,7 +123,7 @@ void CpuTomasuloState::wireCallbacks() {
 }
 
 // ============================================================================
-// Result Polling  (worker thread → UI dispatch)
+// Result Polling  (worker thread -> UI dispatch)
 // ============================================================================
 
 void CpuTomasuloState::pollResults() {
@@ -134,13 +131,14 @@ void CpuTomasuloState::pollResults() {
 
     SimTaskResult result = m_controller.consumeResult();
 
+    // Update cycle counter from any task that reports it
+    m_cycleCount = result.cycleCount;
+
     switch (result.type) {
 
     case SimTask::Type::Compile: {
         if (auto* cv = dynamic_cast<TomasuloCompilerView*>(getView(Panel::Compiler))) {
             cv->setCompileMessage(result.message, 6.0f);
-            // Clear the "Compiling..." state
-            // (m_isCompiling is private, so we just overwrite the message)
         }
         break;
     }
@@ -152,12 +150,22 @@ void CpuTomasuloState::pollResults() {
         break;
     }
 
-    case SimTask::Type::Reset: {
+    case SimTask::Type::Reset:
+    case SimTask::Type::ResetRAM: {
         if (auto* rv = dynamic_cast<TomasuloRAMView*>(getView(Panel::RAM))) {
             rv->setStatusMessage(result.message, 3.0f);
         }
         break;
     }
+
+    case SimTask::Type::Step:
+    case SimTask::Type::StepUntil:
+    case SimTask::Type::InfiniteStep: {
+        // Cycle count already updated above
+        break;
+    }
+
+    default: break;
 
     } // switch
 }
@@ -306,14 +314,18 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
     float offsetY = (available.y - BUTTON_HEIGHT) * 0.5f;
     if (offsetY > 0.0f) ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
 
+    bool busy = m_controller.isBusy();
+    bool infinite = m_controller.isRunningInfinite();
+
     // --- RESET (red) ---
     float wReset = ImGui::CalcTextSize("RESET").x + TEXT_PADDING;
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.70f, 0.15f, 0.15f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.82f, 0.22f, 0.22f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.12f, 0.12f, 1.0f));
     if (ImGui::Button("RESET", ImVec2(wReset, BUTTON_HEIGHT))) {
-        m_cycleCount = 0;
+        if (infinite) m_controller.requestStopInfinite();
         m_controller.requestReset();
+        m_cycleCount = 0;
         std::cout << "[Tomasulo] RESET pressed\n";
     }
     ImGui::PopStyleColor(3);
@@ -322,9 +334,13 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
 
     // --- STEP ---
     float wStep = ImGui::CalcTextSize("STEP").x + TEXT_PADDING;
+    bool stepDisabled = busy || infinite;
+    if (stepDisabled) ImGui::BeginDisabled();
     if (ImGui::Button("STEP", ImVec2(wStep, BUTTON_HEIGHT))) {
+        m_controller.requestStep();
         std::cout << "[Tomasulo] STEP pressed\n";
     }
+    if (stepDisabled) ImGui::EndDisabled();
 
     ImGui::SameLine(0.0f, GAP);
 
@@ -332,13 +348,11 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
     ImGui::BeginGroup();
     {
         if (m_untilSteps < 1) m_untilSteps = 1;
-
         float inputWidth = available.x * 0.08f;
         ImGui::PushItemWidth(inputWidth);
         int tmp = m_untilSteps;
         ImGui::InputScalar("##tomasulo_until_steps", ImGuiDataType_S32, &tmp,
-            nullptr, nullptr, nullptr,
-            ImGuiInputTextFlags_CharsDecimal);
+            nullptr, nullptr, nullptr, ImGuiInputTextFlags_CharsDecimal);
         if (tmp < 1) tmp = 1;
         m_untilSteps = tmp;
         ImGui::PopItemWidth();
@@ -346,9 +360,12 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
         ImGui::SameLine();
 
         float wStepUntil = ImGui::CalcTextSize("StepUntil").x + TEXT_PADDING;
+        if (stepDisabled) ImGui::BeginDisabled();
         if (ImGui::Button("StepUntil", ImVec2(wStepUntil, BUTTON_HEIGHT))) {
+            m_controller.requestStepUntil(m_untilSteps);
             std::cout << "[Tomasulo] StepUntil " << m_untilSteps << " pressed\n";
         }
+        if (stepDisabled) ImGui::EndDisabled();
     }
     ImGui::EndGroup();
 
@@ -359,18 +376,25 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.55f, 0.20f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.68f, 0.28f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.09f, 0.45f, 0.16f, 1.0f));
+    if (stepDisabled) ImGui::BeginDisabled();
     if (ImGui::Button("InfiniteStep", ImVec2(wInfinite, BUTTON_HEIGHT))) {
+        m_controller.requestInfiniteStep();
         std::cout << "[Tomasulo] InfiniteStep pressed\n";
     }
+    if (stepDisabled) ImGui::EndDisabled();
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine(0.0f, GAP);
 
     // --- STOP ---
     float wStop = ImGui::CalcTextSize("STOP").x + TEXT_PADDING;
+    bool stopDisabled = !infinite;
+    if (stopDisabled) ImGui::BeginDisabled();
     if (ImGui::Button("STOP", ImVec2(wStop, BUTTON_HEIGHT))) {
+        m_controller.requestStopInfinite();
         std::cout << "[Tomasulo] STOP pressed\n";
     }
+    if (stopDisabled) ImGui::EndDisabled();
 
     ImGui::SameLine(0.0f, GAP * 2.0f);
 

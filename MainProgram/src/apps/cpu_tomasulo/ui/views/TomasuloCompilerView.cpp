@@ -2,8 +2,8 @@
  * @file TomasuloCompilerView.cpp
  * @brief Implementation of TomasuloCompilerView.
  *
- * - Load:    Opens file dialog → reads .txt into editor
- * - Save:    Opens file dialog → writes editor text to .txt
+ * - Load:    Opens file dialog -> reads .txt into editor
+ * - Save:    Opens file dialog -> writes editor text to .txt
  * - Compile: Cleans source, invokes async callback
  */
 
@@ -22,14 +22,15 @@ namespace {
     const char* DEFAULT_SOURCE =
         "# Tomasulo CPU assembly example\n"
         "#\n"
-        "# Arithmetic:\n"
-        "#   ADD  REG1, REG2, REG3\n"
-        "#   ADDI REG1, REG2, #10\n"
-        "#   MUL  REG4, REG1, REG5\n"
+        "Arithmetic:\n"
+        "  MOVI  REG2, #1\n"
+        "  MOVI  REG1, #25\n"
+        "  ADDI REG5, REG2, #10\n"
+        "  MUL  REG4, REG1, REG5\n"
         "#\n"
         "# Memory:\n"
-        "#   LDR  REG1, [REG0, #0]\n"
-        "#   STR  REG2, [REG0, #8]\n"
+        "#   LDR  REG1, [REG0, #1000]\n"
+        "#   STR  REG2, [REG0, #1008]\n"
         "#\n"
         "# Branches:\n"
         "#   loop: ADD REG1, REG1, REG2\n"
