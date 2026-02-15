@@ -37,6 +37,7 @@ void ROB::evaluate(TomasuloBus& bus) {
         bus.ROBHeadValue_o = h.value;
         bus.ROBHeadException_o = h.exception;
         bus.ROBHeadPC_o = h.pc;
+        bus.ROBHeadOp_o = h.op;
         bus.ROBHeadFlagsResult_o = h.flagsResult;
         bus.ROBHeadFlagsValid_o = h.flagsValid;
         bus.ROBHeadMispredict_o = h.mispredict;
@@ -49,6 +50,7 @@ void ROB::evaluate(TomasuloBus& bus) {
     else {
         bus.ROBHeadBusy_o = false;
         bus.ROBHeadReady_o = false;
+        bus.ROBHeadOp_o = 0;
     }
 
     // ── Read port 1: lookup by RD1_Qi_o ─────────────────────────
@@ -202,6 +204,7 @@ void ROB::clockEdge(TomasuloBus& bus) {
     }
 
     // ── 6. Allocate new entry at tail ───────────────────────────
+    // ── 6. Allocate new entry at tail ───────────────────────────
     if (bus.ROBAlloc_o && !isFull()) {
         Entry& e = m_entries[m_tail];
         e.busy = true;
@@ -223,6 +226,12 @@ void ROB::clockEdge(TomasuloBus& bus) {
         e.storeData = 0;
         e.storeReady = false;
 
+        // NOP(0x4D) and SWI(0x4C): no execution unit processes these,
+        // so mark ready immediately to prevent blocking commit.
+        if (e.sourceStation == 0x0F) {
+            e.ready = true;
+        }
+
         std::cout << "[ROB] Alloc: ROB#" << (int)m_tail
             << " op=0x" << std::hex << (int)e.op << std::dec
             << " dest=R" << (int)e.destReg
@@ -233,6 +242,34 @@ void ROB::clockEdge(TomasuloBus& bus) {
         m_tail = nextIdx(m_tail);
         m_empty = false;
     }
+}
+
+ROB::EntryView ROB::getEntryView(int idx) const {
+    EntryView v{};
+    if (idx < 0 || idx >= ROB_SIZE) return v;
+    const Entry& e = m_entries[idx];
+    // Core
+    v.busy = e.busy;
+    v.ready = e.ready;
+    v.type = e.type;
+    v.destReg = e.destReg;
+    v.value = e.value;
+    v.exception = e.exception;
+    v.pc = e.pc;
+    v.sourceStation = e.sourceStation;
+    // Flags — THESE ARE THE ONES LIKELY MISSING
+    v.flagsResult = e.flagsResult;
+    v.flagsValid = e.flagsValid;
+    v.modifiesFlags = e.modifiesFlags;
+    // Branch
+    v.predicted = e.predicted;
+    v.mispredict = e.mispredict;
+    v.branchTarget = e.branchTarget;
+    // Store
+    v.storeAddr = e.storeAddr;
+    v.storeData = e.storeData;
+    v.storeReady = e.storeReady;
+    return v;
 }
 
 // ============================================================================

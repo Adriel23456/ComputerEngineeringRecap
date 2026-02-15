@@ -20,36 +20,26 @@ TomasuloCPU::TomasuloCPU()
 
 void TomasuloCPU::buildPipeline() {
     // ── Phase 1: Fetch ──────────────────────────────────────────
-    m_coordinator.addComponent(&m_pcAdder);
-    m_coordinator.addComponent(&m_pcMux);
-    m_coordinator.addComponent(&m_pc);
+    m_coordinator.addComponent(&m_pc);          // 1. PC_C FIRST (outputs fresh PCCurrent_o)
+    m_coordinator.addComponent(&m_pcAdder);     // 2. PC_Adder (reads PCCurrent_o, outputs PCPlus8_o)
+    m_coordinator.addComponent(&m_pcMux);       // 3. PC_MUX (selects PCNext_o)
 
     // ── Phase 2: I-Cache + Decode ───────────────────────────────
     m_coordinator.addComponent(&m_iCache);
     m_coordinator.addComponent(&m_decoder);
-
-    // ── Phase 3: Control + Extends ──────────────────────────────
     m_coordinator.addComponent(&m_extends);
-    m_coordinator.addComponent(&m_controlUnit);
 
-    // ── Phase 4: Register File + ROB + Flags ────────────────────
-    // Order: Flags_Unit first (outputs FlagsQi/FlagsArch for RS capture),
-    //        then RegisterFile (outputs Qi tags and values),
-    //        then ROB (reads Qi tags to provide forwarding values).
-    m_coordinator.addComponent(&m_flagsUnit);     // 11. Flags -> FlagsArch, FlagsQi
-    m_coordinator.addComponent(&m_regFile);        // 9.  Rn,Rm -> values + Qi tags
-    m_coordinator.addComponent(&m_rob);            // 10. Qi -> ROBReadReady, ROBReadValue
+    // ── Phase 3: Operand Read (ROB/RegFile/Flags) ───────────────
+    m_coordinator.addComponent(&m_flagsUnit);
+    m_coordinator.addComponent(&m_regFile);
+    m_coordinator.addComponent(&m_rob);
 
-    // -- Phase 5: Store Buffers (alloc + CDB snoop + AGU req) --
+    // ── Phase 4: RS/Buffers (expose busy flags BEFORE Control_Unit) ─
     m_coordinator.addComponent(&m_sb0);
     m_coordinator.addComponent(&m_sb1);
-
-    // -- Phase 6: Load Buffers (alloc + CDB snoop + AGU req + mem req + CDB pub) --
     m_coordinator.addComponent(&m_lb0);
     m_coordinator.addComponent(&m_lb1);
     m_coordinator.addComponent(&m_lb2);
-
-    // -- Phase 7: Reservation Stations (alloc + CDB snoop + dispatch request) --
     m_coordinator.addComponent(&m_rsIntALU0);
     m_coordinator.addComponent(&m_rsIntALU1);
     m_coordinator.addComponent(&m_rsFPALU0);
@@ -57,12 +47,15 @@ void TomasuloCPU::buildPipeline() {
     m_coordinator.addComponent(&m_rsFPMUL0);
     m_coordinator.addComponent(&m_rsBranch0);
 
-    // -- Phase 8: AGU pipeline --
+    // ── Phase 5: Issue decision ─────────────────────────────────
+    m_coordinator.addComponent(&m_controlUnit);
+
+    // ── Phase 6: AGU ────────────────────────────────────────────
     m_coordinator.addComponent(&m_aguArbiter);
     m_coordinator.addComponent(&m_agu0);
     m_coordinator.addComponent(&m_agu1);
 
-    // -- Phase 9: Execution arbiters -> execution units --
+    // ── Phase 7: Execution ──────────────────────────────────────
     m_coordinator.addComponent(&m_intALUArbiter);
     m_coordinator.addComponent(&m_intALU);
     m_coordinator.addComponent(&m_fpaluArbiter);
@@ -74,16 +67,16 @@ void TomasuloCPU::buildPipeline() {
     m_coordinator.addComponent(&m_branchArbiter);
     m_coordinator.addComponent(&m_branchExecutor);
 
-    // -- Phase 10: CDB arbitration and broadcast --
+    // ── Phase 8: CDB ────────────────────────────────────────────
     m_coordinator.addComponent(&m_cdbArbiter);
     m_coordinator.addComponent(&m_cdbA);
     m_coordinator.addComponent(&m_cdbB);
 
-    // -- Phase 11: Memory subsystem --
+    // ── Phase 9: Memory ─────────────────────────────────────────
     m_coordinator.addComponent(&m_memArbiter);
     m_coordinator.addComponent(&m_dCache);
 
-    // -- Phase 12: Commit (must run AFTER CDB broadcast so ROB is up-to-date) --
+    // ── Phase 10: Commit ────────────────────────────────────────
     m_coordinator.addComponent(&m_commitUnit);
 }
 
@@ -92,7 +85,39 @@ void TomasuloCPU::buildPipeline() {
 // ============================================================================
 
 uint64_t TomasuloCPU::step() {
-    return m_coordinator.executeCycle(m_bus);
+    // SWI committed — CPU is halted until reset
+    if (m_halted) {
+        std::cout << "[TomasuloCPU] CPU halted (SWI). Ignoring step.\n";
+        return m_coordinator.cycleCount();
+    }
+
+    uint64_t c = m_coordinator.executeCycle(m_bus);
+
+    // ── Check for SWI halt ──────────────────────────────────────
+    if (m_bus.Halt_o) {
+        m_halted = true;
+        std::cout << "[TomasuloCPU] SWI executed. CPU halted.\n";
+    }
+
+    // ── Accumulate statistics from bus signals ──────────────────
+    if (m_bus.CommitPop_i) {
+        ++m_stats.committedInstructions;
+        uint8_t type = m_bus.ROBHeadType_o;
+        if (type == 1 || type == 2) {
+            ++m_stats.committedMemoryInstructions;
+        }
+    }
+    if (m_bus.Flush_o) {
+        ++m_stats.branchMispredictions;
+    }
+    if (m_bus.ROBAlloc_o) {
+        uint8_t ss = m_bus.AllocSourceStation_o;
+        if (ss < 11) {
+            ++m_stats.stationUses[ss];
+        }
+    }
+
+    return c;
 }
 
 // ============================================================================
@@ -136,6 +161,8 @@ void TomasuloCPU::reset() {
     m_ram.clear();
     m_registers.reset();
     m_coordinator.resetAll(m_bus);
+    m_stats = Stats{};
+    m_halted = false;
     std::cout << "[TomasuloCPU] Full reset (RAM + Registers + Pipeline).\n";
 }
 

@@ -65,6 +65,11 @@ void D_Cache::evaluate(TomasuloBus& bus) {
 // ============================================================================
 
 void D_Cache::clockEdge(TomasuloBus& bus) {
+    // ── Count stall cycles while miss/writeback is pending ──────
+    if (m_missPending || m_writebackPending) {
+        ++m_missStallCycles;
+    }
+
     bus.DC_Done_o = false;
     bus.DCtoRAM_RdReq_i = false;
     bus.DCtoRAM_WrReq_i = false;
@@ -178,6 +183,7 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
             std::cout << "[D_Cache] Miss: addr=0x" << std::hex << addr
                 << std::dec << "\n";
 
+            ++m_missTotal;
             m_missAddr = alignToLine(addr);
             m_missSet = set;
             m_victimWay = lruWay(set);
@@ -192,7 +198,7 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
             // Check if victim needs writeback
             if (m_lines[set][m_victimWay].valid && m_lines[set][m_victimWay].dirty) {
                 // Writeback dirty victim first
-                uint64_t wbAddr = (m_lines[set][m_victimWay].tag << 11)
+                uint64_t wbAddr = (m_lines[set][m_victimWay].tag << 9)
                     | ((uint64_t)set << 6);
                 bus.DCtoRAM_WrReq_i = true;
                 bus.DCtoRAM_Addr_i = wbAddr;
@@ -214,6 +220,27 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
     }
 }
 
+// UI Implementations:
+bool D_Cache::lineValid(int set, int way) const {
+    if (set < 0 || set >= NUM_SETS || way < 0 || way >= NUM_WAYS) return false;
+    return m_lines[set][way].valid;
+}
+
+bool D_Cache::lineDirty(int set, int way) const {
+    if (set < 0 || set >= NUM_SETS || way < 0 || way >= NUM_WAYS) return false;
+    return m_lines[set][way].dirty;
+}
+
+uint64_t D_Cache::lineTag(int set, int way) const {
+    if (set < 0 || set >= NUM_SETS || way < 0 || way >= NUM_WAYS) return 0;
+    return m_lines[set][way].tag;
+}
+
+const uint8_t* D_Cache::lineData(int set, int way) const {
+    if (set < 0 || set >= NUM_SETS || way < 0 || way >= NUM_WAYS) return nullptr;
+    return m_lines[set][way].data;
+}
+
 void D_Cache::reset() {
     for (int s = 0; s < NUM_SETS; s++) {
         for (int w = 0; w < NUM_WAYS; w++) {
@@ -227,5 +254,7 @@ void D_Cache::reset() {
     m_missPending = false;
     m_writebackPending = false;
     m_pendingReq = false;
+    m_missTotal = 0;
+    m_missStallCycles = 0;
     std::cout << "[D_Cache] reset()\n";
 }

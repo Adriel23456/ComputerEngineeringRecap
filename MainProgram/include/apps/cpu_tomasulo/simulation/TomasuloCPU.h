@@ -83,7 +83,27 @@ public:
 
     const TomasuloBus& bus()              const { return m_bus; }
 
+    const I_Cache& iCache()  const { return m_iCache; }
+    const D_Cache& dCache()  const { return m_dCache; }
+    const ROB& rob()     const { return m_rob; }
+
+    // ── Runtime statistics ──────────────────────────────────────
+    struct Stats {
+        uint64_t committedInstructions = 0;
+        uint64_t committedMemoryInstructions = 0;
+        uint64_t branchMispredictions = 0;
+        uint64_t stationUses[11] = {}; // SB0,SB1,LB0,LB1,LB2,IntALU0,IntALU1,FpALU0,IntMUL0,FpMUL0,Branch0
+    };
+
+    const Stats& stats() const { return m_stats; }
+
+    bool  m_halted = false;
+
+    void resetStats() { m_stats = Stats{}; }
+
 private:
+    Stats m_stats;
+
     void buildPipeline();
 
     // ── Existing simulation data ────────────────────────────────
@@ -145,8 +165,4 @@ private:
     Commit_Unit      m_commitUnit;
     // Phase N: PC_MUX (after Commit sets BranchRedirect)
     PC_MUX               m_pcMux;
-
-    // Future parts: Register_File(pipeline), ROB, Flags, RS, Buffers,
-    //               AGUs, Arbiters, ALUs, CDBs, D_Cache, Memory_Arbiter,
-    //               Commit_Unit
 };

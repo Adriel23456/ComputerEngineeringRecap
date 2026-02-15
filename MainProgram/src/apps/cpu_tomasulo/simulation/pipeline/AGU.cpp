@@ -19,7 +19,7 @@ const char* AGU::idStr() const {
 }
 
 void AGU::evaluate(TomasuloBus& bus) {
-    writeFree(bus, true);  // Always free (combinational, no pipeline)
+    writeFree(bus, true);
     writeDone(bus, false);
 
     if (!readStart(bus)) return;
@@ -30,14 +30,15 @@ void AGU::evaluate(TomasuloBus& bus) {
 
     uint64_t address = base + offset;
 
-    bool segFault = (address < bus.LOWER_o) || (address > bus.UPPER_o);
+    // UPPER = program end (lower bound of data area)
+    // LOWER = memory ceiling (upper bound of data area)
+    bool segFault = (address < bus.UPPER_o) || (address > bus.LOWER_o);
 
     writeDone(bus, true);
     writeAddress(bus, address);
     writeSegFault(bus, segFault);
     writeSourceIDOut(bus, srcID);
 
-    // Route result directly to requesting SB/LB
     routeResult(bus, srcID, address, segFault);
 
     std::cout << "[" << idStr() << "] Computed: 0x" << std::hex << base

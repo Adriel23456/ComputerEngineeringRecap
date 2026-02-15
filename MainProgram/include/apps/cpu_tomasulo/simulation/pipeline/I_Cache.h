@@ -19,7 +19,7 @@ class TomasuloRAM;
 
 class I_Cache : public ITomasuloComponent {
 public:
-    static constexpr int NUM_SETS = 32;
+    static constexpr int NUM_SETS = 8;
     static constexpr int NUM_WAYS = 4;
     static constexpr int LINE_SIZE = 64;   // bytes
     static constexpr int WORDS_PER_LINE = 8;    // 64 / 8
@@ -31,7 +31,20 @@ public:
     void clockEdge(TomasuloBus& bus) override;
     void reset() override;
 
+    // ── UI read access ──────────────────────────────────────────
+    bool     lineValid(int set, int way) const;
+    uint64_t lineTag(int set, int way) const;
+    const uint64_t* lineData(int set, int way) const; // 8 x uint64_t
+    int numSets() const { return NUM_SETS; }
+    int numWays() const { return NUM_WAYS; }
+    int wordsPerLine() const { return WORDS_PER_LINE; }
+    uint64_t missStallCycles() const { return m_missStallCycles; }
+    uint64_t missCount() const { return m_missTotal; }
+
 private:
+    uint64_t m_missTotal = 0;
+    uint64_t m_missStallCycles = 0;
+
     struct CacheLine {
         uint64_t tag = 0;
         uint64_t data[WORDS_PER_LINE] = {};

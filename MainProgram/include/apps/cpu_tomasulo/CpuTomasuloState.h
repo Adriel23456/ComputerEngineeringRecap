@@ -87,4 +87,9 @@ private:
     Panel    m_selectedPanel = Panel::MainView;
     int      m_untilSteps = 1;
     uint64_t m_cycleCount = 0;
+
+    void syncICacheView();
+    void syncDCacheView();
+    void syncROBView();
+    void syncAnalysisView();
 };

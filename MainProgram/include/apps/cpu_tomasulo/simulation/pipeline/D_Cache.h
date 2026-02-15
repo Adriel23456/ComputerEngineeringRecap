@@ -19,8 +19,21 @@ public:
     void clockEdge(TomasuloBus& bus) override;
     void reset() override;
 
+    // ── UI read access ──────────────────────────────────────────
+    bool        lineValid(int set, int way) const;
+    bool        lineDirty(int set, int way) const;
+    uint64_t    lineTag(int set, int way) const;
+    const uint8_t* lineData(int set, int way) const; // 64 bytes
+    int numSets() const { return NUM_SETS; }
+    int numWays() const { return NUM_WAYS; }
+    int lineSizeBytes() const { return LINE_BYTES; }
+    uint64_t missCount() const { return m_missTotal; }
+    uint64_t missStallCycles() const { return m_missStallCycles; }
+
 private:
-    static constexpr int NUM_SETS = 32;
+    uint64_t m_missTotal = 0;
+    uint64_t m_missStallCycles = 0;
+    static constexpr int NUM_SETS = 8;
     static constexpr int NUM_WAYS = 4;
     static constexpr int LINE_BYTES = 64;
     static constexpr int WORDS_PER_LINE = 8;  // 64 / 8
@@ -51,8 +64,8 @@ private:
     uint64_t m_pendingWData = 0;
     uint8_t  m_pendingSize = 0;
 
-    static uint64_t extractTag(uint64_t addr) { return addr >> 11; }
-    static int      extractSet(uint64_t addr) { return (addr >> 6) & 0x1F; }
+    static uint64_t extractTag(uint64_t addr) { return addr >> 9; }
+    static int      extractSet(uint64_t addr) { return (addr >> 6) & 0x7; }
     static int      extractOffset(uint64_t addr) { return addr & 0x3F; }
     static uint64_t alignToLine(uint64_t addr) { return addr & ~(uint64_t)63; }
 

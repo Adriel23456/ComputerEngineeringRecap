@@ -42,6 +42,12 @@ uint64_t Extends::float32ToDouble64Bits(uint32_t imm) {
 void Extends::evaluate(TomasuloBus& bus) {
     bool isFP = bus.IsFPALU_o || bus.IsFPMUL_o;
 
+    // FMOVI(0x35) and FMVNI(0x36) route through IntALU but carry FP immediates
+    uint8_t op = bus.Op_in_o;
+    if (op == 0x35 || op == 0x36) {
+        isFP = true;
+    }
+
     if (isFP) {
         bus.ImmExt_o = float32ToDouble64Bits(bus.Imm_in_o);
     }

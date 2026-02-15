@@ -47,11 +47,11 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
     bus.StoreCommit_Data_o = 0;
     bus.StoreCommit_Op_o = 0;
     bus.BranchRedirect_o = false;
-    bus.BranchRedirect_i = false;  // Wiring to PC_MUX
+    bus.BranchRedirect_i = false;
     bus.BranchTarget_o = 0;
-    bus.BranchTarget_i = 0;      // Wiring to PC_MUX
+    bus.BranchTarget_i = 0;
     bus.Flush_o = false;
-    bus.Flush_PC_i = false;   // Wiring to PC_C
+    bus.Flush_PC_i = false;
     bus.FreeSB0_o = false; bus.FreeSB1_o = false;
     bus.FreeLB0_o = false; bus.FreeLB1_o = false; bus.FreeLB2_o = false;
     bus.FreeRSIAU0_o = false; bus.FreeRSIAU1_o = false;
@@ -60,10 +60,34 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
     bus.ExceptionSignal_o = false;
     bus.ExceptionCode_o = 0;
     bus.ExceptionPC_o = 0;
+    bus.Halt_o = false;
 
     // -- Nothing to commit? --
     if (!bus.ROBHeadBusy_o) return;
     if (!bus.ROBHeadReady_o) return;
+
+    // ================================================================
+    // NOP / SWI (sourceStation == 0x0F, no execution unit)
+    // ================================================================
+    if (bus.ROBHeadSourceStation_o == 0x0F) {
+        uint8_t headOp = bus.ROBHeadOp_o;
+
+        if (headOp == 0x4C) {
+            // SWI: halt the CPU — stop all further execution until reset
+            bus.Halt_o = true;
+            bus.CommitPop_i = true;
+            bus.CommitROBIdx_i = bus.ROBHead_o;
+            std::cout << "[Commit_Unit] SWI committed. CPU HALT.\n";
+            return;
+        }
+
+        // NOP: just pop, do absolutely nothing else
+        bus.CommitPop_i = true;
+        bus.CommitROBIdx_i = bus.ROBHead_o;
+        std::cout << "[Commit_Unit] NOP committed. ROB#"
+            << (int)bus.ROBHead_o << "\n";
+        return;
+    }
 
     // -- Exception check --
     if (bus.ROBHeadException_o != 0x0) {
@@ -87,14 +111,12 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
     // ALU / MUL / FPALU / FPMUL / LOAD (types 000..100)
     // ================================================================
     if (type <= 0x04) {
-        // Register writeback (if not CMP-only, i.e., DestReg != 0xF)
         if (bus.ROBHeadDestReg_o != 0x0F) {
             bus.CommitWrEn_i = true;
             bus.CommitWrAddr_i = bus.ROBHeadDestReg_o;
             bus.CommitWrData_i = bus.ROBHeadValue_o;
             bus.CommitROBIdx_i = bus.ROBHead_o;
         }
-        // Flags commit
         if (bus.ROBHeadFlagsValid_o) {
             bus.FlagsCommitEn_i = true;
             bus.FlagsCommitValue_i = bus.ROBHeadFlagsResult_o;
@@ -113,28 +135,24 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
     // STORE (type 101 = 0x05)
     // ================================================================
     else if (type == 0x05) {
-        if (!bus.ROBHeadStoreReady_o) return;  // Wait for SB to resolve addr+data
+        if (!bus.ROBHeadStoreReady_o) return;
 
         if (!m_storeCommitInProgress) {
-            // Issue store to Memory_Arbiter
             bus.StoreCommit_Req_o = true;
             bus.StoreCommit_Addr_o = bus.ROBHeadStoreAddr_o;
             bus.StoreCommit_Data_o = bus.ROBHeadStoreData_o;
-            bus.StoreCommit_Op_o = type;  // Note: ideally full opcode for byte/word
+            bus.StoreCommit_Op_o = type;
             std::cout << "[Commit_Unit] Store commit req: addr=0x" << std::hex
                 << bus.ROBHeadStoreAddr_o << " data=0x"
                 << bus.ROBHeadStoreData_o << std::dec << "\n";
-            // m_storeCommitInProgress set in clockEdge
         }
 
         if (bus.StoreCommit_Done_o) {
-            // Store completed
             activateFree(bus, bus.ROBHeadSourceStation_o);
             bus.CommitPop_i = true;
             bus.CommitROBIdx_i = bus.ROBHead_o;
             std::cout << "[Commit_Unit] Store commit done. ROB#"
                 << (int)bus.ROBHead_o << "\n";
-            // m_storeCommitInProgress cleared in clockEdge
         }
     }
 
@@ -144,11 +162,11 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
     else if (type == 0x06) {
         if (bus.ROBHeadMispredict_o) {
             bus.BranchRedirect_o = true;
-            bus.BranchRedirect_i = true;    // Wire to PC_MUX
+            bus.BranchRedirect_i = true;
             bus.BranchTarget_o = bus.ROBHeadBranchTarget_o;
-            bus.BranchTarget_i = bus.ROBHeadBranchTarget_o;  // Wire to PC_MUX
+            bus.BranchTarget_i = bus.ROBHeadBranchTarget_o;
             bus.Flush_o = true;
-            bus.Flush_PC_i = true;    // Wire to PC_C
+            bus.Flush_PC_i = true;
             std::cout << "[Commit_Unit] Branch MISPREDICT: redirect to 0x"
                 << std::hex << bus.ROBHeadBranchTarget_o
                 << std::dec << " FLUSH!\n";

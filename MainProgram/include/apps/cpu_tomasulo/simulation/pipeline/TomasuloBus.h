@@ -347,4 +347,10 @@ struct TomasuloBus {
 
     /** @brief Zero-initialize every field for a new cycle. */
     void clearOutputs() { *this = TomasuloBus{}; }
+
+    // ROB head opcode (for Commit_Unit to distinguish NOP vs SWI)
+    uint8_t ROBHeadOp_o = 0;
+
+    // CPU halt (SWI committed)
+    bool Halt_o = false;
 };

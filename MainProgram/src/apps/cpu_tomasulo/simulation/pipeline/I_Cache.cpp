@@ -11,14 +11,14 @@
 I_Cache::I_Cache(const TomasuloRAM* ram) : m_ram(ram) {}
 
 // ============================================================================
-// Address decomposition (64-byte lines, 32 sets)
+// Address decomposition (64-byte lines, 8 sets) [2KB]
 //   addr[5:3]  = word offset within line (3 bits)
-//   addr[10:6] = set index (5 bits)
-//   addr[63:11]= tag (53 bits)
+//   addr[8:6] = set index (3 bits)
+//   addr[63:9]= tag (55 bits)
 // ============================================================================
 
-uint64_t I_Cache::extractTag(uint64_t addr) const { return addr >> 11; }
-uint32_t I_Cache::extractSet(uint64_t addr) const { return (addr >> 6) & 0x1F; }
+uint64_t I_Cache::extractTag(uint64_t addr) const { return addr >> 9; }
+uint32_t I_Cache::extractSet(uint64_t addr) const { return (addr >> 6) & 0x7; }
 uint32_t I_Cache::extractOffset(uint64_t addr) const { return (addr >> 3) & 0x7; }
 uint64_t I_Cache::alignToLine(uint64_t addr) const { return addr & ~uint64_t(63); }
 
@@ -104,6 +104,7 @@ void I_Cache::clockEdge(TomasuloBus& bus) {
 
     // ── Handle ongoing miss ─────────────────────────────────────
     if (m_missPending) {
+        ++m_missStallCycles;
         --m_missCounter;
         if (m_missCounter <= 0) {
             uint32_t set = extractSet(m_missAddr);
@@ -156,10 +157,27 @@ void I_Cache::clockEdge(TomasuloBus& bus) {
         m_missPending = true;
         m_missAddr = alignToLine(addr);
         m_missCounter = MISS_LATENCY;
+        ++m_missTotal;
         std::cout << "[I_Cache] MISS at 0x" << std::hex << addr
             << ", fetching line 0x" << m_missAddr << std::dec
             << " (" << MISS_LATENCY << " cycles)\n";
     }
+}
+
+// UI implementations:
+bool I_Cache::lineValid(int set, int way) const {
+    if (set < 0 || set >= NUM_SETS || way < 0 || way >= NUM_WAYS) return false;
+    return m_sets[set].ways[way].valid;
+}
+
+uint64_t I_Cache::lineTag(int set, int way) const {
+    if (set < 0 || set >= NUM_SETS || way < 0 || way >= NUM_WAYS) return 0;
+    return m_sets[set].ways[way].tag;
+}
+
+const uint64_t* I_Cache::lineData(int set, int way) const {
+    if (set < 0 || set >= NUM_SETS || way < 0 || way >= NUM_WAYS) return nullptr;
+    return m_sets[set].ways[way].data;
 }
 
 // ============================================================================
@@ -180,5 +198,7 @@ void I_Cache::reset() {
     m_prefetchPending = false;
     m_missCounter = 0;
     m_prefetchCounter = 0;
+    m_missTotal = 0;
+    m_missStallCycles = 0;
     std::cout << "[I_Cache] reset()\n";
 }

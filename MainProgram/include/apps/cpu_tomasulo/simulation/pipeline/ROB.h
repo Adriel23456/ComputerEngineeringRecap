@@ -32,6 +32,35 @@ public:
     /** @brief Entry count (for debug/UI). */
     int count() const;
 
+    // ── UI read access ──────────────────────────────────────────
+    struct EntryView {
+        bool     busy = false;
+        bool     ready = false;
+        uint8_t  type = 0;
+        uint8_t  destReg = 0;
+        uint64_t value = 0;
+        uint8_t  exception = 0;
+        uint64_t pc = 0;
+        uint8_t  sourceStation = 0;
+        // Flags
+        uint8_t  flagsResult = 0;
+        bool     flagsValid = false;
+        bool     modifiesFlags = false;
+        // Branch
+        bool     predicted = false;
+        bool     mispredict = false;
+        uint64_t branchTarget = 0;
+        // Store
+        uint64_t storeAddr = 0;
+        uint64_t storeData = 0;
+        bool     storeReady = false;
+    };
+
+    EntryView  getEntryView(int idx) const;
+    uint8_t    head() const { return m_head; }
+    uint8_t    tail() const { return m_tail; }
+    bool       empty() const { return m_empty; }
+
 private:
     struct Entry {
         bool     busy = false;

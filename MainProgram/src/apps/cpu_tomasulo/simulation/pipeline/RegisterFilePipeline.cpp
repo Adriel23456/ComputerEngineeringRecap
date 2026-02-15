@@ -48,22 +48,19 @@ void RegisterFilePipeline::evaluate(TomasuloBus& bus) {
     readPort(bus.Rn_in_o, bus,
         bus.RD1_Value_o, bus.RD1_Qi_o, bus.RD1_QiValid_o);
 
-    // ── Read Port 2: Rm (or unused if UseImm) ───────────────────
-    if (!bus.UseImm_o) {
-        readPort(bus.Rm_in_o, bus,
-            bus.RD2_Value_o, bus.RD2_Qi_o, bus.RD2_QiValid_o);
-    }
-    else {
-        bus.RD2_Value_o = bus.ImmExt_o;
-        bus.RD2_Qi_o = 0;
-        bus.RD2_QiValid_o = false;
-    }
+    // ── Read Port 2: Rm (always read, RS handles UseImm mux) ───
+    readPort(bus.Rm_in_o, bus,
+        bus.RD2_Value_o, bus.RD2_Qi_o, bus.RD2_QiValid_o);
 
-    // ── Store data port: Rd value (for STR instructions) ────────
-    readPort(bus.Dest_in_o, bus,
+    // ── Store data port: Rm value (for STR — data to store) ─────
+    // In this ISA, STR encodes the data source register in Rm,
+    // not Rd. This reads the same register as port 2, which is
+    // correct — the ROB forwarding via ROBReadReady2/Value2
+    // already looks up Rm's tag.
+    readPort(bus.Rm_in_o, bus,
         bus.RD_StoreValue_o, bus.RD_StoreQi_o, bus.RD_StoreQiValid_o);
 
-    // ── Segmentation registers (always architectural) ───────────
+    // ── Segmentation registers ──────────────────────────────────
     bus.UPPER_o = m_archFile->get(TomasuloRegisterFile::UPPER);
     bus.LOWER_o = m_archFile->get(TomasuloRegisterFile::LOWER);
 }
@@ -115,6 +112,11 @@ void RegisterFilePipeline::clockEdge(TomasuloBus& bus) {
                 << " -> ROB#" << (int)bus.ROBTail_o << "\n";
         }
     }
+
+    // ── 4. Sync Qi tags to architectural file for UI visibility ──
+    for (int r = 0; r < NUM_REGS; ++r) {
+        m_archFile->setQi(r, m_qi[r], m_qiValid[r]);
+    }
 }
 
 // ============================================================================
@@ -124,5 +126,9 @@ void RegisterFilePipeline::clockEdge(TomasuloBus& bus) {
 void RegisterFilePipeline::reset() {
     m_qi.fill(0);
     m_qiValid.fill(false);
+    // Sync cleared tags to arch file
+    for (int r = 0; r < NUM_REGS; ++r) {
+        m_archFile->setQi(r, 0, false);
+    }
     std::cout << "[RegisterFile] reset(): all Qi tags cleared.\n";
 }

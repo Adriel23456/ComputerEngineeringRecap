@@ -20,6 +20,13 @@ void AGU_Arbiter::evaluate(TomasuloBus& bus) {
     bus.AGU0_Start_o = false;
     bus.AGU1_Start_o = false;
 
+    // Clear per-requestor AGU done signals (set fresh by AGU if it fires)
+    bus.SB0_AGUDone_o = false;
+    bus.SB1_AGUDone_o = false;
+    bus.LB0_AGUDone_o = false;
+    bus.LB1_AGUDone_o = false;
+    bus.LB2_AGUDone_o = false;
+
     // Collect pending requests in priority order: SB0 > SB1 > LB0 > LB1 > LB2
     AGURequest pending[5];
     int count = 0;

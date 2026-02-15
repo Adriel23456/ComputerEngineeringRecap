@@ -61,7 +61,7 @@ void StoreBuffer::evaluate(TomasuloBus& bus) {
 
 void StoreBuffer::clockEdge(TomasuloBus& bus) {
 
-    // -- 1. Flush: clear everything --
+    // -- 1. Flush --
     if (bus.Flush_o) {
         if (m_busy) {
             std::cout << "[" << idStr() << "] FLUSH: cleared.\n";
@@ -88,16 +88,13 @@ void StoreBuffer::clockEdge(TomasuloBus& bus) {
         m_segFault = false;
         m_stCompleteNotified = false;
 
-        // --- Resolve BASE operand (Rn -- read port 1) ---
         if (!bus.RD1_QiValid_o) {
-            // Architecturally current
             m_baseValue = bus.RD1_Value_o;
             m_baseTagValid = false;
             std::cout << "[" << idStr() << "] Alloc: base=0x" << std::hex
                 << m_baseValue << std::dec << " (ready)\n";
         }
         else {
-            // Check ROB forwarding
             if (bus.ROBReadReady1_o) {
                 m_baseValue = bus.ROBReadValue1_o;
                 m_baseTagValid = false;
@@ -113,8 +110,6 @@ void StoreBuffer::clockEdge(TomasuloBus& bus) {
             }
         }
 
-        // --- Resolve DATA operand (Rm -- read port 2) ---
-        // For STR, the data comes from Rd (store value port)
         if (!bus.RD_StoreQiValid_o) {
             m_dataValue = bus.RD_StoreValue_o;
             m_dataTagValid = false;
@@ -122,7 +117,6 @@ void StoreBuffer::clockEdge(TomasuloBus& bus) {
                 << m_dataValue << std::dec << " (ready)\n";
         }
         else {
-            // Check ROB forwarding via read port 2
             if (bus.ROBReadReady2_o) {
                 m_dataValue = bus.ROBReadValue2_o;
                 m_dataTagValid = false;
@@ -142,9 +136,8 @@ void StoreBuffer::clockEdge(TomasuloBus& bus) {
             << (int)m_op << std::dec << " ROB#" << (int)m_robTag << "\n";
     }
 
-    // -- 4. CDB snoop (every cycle while busy) --
+    // -- 4. CDB snoop --
     if (m_busy) {
-        // CDB_A
         if (bus.CDBA_Valid_o) {
             if (m_baseTagValid && m_baseTag == bus.CDBA_ROBTag_o) {
                 m_baseValue = bus.CDBA_Value_o;
@@ -159,7 +152,6 @@ void StoreBuffer::clockEdge(TomasuloBus& bus) {
                     << std::hex << m_dataValue << std::dec << "\n";
             }
         }
-        // CDB_B
         if (bus.CDBB_Valid_o) {
             if (m_baseTagValid && m_baseTag == bus.CDBB_ROBTag_o) {
                 m_baseValue = bus.CDBB_Value_o;
@@ -176,7 +168,14 @@ void StoreBuffer::clockEdge(TomasuloBus& bus) {
         }
     }
 
-    // -- 5. AGU done --
+    // -- 5. Latch StoreComplete (BEFORE AGU done, uses PREVIOUS cycle's state)
+    if (m_busy && m_addressReady && !m_dataTagValid && !m_stCompleteNotified) {
+        m_stCompleteNotified = true;
+        std::cout << "[" << idStr() << "] StoreComplete latched for ROB#"
+            << (int)m_robTag << "\n";
+    }
+
+    // -- 6. AGU done --
     if (m_busy && readAGUDone(bus)) {
         m_address = readAGUAddress(bus);
         m_addressReady = true;
@@ -184,13 +183,6 @@ void StoreBuffer::clockEdge(TomasuloBus& bus) {
         std::cout << "[" << idStr() << "] AGU done: addr=0x" << std::hex
             << m_address << std::dec
             << " segfault=" << m_segFault << "\n";
-    }
-
-    // -- 6. Latch StoreComplete notification --
-    if (m_busy && m_addressReady && !m_dataTagValid && !m_stCompleteNotified) {
-        m_stCompleteNotified = true;
-        std::cout << "[" << idStr() << "] StoreComplete latched for ROB#"
-            << (int)m_robTag << "\n";
     }
 }
 

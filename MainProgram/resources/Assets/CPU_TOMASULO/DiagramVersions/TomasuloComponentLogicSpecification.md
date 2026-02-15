@@ -202,14 +202,16 @@ ALWAYS (combinational):
 ## COMPONENT 4: I_Cache (Instruction Cache)
 
 ### Purpose
+
 Provides the 64-bit instruction word from the address given by the PC. On a hit, the instruction is available in the same cycle. On a miss, the pipeline stalls while the line is fetched from RAM.
 
 ### Internal State
+
 ```
-tag_array[32][4]        — 4-way set-associative tags
-data_array[32][4][64B]  — cache line data (64 bytes per line = 8 instructions per line)
-valid[32][4]            — valid bits
-lru_state[32]           — LRU tracking per set
+tag_array[8][4]         — 4-way set-associative tags (8 sets)
+data_array[8][4][64B]   — cache line data (64 bytes per line = 8 instructions per line)
+valid[8][4]             — valid bits
+lru_state[8]            — LRU tracking per set
 prefetch_pending        — flag: a prefetch request is in flight
 prefetch_addr           — address being prefetched
 miss_pending            — flag: a demand miss is in flight
@@ -246,17 +248,17 @@ RISING_EDGE(CLK):
 
 ALWAYS (combinational):
     addr ← PCCurrent_i
-    set ← addr[10:6]
-    tag ← addr[63:11]
-    offset ← addr[5:3]
-    
+    set ← addr[8:6]        // 3 bits → 8 sets
+    tag ← addr[63:9]
+    offset ← addr[5:3]     // 8 instructions per line (64B line)
+
     hit ← 0
     for w in 0..3:
         if valid[set][w] == 1 AND tag_array[set][w] == tag:
             hit ← 1
             InstrF_o ← data_array[set][w][ offset * 8 .. offset * 8 + 7 ]
             update_lru(set, w)
-    
+
     if hit == 1:
         InstReady_o ← 1
         ICtoRAM_Req_o ← 0
@@ -278,9 +280,10 @@ ALWAYS (combinational):
 ```
 
 ### Key behavior
-- **Hit latency**: 0 extra cycles (instruction available in the same cycle the PC is presented).
-- **Miss latency**: 50-100 cycles (RAM latency). During this time, InstReady_o = 0, which causes Control_Unit to assert StallIF_o = 1, freezing the PC.
-- **Next-line prefetch**: On a hit, the cache proactively fetches the next cache line to reduce future miss rates for sequential code.
+
+* **Hit latency**: 0 extra cycles (instruction available in the same cycle the PC is presented).
+* **Miss latency**: 50–100 cycles (RAM latency). During this time, InstReady_o = 0, which causes Control_Unit to assert StallIF_o = 1, freezing the PC.
+* **Next-line prefetch**: On a hit, the cache proactively fetches the next cache line to reduce future miss rates for sequential code.
 
 ---
 
@@ -1885,72 +1888,109 @@ function decode_size(op):
 ## COMPONENT 40: D_Cache (Data Cache)
 
 ### Purpose
+
 L1 data cache. Write-back, write-allocate policy.
 
 ### Internal State
 
 ```
-tag_array[32][4], data_array[32][4][64B], valid[32][4], dirty[32][4], lru_state[32]
-miss_pending, writeback_pending, miss_addr, writeback_addr, writeback_data
+tag_array[8][4]         — 4-way set-associative tags (8 sets)
+data_array[8][4][64B]   — cache line data (64 bytes per line)
+valid[8][4]             — valid bits
+dirty[8][4]             — dirty bits
+lru_state[8]            — LRU tracking per set
+
+miss_pending
+writeback_pending
+miss_addr
+writeback_addr
+writeback_data
 ```
 
 ### Pseudocode
 
 ```
 RISING_EDGE(CLK):
-    DC_Done_o ← 0; DC_Ready_o ← 1
+    DC_Done_o ← 0
+    DC_Ready_o ← 1
 
     if writeback_pending == 1 AND RAMtoDC_Ready_i == 1:
         writeback_pending ← 0
-        DCtoRAM_RdReq_o ← 1; DCtoRAM_Addr_o ← miss_addr
-        miss_pending ← 1; DC_Ready_o ← 0
+        DCtoRAM_RdReq_o ← 1
+        DCtoRAM_Addr_o ← miss_addr
+        miss_pending ← 1
+        DC_Ready_o ← 0
 
     if miss_pending == 1 AND RAMtoDC_Ready_i == 1:
-        set ← extract_set(miss_addr); way ← lru_way
+        set ← extract_set(miss_addr)
+        way ← lru_way
         tag_array[set][way] ← extract_tag(miss_addr)
         data_array[set][way] ← RAMtoDC_Data_i
-        valid[set][way] ← 1; dirty[set][way] ← 0
+        valid[set][way] ← 1
+        dirty[set][way] ← 0
         miss_pending ← 0
 
     if DC_Req_i == 1 AND DC_Ready_o == 1:
-        addr ← DC_Addr_i; set ← addr[10:6]; tag ← addr[63:11]
-        hit ← 0; hit_way ← 0
+        addr ← DC_Addr_i
+        set ← addr[8:6]        // 3 bits → 8 sets
+        tag ← addr[63:9]
+
+        hit ← 0
+        hit_way ← 0
+
         for w in 0..3:
             if valid[set][w] == 1 AND tag_array[set][w] == tag:
-                hit ← 1; hit_way ← w
+                hit ← 1
+                hit_way ← w
 
         if hit == 1:
-            if DC_RW_i == 0:  // READ
+            if DC_RW_i == 0:   // READ
                 byte_offset ← addr[5:0]
                 CASE DC_Size_i OF:
-                    0b11: DC_RData_o ← data_array[set][hit_way][byte_offset*8 +: 64]
-                    0b00: DC_RData_o ← zero_extend(data_array[set][hit_way][byte_offset*8 +: 8])
+                    0b11:
+                        DC_RData_o ← data_array[set][hit_way][byte_offset*8 +: 64]
+                    0b00:
+                        DC_RData_o ← zero_extend(
+                            data_array[set][hit_way][byte_offset*8 +: 8]
+                        )
                 DC_Done_o ← 1
-            else:  // WRITE
+            else:              // WRITE
                 byte_offset ← addr[5:0]
                 CASE DC_Size_i OF:
-                    0b11: data_array[set][hit_way][byte_offset*8 +: 64] ← DC_WData_i
-                    0b00: data_array[set][hit_way][byte_offset*8 +: 8]  ← DC_WData_i[7:0]
-                dirty[set][hit_way] ← 1; DC_Done_o ← 1
+                    0b11:
+                        data_array[set][hit_way][byte_offset*8 +: 64] ← DC_WData_i
+                    0b00:
+                        data_array[set][hit_way][byte_offset*8 +: 8] ← DC_WData_i[7:0]
+
+                dirty[set][hit_way] ← 1
+                DC_Done_o ← 1
+
             update_lru(set, hit_way)
+
         else:  // MISS
             DC_Ready_o ← 0
-            victim_way ← select_lru_way(set); lru_way ← victim_way
+            victim_way ← select_lru_way(set)
+            lru_way ← victim_way
+
             if valid[set][victim_way] == 1 AND dirty[set][victim_way] == 1:
                 DCtoRAM_WrReq_o ← 1
                 DCtoRAM_Addr_o ← reconstruct_addr(tag_array[set][victim_way], set)
                 DCtoRAM_WrData_o ← data_array[set][victim_way]
                 writeback_pending ← 1
             else:
-                DCtoRAM_RdReq_o ← 1; DCtoRAM_Addr_o ← addr & ~63
+                DCtoRAM_RdReq_o ← 1
+                DCtoRAM_Addr_o ← addr & ~63
                 miss_pending ← 1
+
             miss_addr ← addr & ~63
 ```
 
 ### Key behavior
-- **Write-back**: dirty lines only written to RAM when evicted.
-- **Write-allocate**: on write miss, fetch line first, then apply write.
-- **Hit latency**: 1 cycle. **Miss penalty**: 50-100 cycles.
+
+* **Write-back**: dirty lines are written to RAM only when evicted.
+* **Write-allocate**: on write miss, the line is fetched first, then the write is applied.
+* **Hit latency**: 1 cycle.
+* **Miss penalty**: 50–100 cycles.
 
 ---
 

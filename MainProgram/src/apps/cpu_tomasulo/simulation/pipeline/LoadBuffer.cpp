@@ -91,7 +91,7 @@ void LoadBuffer::evaluate(TomasuloBus& bus) {
 
 void LoadBuffer::clockEdge(TomasuloBus& bus) {
 
-    // -- 1. Flush: clear everything --
+    // -- 1. Flush --
     if (bus.Flush_o) {
         if (m_busy) {
             std::cout << "[" << idStr() << "] FLUSH: cleared.\n";
@@ -120,16 +120,13 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
         m_memDoneInt = false;
         m_cdbRequested = false;
 
-        // --- Resolve BASE operand (Rn -- read port 1) ---
         if (!bus.RD1_QiValid_o) {
-            // Architecturally current
             m_baseValue = bus.RD1_Value_o;
             m_baseTagValid = false;
             std::cout << "[" << idStr() << "] Alloc: base=0x" << std::hex
                 << m_baseValue << std::dec << " (ready)\n";
         }
         else {
-            // Check ROB forwarding
             if (bus.ROBReadReady1_o) {
                 m_baseValue = bus.ROBReadValue1_o;
                 m_baseTagValid = false;
@@ -149,16 +146,14 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
             << (int)m_op << std::dec << " ROB#" << (int)m_destROBTag << "\n";
     }
 
-    // -- 4. CDB snoop (for base operand only, every cycle while busy) --
+    // -- 4. CDB snoop --
     if (m_busy && m_baseTagValid) {
-        // CDB_A
         if (bus.CDBA_Valid_o && m_baseTag == bus.CDBA_ROBTag_o) {
             m_baseValue = bus.CDBA_Value_o;
             m_baseTagValid = false;
             std::cout << "[" << idStr() << "] CDB_A snoop: base resolved = 0x"
                 << std::hex << m_baseValue << std::dec << "\n";
         }
-        // CDB_B (re-check m_baseTagValid in case CDB_A already resolved it)
         if (bus.CDBB_Valid_o && m_baseTagValid && m_baseTag == bus.CDBB_ROBTag_o) {
             m_baseValue = bus.CDBB_Value_o;
             m_baseTagValid = false;
@@ -167,7 +162,14 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
         }
     }
 
-    // -- 5. AGU done --
+    // -- 5. Latch mem-requested (BEFORE AGU done, so it uses PREVIOUS cycle's state)
+    if (m_busy && m_addressReady && !m_segFault && !m_memRequested) {
+        m_memRequested = true;
+        std::cout << "[" << idStr() << "] MEM request latched for addr=0x"
+            << std::hex << m_address << std::dec << "\n";
+    }
+
+    // -- 6. AGU done --
     if (m_busy && readAGUDone(bus)) {
         m_address = readAGUAddress(bus);
         m_addressReady = true;
@@ -175,13 +177,6 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
         std::cout << "[" << idStr() << "] AGU done: addr=0x" << std::hex
             << m_address << std::dec
             << " segfault=" << m_segFault << "\n";
-    }
-
-    // -- 6. Latch memory requested --
-    if (m_busy && m_addressReady && !m_segFault && !m_memRequested) {
-        m_memRequested = true;
-        std::cout << "[" << idStr() << "] MEM request latched for addr=0x"
-            << std::hex << m_address << std::dec << "\n";
     }
 
     // -- 7. Memory response --
@@ -192,7 +187,7 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
             << m_loadedData << std::dec << " ROB#" << (int)m_destROBTag << "\n";
     }
 
-    // -- 8. CDB stall: arbiter denied us, reset so we retry --
+    // -- 8. CDB stall --
     if (m_busy && readCDBStall(bus)) {
         m_cdbRequested = false;
         std::cout << "[" << idStr() << "] CDB stall: will retry.\n";

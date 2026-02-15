@@ -58,14 +58,14 @@ void ROBTable::setSelectedEntry(int idx) {
 
 const char* ROBTable::typeToString(uint8_t type) {
     switch (type) {
-    case 0: return "ALU";
-    case 1: return "LOAD";
-    case 2: return "STORE";
-    case 3: return "BRANCH";
-    case 4: return "FP_ALU";
-    case 5: return "FP_MUL";
-    case 6: return "INT_MUL";
-    case 7: return "OTHER";
+    case 0: return "INT_ALU";
+    case 1: return "INT_MUL";
+    case 2: return "FP_ALU";
+    case 3: return "FP_MUL";
+    case 4: return "LOAD";
+    case 5: return "STORE";
+    case 6: return "BRANCH";
+    case 7: return "CMP/FLG";
     default: return "???";
     }
 }

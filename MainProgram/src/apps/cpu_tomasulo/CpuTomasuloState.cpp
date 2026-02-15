@@ -25,6 +25,7 @@
 #include <iostream>
 #include <algorithm>
 #include <mutex>
+#include <cstring>
 
  // ============================================================================
  // Placeholder View
@@ -150,7 +151,16 @@ void CpuTomasuloState::pollResults() {
         break;
     }
 
-    case SimTask::Type::Reset:
+    case SimTask::Type::Reset: {
+        if (auto* rv = dynamic_cast<TomasuloRAMView*>(getView(Panel::RAM))) {
+            rv->setStatusMessage(result.message, 3.0f);
+        }
+        if (auto* av = dynamic_cast<TomasuloAnalysisView*>(getView(Panel::DataAnalysis))) {
+            av->resetAll();
+        }
+        break;
+    }
+
     case SimTask::Type::ResetRAM: {
         if (auto* rv = dynamic_cast<TomasuloRAMView*>(getView(Panel::RAM))) {
             rv->setStatusMessage(result.message, 3.0f);
@@ -175,8 +185,12 @@ void CpuTomasuloState::pollResults() {
 // ============================================================================
 
 bool CpuTomasuloState::panelNeedsSimLock(Panel p) const {
-    return p == Panel::RAM || p == Panel::Registers;
-    // Extend this as more views read from simulation (caches, ROB, etc.)
+    return p == Panel::RAM
+        || p == Panel::Registers
+        || p == Panel::ICache
+        || p == Panel::DCache
+        || p == Panel::ROB
+        || p == Panel::DataAnalysis;
 }
 
 // ============================================================================
@@ -280,13 +294,19 @@ void CpuTomasuloState::renderContentPanel(float width, float height) {
     ImGui::BeginChild("##TomasuloContent", ImVec2(width, height), true, flags);
 
     if (auto* view = getView(m_selectedPanel)) {
-
-        // Lock the simulation mutex for views that read sim data
-        // so the worker thread can't modify data mid-render.
         bool locked = false;
         if (panelNeedsSimLock(m_selectedPanel)) {
             m_controller.mutex().lock();
             locked = true;
+        }
+
+        // Sync simulation data → UI widgets before rendering
+        switch (m_selectedPanel) {
+        case Panel::ICache:       syncICacheView();    break;
+        case Panel::DCache:       syncDCacheView();    break;
+        case Panel::ROB:          syncROBView();       break;
+        case Panel::DataAnalysis: syncAnalysisView();  break;
+        default: break;
         }
 
         view->render();
@@ -451,4 +471,155 @@ bool CpuTomasuloState::createSidebarButton(const char* label, bool selected,
 
 TomasuloMainView* CpuTomasuloState::getMainView() {
     return dynamic_cast<TomasuloMainView*>(getView(Panel::MainView));
+}
+
+// ============================================================================
+// I-Cache Sync
+// ============================================================================
+
+void CpuTomasuloState::syncICacheView() {
+    auto* view = dynamic_cast<TomasuloICacheView*>(getView(Panel::ICache));
+    if (!view) return;
+
+    const I_Cache& ic = m_controller.cpu().iCache();
+    CacheTable& table = view->getTable();
+
+    for (int s = 0; s < ic.numSets(); ++s) {
+        for (int w = 0; w < ic.numWays(); ++w) {
+            bool valid = ic.lineValid(s, w);
+            uint64_t tag = ic.lineTag(s, w);
+
+            // Format tag as hex string
+            char tagStr[24];
+            std::snprintf(tagStr, sizeof(tagStr), "0x%014llX",
+                static_cast<unsigned long long>(tag));
+
+            // Convert uint64_t[8] -> uint8_t[64] (little-endian)
+            std::array<uint8_t, CacheTable::kLineSizeBytes> bytes{};
+            const uint64_t* words = ic.lineData(s, w);
+            if (words) {
+                for (int i = 0; i < 8; ++i) {
+                    std::memcpy(&bytes[i * 8], &words[i], 8);
+                }
+            }
+
+            table.setLineBySetWay(s, w, std::string(tagStr), bytes, valid);
+        }
+    }
+}
+
+// ============================================================================
+// D-Cache Sync
+// ============================================================================
+
+void CpuTomasuloState::syncDCacheView() {
+    auto* view = dynamic_cast<TomasuloDCacheView*>(getView(Panel::DCache));
+    if (!view) return;
+
+    const D_Cache& dc = m_controller.cpu().dCache();
+    CacheTable& table = view->getTable();
+
+    for (int s = 0; s < dc.numSets(); ++s) {
+        for (int w = 0; w < dc.numWays(); ++w) {
+            bool valid = dc.lineValid(s, w);
+            uint64_t tag = dc.lineTag(s, w);
+
+            char tagStr[24];
+            std::snprintf(tagStr, sizeof(tagStr), "0x%014llX",
+                static_cast<unsigned long long>(tag));
+
+            std::array<uint8_t, CacheTable::kLineSizeBytes> bytes{};
+            const uint8_t* data = dc.lineData(s, w);
+            if (data) {
+                std::memcpy(bytes.data(), data, CacheTable::kLineSizeBytes);
+            }
+
+            table.setLineBySetWay(s, w, std::string(tagStr), bytes, valid);
+        }
+    }
+}
+
+// ============================================================================
+// ROB Sync
+// ============================================================================
+
+void CpuTomasuloState::syncROBView() {
+    auto* view = dynamic_cast<TomasuloROBView*>(getView(Panel::ROB));
+    if (!view) return;
+
+    const ROB& rob = m_controller.cpu().rob();
+    ROBTable& table = view->getTable();
+
+    table.setHead(rob.head());
+    table.setTail(rob.tail());
+    table.setCount(rob.count());
+
+    for (int i = 0; i < ROBTable::kEntryCount; ++i) {
+        ROB::EntryView ev = rob.getEntryView(i);
+        ROBTable::ROBEntry& te = table.getEntry(i);
+
+        // ── Core fields (main table) ────────────────────────────
+        te.busy = ev.busy;
+        te.ready = ev.ready;
+        te.type = ev.type;
+        te.destReg = ev.destReg;
+        te.value = ev.value;
+        te.exception = ev.exception;
+        te.pc = ev.pc;
+        te.sourceStation = ev.sourceStation;
+
+        // ── Flags fields (detail panel) ─────────────────────────
+        te.flagsResult = ev.flagsResult;
+        te.flagsValid = ev.flagsValid;
+        te.modifiesFlags = ev.modifiesFlags;
+
+        // ── Branch fields (detail panel) ─────────────────────────
+        te.predicted = ev.predicted;
+        te.branchTaken = ev.mispredict ? !ev.predicted : ev.predicted;
+        te.branchTarget = ev.branchTarget;
+        te.mispredict = ev.mispredict;
+
+        // ── Store fields (detail panel) ──────────────────────────
+        te.storeAddr = ev.storeAddr;
+        te.storeData = ev.storeData;
+        te.storeReady = ev.storeReady;
+    }
+}
+
+// ============================================================================
+// Analysis Sync
+// ============================================================================
+
+void CpuTomasuloState::syncAnalysisView() {
+    auto* view = dynamic_cast<TomasuloAnalysisView*>(getView(Panel::DataAnalysis));
+    if (!view) return;
+
+    const auto& cpu = m_controller.cpu();
+    const auto& stats = cpu.stats();
+
+    view->setTotalCycles(cpu.cycleCount());
+    view->setCommittedInstructions(stats.committedInstructions);
+    view->setCommittedMemoryInstructions(stats.committedMemoryInstructions);
+    view->setBranchMispredictions(stats.branchMispredictions);
+
+    // Cache latency = total miss events (how many times we missed)
+    view->setCyclesLostCacheLatency(
+        cpu.iCache().missCount() + cpu.dCache().missCount());
+
+    // RAM latency = actual cycles spent waiting for RAM to respond
+    view->setCyclesLostRAMLatency(
+        cpu.iCache().missStallCycles() + cpu.dCache().missStallCycles());
+
+    // Station usage
+    view->setUsesSB(0, stats.stationUses[0]);
+    view->setUsesSB(1, stats.stationUses[1]);
+    view->setUsesLB(0, stats.stationUses[2]);
+    view->setUsesLB(1, stats.stationUses[3]);
+    view->setUsesLB(2, stats.stationUses[4]);
+    view->setUsesRS(0, stats.stationUses[5]);
+    view->setUsesRS(1, stats.stationUses[6]);
+    view->setUsesRS(2, stats.stationUses[7]);
+    view->setUsesRS(3, stats.stationUses[8]);
+    view->setUsesRS(4, stats.stationUses[9]);
+    view->setUsesRS(5, stats.stationUses[10]);
 }

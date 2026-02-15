@@ -12,6 +12,7 @@ void PC_C::evaluate(TomasuloBus& bus) {
     bus.PCCurrent_o = m_register;
 }
 
+// PC_C.cpp — clockEdge
 void PC_C::clockEdge(TomasuloBus& bus) {
     uint64_t prev = m_register;
 
@@ -20,11 +21,10 @@ void PC_C::clockEdge(TomasuloBus& bus) {
         std::cout << "[PC_C] RESET -> PC = 0x0\n";
     }
     else if (bus.Flush_o) {
-        // Flush overrides stall — accept redirect
         m_register = bus.PCNext_o;
         std::cout << "[PC_C] FLUSH -> PC = 0x" << std::hex << m_register << std::dec << "\n";
     }
-    else if (!bus.StallIF_o) {
+    else if (bus.ROBAlloc_o) {       // <── THE FIX: was !bus.StallIF_o
         m_register = bus.PCNext_o;
     }
     // else: stall — hold value
