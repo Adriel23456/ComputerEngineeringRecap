@@ -1,8 +1,0 @@
-; =======================================================
-; FCMP comparison (floating-point registers)
-; Expected result: Flags Z=1, N=0, C=1, V=0 (values are equal)
-; =======================================================
-FMOVI REG1, #16.0          ; REG1 = 16.0
-FMOVI REG2, #16.0          ; REG2 = 16.0
-FCMP REG1, REG2            ; Compare 16.0 with 16.0: equal → Z=1
-SWI                        ; Final state: REG1 = 16.0, REG2 = 16.0, Flags: Z=1

@@ -140,7 +140,8 @@ void IntALU::evaluate(TomasuloBus& bus) {
     case 0x31: case 0x33: case 0x35: result = B; break;
 
         // MVN, MVNI, FMVNI
-    case 0x32: case 0x34: case 0x36: result = ~B; break;
+    case 0x32: case 0x34: result = ~B; break;                      // MVN, MVNI: bitwise NOT
+    case 0x36: result = B ^ 0x8000000000000000ULL; break;           // FMVNI: FP negate (flip sign bit)
 
         // CMP, CMPI
     case 0x37: case 0x3B: {

@@ -74,7 +74,6 @@ private:
 
     uint8_t  m_destROBTag = 0;
     bool     m_segFault = false;
-    bool     m_memRequested = false;
     bool     m_cdbRequested = false;
 
     const char* idStr() const;

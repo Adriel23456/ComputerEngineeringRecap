@@ -142,12 +142,14 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
             bus.StoreCommit_Addr_o = bus.ROBHeadStoreAddr_o;
             bus.StoreCommit_Data_o = bus.ROBHeadStoreData_o;
             bus.StoreCommit_Op_o = type;
+            m_storeCommitInProgress = true;          // <-- ADD THIS
             std::cout << "[Commit_Unit] Store commit req: addr=0x" << std::hex
                 << bus.ROBHeadStoreAddr_o << " data=0x"
                 << bus.ROBHeadStoreData_o << std::dec << "\n";
         }
 
         if (bus.StoreCommit_Done_o) {
+            m_storeCommitInProgress = false;         // <-- ADD THIS
             activateFree(bus, bus.ROBHeadSourceStation_o);
             bus.CommitPop_i = true;
             bus.CommitROBIdx_i = bus.ROBHead_o;

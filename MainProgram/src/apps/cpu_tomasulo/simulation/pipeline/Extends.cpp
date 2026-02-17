@@ -40,12 +40,39 @@ uint64_t Extends::float32ToDouble64Bits(uint32_t imm) {
 }
 
 void Extends::evaluate(TomasuloBus& bus) {
-    bool isFP = bus.IsFPALU_o || bus.IsFPMUL_o;
-
-    // FMOVI(0x35) and FMVNI(0x36) route through IntALU but carry FP immediates
     uint8_t op = bus.Op_in_o;
-    if (op == 0x35 || op == 0x36) {
+
+    // Determine FP status directly from opcode — do NOT use
+    // bus.IsFPALU_o / bus.IsFPMUL_o since Control_Unit evaluates AFTER us.
+    bool isFP = false;
+    switch (op) {
+        // FP ALU (3-reg)
+    case 0x1E: case 0x1F: case 0x22:
+        // FP ALU (imm)
+    case 0x23: case 0x24: case 0x27:
+        // FP Unary (2-reg)
+    case 0x29: case 0x2A: case 0x2B: case 0x2C:
+    case 0x2D: case 0x2E: case 0x2F: case 0x30:
+        // FP Unary (imm)
+    case 0x53: case 0x54: case 0x55: case 0x56:
+    case 0x57: case 0x58: case 0x59: case 0x5A:
+        // FP MUL/DIV (3-reg)
+    case 0x20: case 0x21:
+        // FP MUL/DIV (imm)
+    case 0x25: case 0x26:
+        // FSQRT / FSQRTI
+    case 0x28: case 0x52:
+        // FCMP, FCMN, FCMPS (2-reg)
+    case 0x3F: case 0x40: case 0x41:
+        // FCMP, FCMN, FCMPS (imm)
+    case 0x42: case 0x43: case 0x44:
+        // FMOVI, FMVNI
+    case 0x35: case 0x36:
         isFP = true;
+        break;
+    default:
+        isFP = false;
+        break;
     }
 
     if (isFP) {

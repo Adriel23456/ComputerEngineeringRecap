@@ -214,7 +214,7 @@ void TomasuloRamTable::renderTable(const char* id, float tableHeight) {
 
         ImGui::TableSetupColumn("Address",
             ImGuiTableColumnFlags_WidthFixed, addrMin);
-        ImGui::TableSetupColumn("Value (Hex)",
+        ImGui::TableSetupColumn("Value (Hex) 'BigEndian'",
             ImGuiTableColumnFlags_WidthFixed, hexMin);
         ImGui::TableSetupColumn("Decimal (int64, 2's comp)",
             ImGuiTableColumnFlags_WidthStretch, 0.5f);

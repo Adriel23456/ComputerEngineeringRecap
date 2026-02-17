@@ -20,6 +20,15 @@ uint64_t TomasuloCycleCoordinator::executeCycle(TomasuloBus& bus) {
     std::cout << "  CYCLE " << (m_cycleCount + 1) << " BEGIN\n";
     std::cout << "==================================================\n";
 
+    // ── Clear one-shot signals from previous cycle ─────────────
+    // These are set by Commit_Unit (late in evaluate order) but
+    // read by PC_MUX (early in evaluate order). Without clearing,
+    // early components see stale values from the previous cycle.
+    bus.BranchRedirect_o = false;
+    bus.BranchRedirect_i = false;
+    bus.Flush_o = false;
+    bus.Flush_PC_i = false;
+
     // ── Phase 1: Combinational evaluation (topological order) ──
     for (auto* comp : m_components) {
         comp->evaluate(bus);

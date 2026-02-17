@@ -1,6 +1,6 @@
 {
     "audio": {
-        "bgm": 3,
+        "bgm": 0,
         "sfx": 10
     },
     "framerate": 60,

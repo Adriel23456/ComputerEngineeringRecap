@@ -1,0 +1,155 @@
+; =========================================================
+; INTEGER MUL / DIV
+; =========================================================
+
+MOVI REG1, #6              ; REG1 = 6
+MOVI REG2, #3              ; REG2 = 3
+
+MUL  REG3, REG1, REG2      ; REG3 = 18
+DIV  REG4, REG1, REG2      ; REG4 = 2
+
+MULI REG5, REG1, #4        ; REG5 = 24
+DIVI REG6, REG1, #4        ; REG6 = 1
+
+; =========================================================
+; FLOAT MOVE
+; =========================================================
+
+FMOVI REG1, #5.5           ; REG1 = 5.5
+FMVNI REG2, #2.0           ; REG2 = -2.0
+
+; =========================================================
+; FLOAT BASIC OPS
+; =========================================================
+
+FADD REG3, REG1, REG2      ; REG3 = 3.5
+FSUB REG4, REG1, REG2      ; REG4 = 7.5
+FMUL REG5, REG1, REG2      ; REG5 = -11.0
+FDIV REG6, REG1, REG2      ; REG6 = -2.75
+
+FCOPYSIGN REG7, REG1, REG2 ; REG7 = -5.5
+
+; =========================================================
+; FLOAT IMMEDIATE OPS
+; =========================================================
+
+FADDI REG8,  REG1, #1.5    ; REG8  = 7.0
+FSUBI REG9,  REG1, #1.5    ; REG9  = 4.0
+FMULI REG10, REG1, #2.0    ; REG10 = 11.0
+FDIVI REG11, REG1, #2.0    ; REG11 = 2.75
+FCOPYSIGNI REG12, REG1, #-1.0 ; REG12 = -5.5
+
+; =========================================================
+; FLOAT UNARY
+; =========================================================
+
+FSQRT REG3, REG1           ; REG3 = sqrt(5.5)
+FNEG  REG4, REG1           ; REG4 = -5.5
+FABS  REG5, REG2           ; REG5 = 2.0
+
+; =========================================================
+; FLOAT UNARY IMMEDIATE
+; =========================================================
+
+FSQRTI REG6, #9.0          ; REG6 = 3.0
+FNEGI  REG7, #5.0          ; REG7 = -5.0
+FABSI  REG8, #-7.5         ; REG8 = 7.5
+
+; =========================================================
+; CONVERSIONS - MISSING COMPILER AND EXTRA IMPLEMENTATION!
+; =========================================================
+
+;CDTI REG9, REG1            ; REG9 = 5      (int from 5.5)
+;CITD REG10, REG9           ; REG10 = 5.0
+
+;CDTII REG11, #8.9          ; REG11 = 8
+;CITDI REG12, #4            ; REG12 = 4.0
+
+; =========================================================
+; ROUNDING TESTS
+; =========================================================
+
+FMOVI REG1, #5.75          ; REG1 = 5.75
+
+RTNR REG2, REG1            ; REG2 = 6.0
+RTZ  REG3, REG1            ; REG3 = 5.0
+RTP  REG4, REG1            ; REG4 = 6.0
+RTNE REG5, REG1            ; REG5 = 6.0
+
+; =========================================================
+; ROUNDING IMMEDIATE
+; =========================================================
+
+RTNRI REG6, #5.5           ; REG6 = 6.0
+RTZI  REG7, #5.9           ; REG7 = 5.0
+RTPI  REG8, #5.1           ; REG8 = 6.0
+RTNEI REG9, #-5.1          ; REG9 = -5.0
+
+; =========================================================
+; FLOAT COMPARE
+; =========================================================
+
+FMOVI REG1, #5.0
+FMOVI REG2, #5.0
+
+FCMP REG1, REG2            ; Z = 1
+BEQ Works1
+SWI
+Works1:
+
+FMOVI REG1, #3.0
+FMOVI REG2, #5.0
+
+FCMP REG1, REG2            ; N = 1
+BLT Works2
+SWI
+Works2:
+
+FMOVI REG1, #7.0
+FMOVI REG2, #5.0
+
+FCMP REG1, REG2            ; positive
+BGT Works3
+SWI
+Works3:
+
+; =========================================================
+; FLOAT IMMEDIATE COMPARES
+; =========================================================
+
+FMOVI REG1, #5.0
+
+FCMPI REG1, #5.0           ; equal  Z=1
+BEQ Works4
+SWI
+Works4:
+
+FCMNI REG1, #-5.0          ; 5 + (-5) = 0  Z=1
+BEQ Works5
+SWI
+Works5:
+
+FCMPSI REG1, #2.0          ; 5 - 2 > 0
+BGT Works6
+SWI
+Works6:
+
+; =========================================================
+; NaN TEST
+; =========================================================
+
+FDIVI REG1, REG1, #0.0     ; REG1 = NaN or Inf
+
+FCMPS REG1, REG2           ; unordered if NaN
+BUN Works7
+SWI
+Works7:
+
+; =========================================================
+; END
+; =========================================================
+
+NOP
+NOP
+FMOVI REG10, #999.995
+SWI

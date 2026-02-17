@@ -44,7 +44,7 @@ void LoadBuffer::evaluate(TomasuloBus& bus) {
     writeAGUROBTag(bus, m_destROBTag);
 
     // -- Memory request: address ready AND no segfault AND not yet requested --
-    bool memReq = m_busy && m_addressReady && !m_segFault && !m_memRequested;
+    bool memReq = m_busy && m_addressReady && !m_segFault && !m_memDoneInt;
     writeMemReq(bus, memReq);
     writeMemAddr(bus, m_address);
     writeMemOp(bus, m_op);
@@ -116,7 +116,6 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
         m_destROBTag = bus.ROBTail_o;
         m_addressReady = false;
         m_segFault = false;
-        m_memRequested = false;
         m_memDoneInt = false;
         m_cdbRequested = false;
 
@@ -162,14 +161,7 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
         }
     }
 
-    // -- 5. Latch mem-requested (BEFORE AGU done, so it uses PREVIOUS cycle's state)
-    if (m_busy && m_addressReady && !m_segFault && !m_memRequested) {
-        m_memRequested = true;
-        std::cout << "[" << idStr() << "] MEM request latched for addr=0x"
-            << std::hex << m_address << std::dec << "\n";
-    }
-
-    // -- 6. AGU done --
+    // -- 5. AGU done --
     if (m_busy && readAGUDone(bus)) {
         m_address = readAGUAddress(bus);
         m_addressReady = true;
@@ -179,8 +171,13 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
             << " segfault=" << m_segFault << "\n";
     }
 
+    // -- 6. Latch CDB requested (BEFORE mem response, uses PREVIOUS cycle's state)
+    if (m_busy && (m_memDoneInt || m_segFault) && !m_cdbRequested) {
+        m_cdbRequested = true;
+    }
+
     // -- 7. Memory response --
-    if (m_busy && m_memRequested && readMemDone(bus)) {
+    if (m_busy && readMemDone(bus)) {
         m_loadedData = readMemData(bus);
         m_memDoneInt = true;
         std::cout << "[" << idStr() << "] MEM done: data=0x" << std::hex
@@ -207,7 +204,6 @@ void LoadBuffer::reset() {
     m_loadedData = 0; m_memDoneInt = false;
     m_destROBTag = 0;
     m_segFault = false;
-    m_memRequested = false;
     m_cdbRequested = false;
     std::cout << "[" << idStr() << "] reset()\n";
 }

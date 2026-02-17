@@ -12,7 +12,8 @@
 
 TomasuloCPU::TomasuloCPU()
     : m_iCache(&m_ram),
-    m_regFile(&m_registers)   // Pipeline wrapper over architectural registers
+    m_dCache(&m_ram),                 // <-- ADD THIS
+    m_regFile(&m_registers)
 {
     buildPipeline();
     std::cout << "[TomasuloCPU] Constructed. Pipeline components registered.\n";

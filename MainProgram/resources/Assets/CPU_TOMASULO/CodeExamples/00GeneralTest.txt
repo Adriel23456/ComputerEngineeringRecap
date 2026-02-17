@@ -1,0 +1,172 @@
+; =========================================================
+; FULL GENERAL ALU + FLAGS + CARRY VALIDATION TEST
+; REG1  REG12 ONLY
+; =========================================================
+
+; =========================================================
+; MOV / MVN TESTS
+; =========================================================
+
+MOVI REG1, #1              ; REG1 = 1
+MVNI REG2, #-1             ; REG2 = ~(-1) = 0
+MOV  REG3, REG1            ; REG3 = 1
+MVN  REG4, REG2            ; REG4 = ~0 = -1 (0xFFFFFFFFFFFFFFFF)
+
+; =========================================================
+; BASIC ADD / SUB
+; =========================================================
+
+MOVI REG1, #250            ; REG1 = 250
+MOVI REG2, #500            ; REG2 = 500
+
+ADD  REG5, REG1, REG2      ; REG5 = 750
+SUB  REG6, REG2, REG1      ; REG6 = 250
+
+; =========================================================
+; CARRY GENERATION (SET C = 1)
+; =========================================================
+
+MOVI REG1, #-1             ; REG1 = 0xFFFFFFFFFFFFFFFF
+MOVI REG2, #1              ; REG2 = 1
+
+ADD  REG3, REG1, REG2      ; REG3 = 0
+                            ; CARRY = 1
+
+ADC  REG4, REG2, REG2      ; REG4 = 1 + 1 + 1 = 3
+
+; =========================================================
+; SBC WITH C = 1
+; =========================================================
+
+MOVI REG5, #10             ; REG5 = 10
+MOVI REG6, #3              ; REG6 = 3
+
+SBC  REG7, REG5, REG6      ; REG7 = 10 - 3 - (1-1)
+                            ; REG7 = 7
+
+; =========================================================
+; FORCE CARRY = 0
+; =========================================================
+
+MOVI REG1, #5              ; REG1 = 5
+MOVI REG2, #10             ; REG2 = 10
+
+CMP  REG1, REG2            ; 5 - 10  borrow
+                            ; CARRY = 0
+
+SBC  REG8, REG5, REG6      ; REG8 = 10 - 3 - (1-0)
+                            ; REG8 = 6
+
+; =========================================================
+; LOGICAL OPERATIONS
+; =========================================================
+
+MOVI REG1, #250            ; 0xFA
+MOVI REG2, #500            ; 0x1F4
+
+AND  REG9,  REG1, REG2     ; REG9  = 240
+ORR  REG10, REG1, REG2     ; REG10 = 510
+EOR  REG11, REG1, REG2     ; REG11 = 270
+BIC  REG12, REG2, REG1     ; REG12 = 260
+
+; =========================================================
+; SHIFT TESTS (IMMEDIATE SAFE VALUES)
+; =========================================================
+
+MOVI REG1, #8              ; REG1 = 8
+
+LSLI REG2, REG1, #3        ; REG2 = 64
+LSRI REG3, REG2, #2        ; REG3 = 16
+ASRI REG4, REG2, #2        ; REG4 = 16
+RORI REG5, REG1, #1        ; REG5 = rotate right 1
+
+; =========================================================
+; IMMEDIATE OPERATIONS
+; =========================================================
+
+MOVI REG1, #250            ; REG1 = 250
+
+ADDI REG6, REG1, #50       ; REG6 = 300
+SUBI REG7, REG1, #50       ; REG7 = 200
+ANDI REG8, REG1, #15       ; REG8 = 10
+ORRI REG9, REG1, #15       ; REG9 = 255
+EORI REG10, REG1, #15      ; REG10 = 245
+BICI REG11, REG1, #15      ; REG11 = 240
+LSLI REG12, REG1, #2       ; REG12 = 1000
+
+; =========================================================
+; INC / DEC
+; =========================================================
+
+MOVI REG1, #50             ; REG1 = 50
+INC  REG1                  ; REG1 = 51
+DEC  REG1                  ; REG1 = 50
+
+; =========================================================
+; FLAG VALIDATION
+; =========================================================
+
+; CMP 250 == 250  Z=1
+
+MOVI REG1, #250            ; REG1 = 250
+MOVI REG2, #250            ; REG2 = 250
+CMP  REG1, REG2            ; result 0  Z=1
+BEQ  Works1                ; branch should happen
+SWI                        ; FAIL
+Works1:
+
+; CMN 250 + (-250) = 0  Z=1
+
+MOVI REG1, #250            ; REG1 = 250
+MOVI REG2, #-250           ; REG2 = -250
+CMN  REG1, REG2            ; result 0  Z=1
+BEQ  Works2                ; branch should happen
+SWI
+Works2:
+
+; TST 250 & 250 = 250  Z=0
+
+MOVI REG1, #250            ; REG1 = 250
+TST  REG1, REG1            ; non-zero  Z=0
+BEQ  Fail_TST              ; should NOT branch
+B    Works3
+Fail_TST:
+SWI
+Works3:
+
+; TEQ 250 ^ 250 = 0  Z=1
+
+MOVI REG1, #250            ; REG1 = 250
+TEQ  REG1, REG1            ; 0  Z=1
+BEQ  Works4                ; branch should happen
+SWI
+Works4:
+
+; CMPI 250 == 250
+
+MOVI REG1, #250            ; REG1 = 250
+CMPI REG1, #250            ; Z=1
+BEQ  Works5
+SWI
+Works5:
+
+; TSTI 250 & 250 = 250  Z=0
+
+MOVI REG1, #250            ; REG1 = 250
+TSTI REG1, #250            ; Z=0
+BEQ  Fail_TSTI
+B    Works6
+Fail_TSTI:
+SWI
+Works6:
+
+; TEQI 250 ^ 250 = 0  Z=1
+
+MOVI REG1, #250            ; REG1 = 250
+TEQI REG1, #250            ; Z=1
+BEQ  Works7
+SWI
+Works7:
+
+MOVI REG12, #999		   ; Check correct REG execution
+SWI                        ; END TEST

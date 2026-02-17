@@ -1,12 +1,12 @@
 START:    
     ; Dispatch specific code based on PEID
-    CMPI SIDS, #0
+    CMPI PEID, #0
     BEQ .SETUP_PE0
-    CMPI SIDS, #1
+    CMPI PEID, #1
     BEQ .SETUP_PE1
-    CMPI SIDS, #2
+    CMPI PEID, #2
     BEQ .SETUP_PE2
-    CMPI SIDS, #3
+    CMPI PEID, #3
     BEQ .SETUP_PE3
     SWI
 
@@ -123,7 +123,7 @@ START:
     SWI
 
 ; Other PEs do not participate (so they do not share lines and do not
-; “pollute” the test)
+; pollute the test)
 .SETUP_PE1:
     SWI
 .SETUP_PE2:

@@ -57,18 +57,12 @@ void FPMUL::clockEdge(TomasuloBus& bus) {
             switch (m_op) {
             case 0x20: case 0x25: r = a * b; break;       // FMUL, FMULI
             case 0x21: case 0x26:                          // FDIV, FDIVI
-                if (b == 0.0 && !std::isnan(b)) {
-                    m_exception = 0x4;
-                    r = std::copysign(INFINITY, a);
-                }
-                else { r = a / b; }
+                r = a / b;          // C++ IEEE 754: 0/0→NaN, nonzero/0→±Inf, normal otherwise
+                m_exception = 0x0;  // Not a CPU trap — program detects via FCMPS/BUN
                 break;
             case 0x28: case 0x52:                          // FSQRT, FSQRTI
-                if (b < 0.0 && !std::isnan(b)) {
-                    m_exception = 0x5;
-                    r = NAN;
-                }
-                else { r = std::sqrt(b); }
+                r = std::sqrt(b);   // C++ IEEE 754: negative→NaN, normal otherwise
+                m_exception = 0x0;
                 break;
             }
             m_result = fromDouble(r);

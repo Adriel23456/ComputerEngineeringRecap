@@ -384,8 +384,13 @@ AssemblyResult TomasuloAssembler::assemble(const std::string& source) const {
                     uint32_t immU32 = 0;
                     std::string immTok = ops.back();
 
-                    if (immTok.find('.') != std::string::npos && opcUp[0] == 'F') {
-                        float fv = std::stof(immTok.substr(1));
+                    bool isFPImm = (opcVal >= 0x23 && opcVal <= 0x27)   // FADDI..FCOPYSIGNI
+                        || (opcVal == 0x35 || opcVal == 0x36)    // FMOVI, FMVNI
+                        || (opcVal >= 0x42 && opcVal <= 0x44)    // FCMPI..FCMPSI
+                        || (opcVal >= 0x52 && opcVal <= 0x5A);   // FSQRTI..RTNEI
+
+                    if (isFPImm) {
+                        float fv = std::stof(immTok.substr(1));  // strip '#'
                         immU32 = floatToU32(fv);
                     }
                     else {

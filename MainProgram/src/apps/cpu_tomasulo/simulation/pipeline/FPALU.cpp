@@ -90,8 +90,38 @@ void FPALU::clockEdge(TomasuloBus& bus) {
         // Normalize/finalize (stage 3 work)
         // FCMP variants: generate flags
         uint8_t op = m_stage2.op;
-        if ((op >= 0x3F && op <= 0x44)) {
-            m_stage3.flags = computeFCMPFlags(m_stage2.A, m_stage2.B);
+        // NEW (differentiates FCMP vs FCMN vs FCMPS):
+        if (op >= 0x3F && op <= 0x44) {
+            double a = toDouble(m_stage2.A);
+            double b = toDouble(m_stage2.B);
+            bool unordered = std::isnan(a) || std::isnan(b);
+            uint8_t N = 0, Z = 0, C = 0, V = unordered ? 1 : 0;
+
+            if (op == 0x3F || op == 0x42) {
+                // FCMP / FCMPI: direct comparison (A vs B)
+                N = (!unordered && a < b) ? 1 : 0;
+                Z = (!unordered && a == b) ? 1 : 0;
+                C = (!unordered && a >= b) ? 1 : 0;
+            }
+            else if (op == 0x40 || op == 0x43) {
+                // FCMN / FCMNI: flags from (A + B)
+                double sum = a + b;
+                if (!unordered) {
+                    N = (sum < 0.0) ? 1 : 0;
+                    Z = (sum == 0.0) ? 1 : 0;
+                    C = (sum >= 0.0) ? 1 : 0;
+                }
+            }
+            else if (op == 0x41 || op == 0x44) {
+                // FCMPS / FCMPSI: compare magnitudes (|A| vs |B|)
+                double absA = std::fabs(a);
+                double absB = std::fabs(b);
+                N = (!unordered && absA < absB) ? 1 : 0;
+                Z = (!unordered && absA == absB) ? 1 : 0;
+                C = (!unordered && absA >= absB) ? 1 : 0;
+            }
+
+            m_stage3.flags = (N << 3) | (Z << 2) | (C << 1) | V;
             m_stage3.flagsValid = true;
         }
         else {

@@ -75,8 +75,12 @@ void RegisterFilePipeline::clockEdge(TomasuloBus& bus) {
         for (int r = 0; r < NUM_REGS; ++r)
             m_qiValid[r] = false;
         std::cout << "[RegisterFile] FLUSH: all Qi tags cleared.\n";
-        // Note: architectural values are NOT touched on flush.
-        // Commit is responsible for writing arch values before flush.
+
+        // Sync cleared tags to arch file for UI visibility
+        for (int r = 0; r < NUM_REGS; ++r)
+            m_archFile->setQi(r, 0, false);
+
+        return;  // ← THE FIX: prevent spurious tag writes from the flushed issue
     }
 
     // ── 2. Commit write — update architectural register + clear tag
