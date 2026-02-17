@@ -138,6 +138,7 @@ Works6:
 ; NaN TEST
 ; =========================================================
 
+FMOVI REG1, #0.0
 FDIVI REG1, REG1, #0.0     ; REG1 = NaN or Inf
 
 FCMPS REG1, REG2           ; unordered if NaN

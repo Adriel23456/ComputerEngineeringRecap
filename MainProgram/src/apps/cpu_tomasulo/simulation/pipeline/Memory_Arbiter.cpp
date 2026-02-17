@@ -95,7 +95,7 @@ void Memory_Arbiter::clockEdge(TomasuloBus& bus) {
             std::cout << "[Memory_Arbiter] Store commit req: addr=0x"
                 << std::hex << bus.StoreCommit_Addr_o << std::dec << "\n";
         }
-        else if (bus.LB0_MemReq_o) {
+        else if (bus.LB0_MemReq_o && !storeConflict(bus, bus.LB0_MemAddr_o, bus.LB0_MemROBTag_o)) {
             bus.DC_Req_o = true;
             bus.DC_RW_o = false;  // Read
             bus.DC_Addr_o = bus.LB0_MemAddr_o;
@@ -105,7 +105,7 @@ void Memory_Arbiter::clockEdge(TomasuloBus& bus) {
             std::cout << "[Memory_Arbiter] LB0 mem req: addr=0x"
                 << std::hex << bus.LB0_MemAddr_o << std::dec << "\n";
         }
-        else if (bus.LB1_MemReq_o) {
+        else if (bus.LB1_MemReq_o && !storeConflict(bus, bus.LB1_MemAddr_o, bus.LB1_MemROBTag_o)) {
             bus.DC_Req_o = true;
             bus.DC_RW_o = false;
             bus.DC_Addr_o = bus.LB1_MemAddr_o;
@@ -115,7 +115,7 @@ void Memory_Arbiter::clockEdge(TomasuloBus& bus) {
             std::cout << "[Memory_Arbiter] LB1 mem req: addr=0x"
                 << std::hex << bus.LB1_MemAddr_o << std::dec << "\n";
         }
-        else if (bus.LB2_MemReq_o) {
+        else if (bus.LB2_MemReq_o && !storeConflict(bus, bus.LB2_MemAddr_o, bus.LB2_MemROBTag_o)) {
             bus.DC_Req_o = true;
             bus.DC_RW_o = false;
             bus.DC_Addr_o = bus.LB2_MemAddr_o;
@@ -132,4 +132,28 @@ void Memory_Arbiter::reset() {
     m_currentSource = Source::NONE;
     m_waitingForDCache = false;
     std::cout << "[Memory_Arbiter] reset()\n";
+}
+
+bool Memory_Arbiter::isOlderInROB(uint8_t storeTag, uint8_t loadTag, uint8_t head, uint8_t robSize) {
+    uint8_t storeAge = (storeTag - head) % robSize;
+    uint8_t loadAge = (loadTag - head) % robSize;
+    return storeAge < loadAge;
+}
+
+bool Memory_Arbiter::storeConflict(const TomasuloBus& bus, uint64_t loadAddr, uint8_t loadROBTag) {
+    uint64_t loadWord = loadAddr & ~7ULL;
+    uint8_t head = bus.ROBHead_o;
+    const uint8_t ROB_SIZE = 32;
+
+    if (bus.SB0_AddrReady_o
+        && (bus.SB0_ExposedAddr_o & ~7ULL) == loadWord
+        && isOlderInROB(bus.SB0_ExposedROBTag_o, loadROBTag, head, ROB_SIZE))
+        return true;
+
+    if (bus.SB1_AddrReady_o
+        && (bus.SB1_ExposedAddr_o & ~7ULL) == loadWord
+        && isOlderInROB(bus.SB1_ExposedROBTag_o, loadROBTag, head, ROB_SIZE))
+        return true;
+
+    return false;
 }

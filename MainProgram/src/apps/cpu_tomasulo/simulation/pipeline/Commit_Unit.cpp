@@ -137,19 +137,19 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
     else if (type == 0x05) {
         if (!bus.ROBHeadStoreReady_o) return;
 
-        if (!m_storeCommitInProgress) {
+        // Phase 1: Send request (held high until clockEdge arms InProgress)
+        if (!m_storeCommitInProgress && !m_storeCommitDone) {
             bus.StoreCommit_Req_o = true;
             bus.StoreCommit_Addr_o = bus.ROBHeadStoreAddr_o;
             bus.StoreCommit_Data_o = bus.ROBHeadStoreData_o;
-            bus.StoreCommit_Op_o = type;
-            m_storeCommitInProgress = true;          // <-- ADD THIS
+            bus.StoreCommit_Op_o = bus.ROBHeadOp_o;
             std::cout << "[Commit_Unit] Store commit req: addr=0x" << std::hex
                 << bus.ROBHeadStoreAddr_o << " data=0x"
                 << bus.ROBHeadStoreData_o << std::dec << "\n";
         }
 
-        if (bus.StoreCommit_Done_o) {
-            m_storeCommitInProgress = false;         // <-- ADD THIS
+        // Phase 2: Done latched by clockEdge -> pop ROB
+        if (m_storeCommitDone) {
             activateFree(bus, bus.ROBHeadSourceStation_o);
             bus.CommitPop_i = true;
             bus.CommitROBIdx_i = bus.ROBHead_o;
@@ -207,15 +207,25 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
 void Commit_Unit::clockEdge(TomasuloBus& bus) {
     if (bus.Flush_o) {
         m_storeCommitInProgress = false;
+        m_storeCommitDone = false;
         return;
     }
 
-    // Track store commit state transitions
-    if (bus.StoreCommit_Req_o && !m_storeCommitInProgress) {
-        m_storeCommitInProgress = true;
-    }
-    if (bus.StoreCommit_Done_o && m_storeCommitInProgress) {
+    // 1. Pop completed: reset both flags for next store
+    if (m_storeCommitDone && bus.CommitPop_i) {
+        m_storeCommitDone = false;
         m_storeCommitInProgress = false;
+        return;
+    }
+
+    // 2. Done signal arrived: latch for next evaluate
+    if (bus.StoreCommit_Done_o && m_storeCommitInProgress && !m_storeCommitDone) {
+        m_storeCommitDone = true;
+    }
+
+    // 3. Request sent: arm in-progress
+    if (bus.StoreCommit_Req_o && !m_storeCommitInProgress && !m_storeCommitDone) {
+        m_storeCommitInProgress = true;
     }
 }
 

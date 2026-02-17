@@ -214,6 +214,16 @@ struct TomasuloBus {
     bool     SB0_StComplete_Valid_o = false; uint8_t SB0_StComplete_ROBTag_o = 0; uint64_t SB0_StComplete_Addr_o = 0; uint64_t SB0_StComplete_Data_o = 0;
     bool     SB1_StComplete_Valid_o = false; uint8_t SB1_StComplete_ROBTag_o = 0; uint64_t SB1_StComplete_Addr_o = 0; uint64_t SB1_StComplete_Data_o = 0;
 
+    // Store buffer address exposure (for load ordering)
+    bool     SB0_AddrReady_o = false;
+    uint64_t SB0_ExposedAddr_o = 0;
+    bool     SB1_AddrReady_o = false;
+    uint64_t SB1_ExposedAddr_o = 0;
+
+    // Store buffer ROB tag exposure (for age comparison)
+    uint8_t SB0_ExposedROBTag_o = 0;
+    uint8_t SB1_ExposedROBTag_o = 0;
+
     // ════════════════════════════════════════════════════════════
     // RS -> ARBITER REQUEST SIGNALS
     // ════════════════════════════════════════════════════════════

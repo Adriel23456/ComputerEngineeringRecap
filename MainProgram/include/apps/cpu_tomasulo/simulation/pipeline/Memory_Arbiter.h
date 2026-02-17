@@ -26,4 +26,7 @@ private:
     bool   m_waitingForDCache = false;
 
     static uint8_t decodeSize(uint8_t op);
+
+    static bool isOlderInROB(uint8_t storeTag, uint8_t loadTag, uint8_t head, uint8_t robSize);
+    static bool storeConflict(const TomasuloBus& bus, uint64_t loadAddr, uint8_t loadROBTag);
 };

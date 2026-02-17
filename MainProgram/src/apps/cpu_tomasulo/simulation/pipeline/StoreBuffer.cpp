@@ -53,6 +53,17 @@ void StoreBuffer::evaluate(TomasuloBus& bus) {
             << m_address << " data=0x" << m_dataValue
             << std::dec << " ROB#" << (int)m_robTag << "\n";
     }
+    // Expose address for store-to-load ordering check
+    if (m_id == ID::SB0) {
+        bus.SB0_AddrReady_o = m_busy && m_addressReady;
+        bus.SB0_ExposedAddr_o = m_address;
+        bus.SB0_ExposedROBTag_o = m_robTag;
+    }
+    else {
+        bus.SB1_AddrReady_o = m_busy && m_addressReady;
+        bus.SB1_ExposedAddr_o = m_address;
+        bus.SB1_ExposedROBTag_o = m_robTag;
+    }
 }
 
 // ============================================================================

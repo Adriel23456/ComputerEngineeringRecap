@@ -3,8 +3,8 @@
 ; ================================================================
 ; Vectors A and B: 256 elements each (double, 64 bits)
 ;
-; Vector A: 0x8A8  - 0x10A0   (256 elements  8 bytes = 0x800 bytes)
-; Vector B: 0x10A8 - 0x18A0   (256 elements  8 bytes = 0x800 bytes)
+; Vector A: 0x890  - 0x1088   (256 elements)
+; Vector B: 0x890 - 0x1088   (256 elements)
 ;
 ; A[i] = 0.0 ... 255.0
 ; B[i] = 0.0 ... 255.0
@@ -26,8 +26,8 @@
     MOVL UPPER, .END_PROGRAM
 
     ; Base addresses
-    MOVI REG1, #0x8A8          ; Pointer A
-    MOVI REG2, #0x10A8          ; Pointer B
+    MOVI REG1, #0x890          ; Pointer A
+    MOVI REG2, #0x890          ; Pointer B
 
     MOVI REG3, #256            ; Process ALL 128 elements
     FMOVI REG4, #0.0           ; Accumulator = 0.0
@@ -38,8 +38,6 @@
 .COMPUTE:
 
     LDR REG5, [REG1]           ; Load A[i]
-    NOP
-    NOP
     LDR REG6, [REG2]           ; Load B[i]
 
     FMUL REG5, REG5, REG6      ; REG5 = A[i] * B[i]

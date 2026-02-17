@@ -22,6 +22,7 @@ public:
 
 private:
     bool m_storeCommitInProgress = false;
+    bool m_storeCommitDone = false;
 
     void activateFree(TomasuloBus& bus, uint8_t stationID) const;
 };
