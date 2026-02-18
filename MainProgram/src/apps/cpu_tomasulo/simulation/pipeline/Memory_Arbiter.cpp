@@ -55,25 +55,18 @@ void Memory_Arbiter::clockEdge(TomasuloBus& bus) {
         switch (m_currentSource) {
         case Source::STORE_COMMIT:
             bus.StoreCommit_Done_o = true;
-            std::cout << "[Memory_Arbiter] Store commit done.\n";
             break;
         case Source::LB0:
             bus.LB0_MemDone_o = true;
             bus.LB0_MemData_o = bus.DC_RData_o;
-            std::cout << "[Memory_Arbiter] LB0 mem done: data=0x"
-                << std::hex << bus.DC_RData_o << std::dec << "\n";
             break;
         case Source::LB1:
             bus.LB1_MemDone_o = true;
             bus.LB1_MemData_o = bus.DC_RData_o;
-            std::cout << "[Memory_Arbiter] LB1 mem done: data=0x"
-                << std::hex << bus.DC_RData_o << std::dec << "\n";
             break;
         case Source::LB2:
             bus.LB2_MemDone_o = true;
             bus.LB2_MemData_o = bus.DC_RData_o;
-            std::cout << "[Memory_Arbiter] LB2 mem done: data=0x"
-                << std::hex << bus.DC_RData_o << std::dec << "\n";
             break;
         default: break;
         }
@@ -92,8 +85,6 @@ void Memory_Arbiter::clockEdge(TomasuloBus& bus) {
             bus.DC_Size_o = decodeSize(bus.StoreCommit_Op_o);
             m_currentSource = Source::STORE_COMMIT;
             m_waitingForDCache = true;
-            std::cout << "[Memory_Arbiter] Store commit req: addr=0x"
-                << std::hex << bus.StoreCommit_Addr_o << std::dec << "\n";
         }
         else if (bus.LB0_MemReq_o && !storeConflict(bus, bus.LB0_MemAddr_o, bus.LB0_MemROBTag_o)) {
             bus.DC_Req_o = true;
@@ -102,8 +93,6 @@ void Memory_Arbiter::clockEdge(TomasuloBus& bus) {
             bus.DC_Size_o = decodeSize(bus.LB0_MemOp_o);
             m_currentSource = Source::LB0;
             m_waitingForDCache = true;
-            std::cout << "[Memory_Arbiter] LB0 mem req: addr=0x"
-                << std::hex << bus.LB0_MemAddr_o << std::dec << "\n";
         }
         else if (bus.LB1_MemReq_o && !storeConflict(bus, bus.LB1_MemAddr_o, bus.LB1_MemROBTag_o)) {
             bus.DC_Req_o = true;
@@ -112,8 +101,6 @@ void Memory_Arbiter::clockEdge(TomasuloBus& bus) {
             bus.DC_Size_o = decodeSize(bus.LB1_MemOp_o);
             m_currentSource = Source::LB1;
             m_waitingForDCache = true;
-            std::cout << "[Memory_Arbiter] LB1 mem req: addr=0x"
-                << std::hex << bus.LB1_MemAddr_o << std::dec << "\n";
         }
         else if (bus.LB2_MemReq_o && !storeConflict(bus, bus.LB2_MemAddr_o, bus.LB2_MemROBTag_o)) {
             bus.DC_Req_o = true;
@@ -122,8 +109,6 @@ void Memory_Arbiter::clockEdge(TomasuloBus& bus) {
             bus.DC_Size_o = decodeSize(bus.LB2_MemOp_o);
             m_currentSource = Source::LB2;
             m_waitingForDCache = true;
-            std::cout << "[Memory_Arbiter] LB2 mem req: addr=0x"
-                << std::hex << bus.LB2_MemAddr_o << std::dec << "\n";
         }
     }
 }

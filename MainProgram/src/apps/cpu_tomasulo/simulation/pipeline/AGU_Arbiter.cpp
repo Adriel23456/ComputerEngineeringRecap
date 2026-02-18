@@ -45,9 +45,6 @@ void AGU_Arbiter::evaluate(TomasuloBus& bus) {
         bus.AGU0_Base_o = pending[idx].base;
         bus.AGU0_Offset_o = pending[idx].offset;
         bus.AGU0_SourceID_o = pending[idx].sourceID;
-        std::cout << "[AGU_Arbiter] Dispatch to AGU0: src=" << (int)pending[idx].sourceID
-            << " base=0x" << std::hex << pending[idx].base
-            << " offset=0x" << pending[idx].offset << std::dec << "\n";
         idx++;
     }
 
@@ -57,9 +54,6 @@ void AGU_Arbiter::evaluate(TomasuloBus& bus) {
         bus.AGU1_Base_o = pending[idx].base;
         bus.AGU1_Offset_o = pending[idx].offset;
         bus.AGU1_SourceID_o = pending[idx].sourceID;
-        std::cout << "[AGU_Arbiter] Dispatch to AGU1: src=" << (int)pending[idx].sourceID
-            << " base=0x" << std::hex << pending[idx].base
-            << " offset=0x" << pending[idx].offset << std::dec << "\n";
         idx++;
     }
 }

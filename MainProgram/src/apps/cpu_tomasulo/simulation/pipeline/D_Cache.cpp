@@ -67,14 +67,10 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
             m_ram->writeAddress(m_writebackAddr + i * 8, word);
         }
         m_writebackPending = false;
-        std::cout << "[D_Cache] Writeback done: addr=0x" << std::hex
-            << m_writebackAddr << std::dec << "\n";
 
         // Now start fetching the missing line
         m_missPending = true;
         m_missCounter = MISS_LATENCY;
-        std::cout << "[D_Cache] Fetching line: addr=0x" << std::hex
-            << m_missAddr << std::dec << "\n";
         return;
     }
 
@@ -99,10 +95,6 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
         updateLRU(set, way);
         m_missPending = false;
 
-        std::cout << "[D_Cache] Miss fill complete: set=" << set
-            << " way=" << way << " addr=0x" << std::hex
-            << m_missAddr << std::dec << "\n";
-
         // Replay the pending request (now guaranteed hit)
         if (m_pendingReq) {
             int offset = extractOffset(m_pendingAddr);
@@ -117,8 +109,6 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
                 }
                 bus.DC_RData_o = rdata;
                 bus.DC_Done_o = true;
-                std::cout << "[D_Cache] Replay read hit: 0x" << std::hex
-                    << rdata << std::dec << "\n";
             }
             else {
                 if (m_pendingSize == 0x03) {
@@ -129,7 +119,6 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
                 }
                 line.dirty = true;
                 bus.DC_Done_o = true;
-                std::cout << "[D_Cache] Replay write hit.\n";
             }
             updateLRU(set, way);
             m_pendingReq = false;
@@ -157,8 +146,6 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
                 }
                 bus.DC_RData_o = rdata;
                 bus.DC_Done_o = true;
-                std::cout << "[D_Cache] Read hit: addr=0x" << std::hex << addr
-                    << " data=0x" << rdata << std::dec << "\n";
             }
             else {
                 if (bus.DC_Size_o == 0x03) {
@@ -169,16 +156,11 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
                 }
                 m_lines[set][way].dirty = true;
                 bus.DC_Done_o = true;
-                std::cout << "[D_Cache] Write hit: addr=0x" << std::hex << addr
-                    << std::dec << "\n";
             }
             updateLRU(set, way);
         }
         else {
             // === MISS ===
-            std::cout << "[D_Cache] Miss: addr=0x" << std::hex << addr
-                << std::dec << "\n";
-
             ++m_missTotal;
             m_missAddr = alignToLine(addr);
             m_missSet = set;
@@ -196,14 +178,10 @@ void D_Cache::clockEdge(TomasuloBus& bus) {
                 m_writebackPending = true;
                 m_writebackAddr = wbAddr;
                 m_missCounter = MISS_LATENCY;
-                std::cout << "[D_Cache] Writeback victim: addr=0x" << std::hex
-                    << wbAddr << std::dec << "\n";
             }
             else {
                 m_missPending = true;
                 m_missCounter = MISS_LATENCY;
-                std::cout << "[D_Cache] Fetching line: addr=0x" << std::hex
-                    << m_missAddr << std::dec << "\n";
             }
         }
     }

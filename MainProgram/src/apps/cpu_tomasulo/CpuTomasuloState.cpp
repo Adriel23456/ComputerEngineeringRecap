@@ -158,6 +158,7 @@ void CpuTomasuloState::pollResults() {
         if (auto* av = dynamic_cast<TomasuloAnalysisView*>(getView(Panel::DataAnalysis))) {
             av->resetAll();
         }
+        m_showSWIPopup = false;
         break;
     }
 
@@ -171,10 +172,18 @@ void CpuTomasuloState::pollResults() {
     case SimTask::Type::Step:
     case SimTask::Type::StepUntil:
     case SimTask::Type::InfiniteStep: {
-        // Cycle count already updated above
+        // Check if SWI was hit
+        if (result.message.find("SWI reached") != std::string::npos) {
+            m_showSWIPopup = true;
+        }
         break;
     }
-
+    case SimTask::Type::InfiniteStepMS: {     // ← add this line
+        if (result.message.find("SWI reached") != std::string::npos) {
+            m_showSWIPopup = true;
+        }
+        break;
+    }
     default: break;
 
     } // switch
@@ -185,7 +194,8 @@ void CpuTomasuloState::pollResults() {
 // ============================================================================
 
 bool CpuTomasuloState::panelNeedsSimLock(Panel p) const {
-    return p == Panel::RAM
+    return p == Panel::MainView
+        || p == Panel::RAM
         || p == Panel::Registers
         || p == Panel::ICache
         || p == Panel::DCache
@@ -237,6 +247,42 @@ void CpuTomasuloState::render() {
 
         ImGui::Dummy(ImVec2(1.0f, separator * 0.5f));
         renderBottomBar(available.x, bottomBarHeight);
+
+        // ── SWI Popup ───────────────────────────────────────────
+        if (m_showSWIPopup) {
+            ImGui::OpenPopup("##SWIPopup");
+            m_showSWIPopup = false;  // Only trigger open once
+        }
+
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(380, 0), ImGuiCond_Appearing);
+
+        if (ImGui::BeginPopupModal("##SWIPopup", nullptr,
+            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove)) {
+
+            ImGui::Dummy(ImVec2(1, 8));
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f),
+                "  SWI reached during execution");
+            ImGui::Dummy(ImVec2(1, 4));
+            ImGui::Separator();
+            ImGui::Dummy(ImVec2(1, 4));
+
+            char msg[96];
+            std::snprintf(msg, sizeof(msg), "CPU halted at cycle %llu.",
+                static_cast<unsigned long long>(m_cycleCount));
+            ImGui::TextWrapped("%s", msg);
+
+            ImGui::Dummy(ImVec2(1, 8));
+
+            float btnW = 120.0f;
+            ImGui::SetCursorPosX((ImGui::GetWindowSize().x - btnW) * 0.5f);
+            if (ImGui::Button("OK", ImVec2(btnW, 32))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::Dummy(ImVec2(1, 4));
+            ImGui::EndPopup();
+        }
     }
     ImGui::End();
 }
@@ -296,19 +342,21 @@ void CpuTomasuloState::renderContentPanel(float width, float height) {
     if (auto* view = getView(m_selectedPanel)) {
         bool locked = false;
         if (panelNeedsSimLock(m_selectedPanel)) {
-            m_controller.mutex().lock();
-            locked = true;
+            locked = m_controller.mutex().try_lock();  // NON-BLOCKING
         }
 
-        // Sync simulation data → UI widgets before rendering
-        switch (m_selectedPanel) {
-        case Panel::ICache:       syncICacheView();    break;
-        case Panel::DCache:       syncDCacheView();    break;
-        case Panel::ROB:          syncROBView();       break;
-        case Panel::DataAnalysis: syncAnalysisView();  break;
-        default: break;
+        if (locked || !panelNeedsSimLock(m_selectedPanel)) {
+            // Sync simulation data → UI widgets before rendering
+            switch (m_selectedPanel) {
+            case Panel::MainView:     syncMainView();      break;
+            case Panel::ICache:       syncICacheView();    break;
+            case Panel::DCache:       syncDCacheView();    break;
+            case Panel::ROB:          syncROBView();       break;
+            case Panel::DataAnalysis: syncAnalysisView();  break;
+            default: break;
+            }
         }
-
+        // Always render (with latest synced data, or stale data if lock failed)
         view->render();
 
         if (locked) {
@@ -346,7 +394,6 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
         if (infinite) m_controller.requestStopInfinite();
         m_controller.requestReset();
         m_cycleCount = 0;
-        std::cout << "[Tomasulo] RESET pressed\n";
     }
     ImGui::PopStyleColor(3);
 
@@ -358,7 +405,6 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
     if (stepDisabled) ImGui::BeginDisabled();
     if (ImGui::Button("STEP", ImVec2(wStep, BUTTON_HEIGHT))) {
         m_controller.requestStep();
-        std::cout << "[Tomasulo] STEP pressed\n";
     }
     if (stepDisabled) ImGui::EndDisabled();
 
@@ -383,7 +429,6 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
         if (stepDisabled) ImGui::BeginDisabled();
         if (ImGui::Button("StepUntil", ImVec2(wStepUntil, BUTTON_HEIGHT))) {
             m_controller.requestStepUntil(m_untilSteps);
-            std::cout << "[Tomasulo] StepUntil " << m_untilSteps << " pressed\n";
         }
         if (stepDisabled) ImGui::EndDisabled();
     }
@@ -399,7 +444,34 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
     if (stepDisabled) ImGui::BeginDisabled();
     if (ImGui::Button("InfiniteStep", ImVec2(wInfinite, BUTTON_HEIGHT))) {
         m_controller.requestInfiniteStep();
-        std::cout << "[Tomasulo] InfiniteStep pressed\n";
+    }
+    if (stepDisabled) ImGui::EndDisabled();
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine(0.0f, GAP);
+
+    // Delay selector button — cycles through values on click
+    char msLabel[16];
+    std::snprintf(msLabel, sizeof(msLabel), "%dms", kStepMsValues[m_stepMsIndex]);
+    float wMsBtn = ImGui::CalcTextSize("500ms").x + 16.0f;  // fixed width so it doesn't jump
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.25f, 0.30f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.42f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.22f, 1.0f));
+    if (ImGui::Button(msLabel, ImVec2(wMsBtn, BUTTON_HEIGHT))) {
+        m_stepMsIndex = (m_stepMsIndex + 1) % kStepMsCount;
+    }
+    ImGui::PopStyleColor(3);
+
+    ImGui::SameLine(0.0f, 4.0f);
+
+    // StepMS run button
+    float wStepMs = ImGui::CalcTextSize("StepMS").x + TEXT_PADDING;
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.45f, 0.55f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.58f, 0.68f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.08f, 0.38f, 0.45f, 1.0f));
+    if (stepDisabled) ImGui::BeginDisabled();
+    if (ImGui::Button("StepMS", ImVec2(wStepMs, BUTTON_HEIGHT))) {
+        m_controller.requestInfiniteStepMS(kStepMsValues[m_stepMsIndex]);
     }
     if (stepDisabled) ImGui::EndDisabled();
     ImGui::PopStyleColor(3);
@@ -412,7 +484,6 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
     if (stopDisabled) ImGui::BeginDisabled();
     if (ImGui::Button("STOP", ImVec2(wStop, BUTTON_HEIGHT))) {
         m_controller.requestStopInfinite();
-        std::cout << "[Tomasulo] STOP pressed\n";
     }
     if (stopDisabled) ImGui::EndDisabled();
 
@@ -622,4 +693,11 @@ void CpuTomasuloState::syncAnalysisView() {
     view->setUsesRS(3, stats.stationUses[8]);
     view->setUsesRS(4, stats.stationUses[9]);
     view->setUsesRS(5, stats.stationUses[10]);
+}
+
+
+void CpuTomasuloState::syncMainView() {
+    auto* view = dynamic_cast<TomasuloMainView*>(getView(Panel::MainView));
+    if (!view) return;
+    view->setLabels(m_controller.cpu().tracker().labels());
 }

@@ -25,8 +25,6 @@ void Flags_Unit::clockEdge(TomasuloBus& bus) {
     // ── 1. Flush — clear speculative tag, keep architectural flags
     if (bus.Flush_o) {
         m_qiValid = false;
-        std::cout << "[Flags_Unit] FLUSH: Qi tag cleared. Arch flags=0x"
-            << std::hex << (int)m_archFlags << std::dec << " preserved.\n";
         return;
     }
 
@@ -37,14 +35,6 @@ void Flags_Unit::clockEdge(TomasuloBus& bus) {
         // Clear tag if the committed entry was the one we're waiting on
         if (m_qiValid && m_qi == bus.CommitROBIdx_i) {
             m_qiValid = false;
-            std::cout << "[Flags_Unit] Commit: flags=0x" << std::hex
-                << (int)m_archFlags << std::dec
-                << ", tag cleared (ROB#" << (int)bus.CommitROBIdx_i << ")\n";
-        }
-        else {
-            std::cout << "[Flags_Unit] Commit: flags=0x" << std::hex
-                << (int)m_archFlags << std::dec
-                << ", tag retained (newer rename)\n";
         }
     }
 
@@ -52,7 +42,6 @@ void Flags_Unit::clockEdge(TomasuloBus& bus) {
     if (bus.ROBAlloc_o && bus.FlagsTagWrEn_o) {
         m_qi = bus.ROBTail_o;
         m_qiValid = true;
-        std::cout << "[Flags_Unit] Rename: FlagsQi -> ROB#" << (int)m_qi << "\n";
     }
 }
 

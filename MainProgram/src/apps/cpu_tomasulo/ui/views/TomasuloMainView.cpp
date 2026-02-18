@@ -30,8 +30,7 @@ TomasuloMainView::s_slotDefs = { {
     { 660.0f,  875.0f,  140.0f, 25.0f, "RS_IntMUL0" },
     { 660.0f,  965.0f,  140.0f, 25.0f, "RS_FPMUL0"  },
     { 660.0f, 1055.0f,  140.0f, 25.0f, "RS_Branch0" },
-    { 1265.0f, 405.0f,  180.0f, 28.0f, "CDB_A"      },
-    { 1265.0f, 445.0f,  180.0f, 28.0f, "CDB_B"      },
+    { 1265.0f, 415.0f,  180.0f, 28.0f, "Commit"     },
 } };
 
 // ════════════════════════════════════════════════════════════════
@@ -75,8 +74,8 @@ ImU32 TomasuloMainView::slotBorderColor(int i) {
     constexpr ImU32 EXECUTE_CLR = IM_COL32(255, 200, 100, 220);
     constexpr ImU32 COMMIT_CLR = IM_COL32(100, 255, 150, 220);
 
-    if (i == ISSUE)                         return ISSUE_CLR;
-    if (i >= SB0 && i <= RS_BRANCH0)        return EXECUTE_CLR;
+    if (i == 0)            return ISSUE_CLR;
+    if (i >= 1 && i <= 11) return EXECUTE_CLR;
     return COMMIT_CLR;
 }
 

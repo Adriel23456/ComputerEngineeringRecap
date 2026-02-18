@@ -1,21 +1,9 @@
-/**
- * @file I_Cache.cpp
- * @brief Component 4 implementation — Instruction Cache.
- */
-
 #include "apps/cpu_tomasulo/simulation/pipeline/I_Cache.h"
 #include "apps/cpu_tomasulo/simulation/pipeline/TomasuloBus.h"
 #include "apps/cpu_tomasulo/simulation/memory/TomasuloRAM.h"
 #include <iostream>
 
 I_Cache::I_Cache(const TomasuloRAM* ram) : m_ram(ram) {}
-
-// ============================================================================
-// Address decomposition (64-byte lines, 8 sets) [2KB]
-//   addr[5:3]  = word offset within line (3 bits)
-//   addr[8:6] = set index (3 bits)
-//   addr[63:9]= tag (55 bits)
-// ============================================================================
 
 uint64_t I_Cache::extractTag(uint64_t addr) const { return addr >> 9; }
 uint32_t I_Cache::extractSet(uint64_t addr) const { return (addr >> 6) & 0x7; }
@@ -30,12 +18,11 @@ int I_Cache::findWay(uint32_t set, uint64_t tag) const {
 }
 
 int I_Cache::lruVictim(uint32_t set) const {
-    return m_sets[set].lruOrder[NUM_WAYS - 1]; // least recently used
+    return m_sets[set].lruOrder[NUM_WAYS - 1];
 }
 
 void I_Cache::touchWay(uint32_t set, int way) {
     auto& order = m_sets[set].lruOrder;
-    // Move 'way' to front (MRU position)
     int pos = -1;
     for (int i = 0; i < NUM_WAYS; ++i) {
         if (order[i] == static_cast<uint8_t>(way)) { pos = i; break; }
@@ -51,7 +38,6 @@ void I_Cache::fillLine(uint32_t set, int way, uint64_t lineAddr) {
     auto& line = m_sets[set].ways[way];
     line.tag = extractTag(lineAddr);
     line.valid = true;
-    // Read 8 words from RAM
     for (int w = 0; w < WORDS_PER_LINE; ++w) {
         uint64_t wordAddr = lineAddr + static_cast<uint64_t>(w) * 8;
         size_t row = static_cast<size_t>(wordAddr / TomasuloRAM::kStep);
@@ -61,6 +47,29 @@ void I_Cache::fillLine(uint32_t set, int way, uint64_t lineAddr) {
             line.data[w] = 0;
     }
     touchWay(set, way);
+}
+
+bool I_Cache::isLineCachedOrPending(uint64_t lineAddr) const {
+    uint32_t set = extractSet(lineAddr);
+    uint64_t tag = extractTag(lineAddr);
+    if (findWay(set, tag) >= 0) return true;
+    if (m_missPending && alignToLine(m_missAddr) == lineAddr) return true;
+    for (int i = 0; i < NUM_PREFETCH; ++i)
+        if (m_prefetch[i].pending && m_prefetch[i].addr == lineAddr) return true;
+    return false;
+}
+
+bool I_Cache::startPrefetch(uint64_t lineAddr) {
+    if (isLineCachedOrPending(lineAddr)) return false;
+    for (int i = 0; i < NUM_PREFETCH; ++i) {
+        if (!m_prefetch[i].pending) {
+            m_prefetch[i].pending = true;
+            m_prefetch[i].addr = lineAddr;
+            m_prefetch[i].counter = MISS_LATENCY;
+            return true;
+        }
+    }
+    return false; // All slots busy
 }
 
 // ============================================================================
@@ -76,14 +85,12 @@ void I_Cache::evaluate(TomasuloBus& bus) {
     int hitWay = findWay(set, tag);
 
     if (hitWay >= 0 && !m_missPending) {
-        // ── HIT ────────────────────────────────────────────────
         bus.InstrF_o = m_sets[set].ways[hitWay].data[offset];
         bus.InstReady_o = true;
         bus.ICtoRAM_Req_o = false;
         touchWay(set, hitWay);
     }
     else {
-        // ── MISS (or miss in progress) ─────────────────────────
         bus.InstrF_o = 0;
         bus.InstReady_o = false;
     }
@@ -94,15 +101,32 @@ void I_Cache::evaluate(TomasuloBus& bus) {
 // ============================================================================
 
 void I_Cache::clockEdge(TomasuloBus& bus) {
-    // ── Flush handling ──────────────────────────────────────────
+    // ── Flush: cancel prefetches, keep demand miss ──────────────
     if (bus.Flush_o) {
-        m_prefetchPending = false;
-        m_prefetchCounter = 0;
-        // Do NOT cancel demand miss
-        std::cout << "[I_Cache] Flush: prefetch cancelled.\n";
+        for (int i = 0; i < NUM_PREFETCH; ++i)
+            m_prefetch[i].pending = false;
     }
 
-    // ── Handle ongoing miss ─────────────────────────────────────
+    // ── Tick all prefetch slots (run in background always) ──────
+    for (int i = 0; i < NUM_PREFETCH; ++i) {
+        if (!m_prefetch[i].pending) continue;
+        --m_prefetch[i].counter;
+        if (m_prefetch[i].counter <= 0) {
+            uint64_t lineAddr = m_prefetch[i].addr;
+            uint32_t set = extractSet(lineAddr);
+            if (findWay(set, extractTag(lineAddr)) < 0) {
+                int victim = lruVictim(set);
+                fillLine(set, victim, lineAddr);
+            }
+            m_prefetch[i].pending = false;
+
+            // Chain: when a prefetch completes, start next line prefetch
+            uint64_t nextLine = lineAddr + LINE_SIZE;
+            startPrefetch(nextLine);
+        }
+    }
+
+    // ── Handle demand miss ──────────────────────────────────────
     if (m_missPending) {
         ++m_missStallCycles;
         --m_missCounter;
@@ -111,60 +135,62 @@ void I_Cache::clockEdge(TomasuloBus& bus) {
             int victim = lruVictim(set);
             fillLine(set, victim, m_missAddr);
             m_missPending = false;
-            std::cout << "[I_Cache] Miss resolved: line 0x" << std::hex
-                << m_missAddr << std::dec << " filled into set "
-                << set << " way " << victim << "\n";
+
+            // Immediately queue prefetches for next 2 lines
+            uint64_t next1 = m_missAddr + LINE_SIZE;
+            uint64_t next2 = m_missAddr + LINE_SIZE * 2;
+            startPrefetch(next1);
+            startPrefetch(next2);
         }
-        return; // Still processing miss, don't start new ones
+        return; // Still stalling on demand miss
     }
 
-    // ── Handle ongoing prefetch ─────────────────────────────────
-    if (m_prefetchPending) {
-        --m_prefetchCounter;
-        if (m_prefetchCounter <= 0) {
-            uint64_t lineAddr = alignToLine(m_prefetchAddr);
-            uint32_t set = extractSet(lineAddr);
-            if (findWay(set, extractTag(lineAddr)) < 0) {
-                int victim = lruVictim(set);
-                fillLine(set, victim, lineAddr);
-                std::cout << "[I_Cache] Prefetch filled: line 0x" << std::hex
-                    << lineAddr << std::dec << "\n";
-            }
-            m_prefetchPending = false;
-        }
-    }
-
-    // ── Check current access ────────────────────────────────────
+    // ── Check current PC ────────────────────────────────────────
     uint64_t addr = bus.PCCurrent_o;
     uint32_t set = extractSet(addr);
     uint64_t tag = extractTag(addr);
     int hitWay = findWay(set, tag);
 
     if (hitWay >= 0) {
-        // Hit — initiate next-line prefetch if not already cached/pending
-        uint64_t nextLine = alignToLine(addr) + LINE_SIZE;
-        uint32_t nextSet = extractSet(nextLine);
-        if (findWay(nextSet, extractTag(nextLine)) < 0 && !m_prefetchPending) {
-            m_prefetchPending = true;
-            m_prefetchAddr = nextLine;
-            m_prefetchCounter = MISS_LATENCY;
-            std::cout << "[I_Cache] Prefetch initiated: line 0x" << std::hex
-                << nextLine << std::dec << "\n";
-        }
+        // Hit — ensure next 2 lines are prefetching/cached
+        uint64_t curLine = alignToLine(addr);
+        uint64_t next1 = curLine + LINE_SIZE;
+        uint64_t next2 = curLine + LINE_SIZE * 2;
+        startPrefetch(next1);
+        startPrefetch(next2);
     }
-    else if (!m_missPending) {
-        // Miss — start fetch
-        m_missPending = true;
-        m_missAddr = alignToLine(addr);
-        m_missCounter = MISS_LATENCY;
-        ++m_missTotal;
-        std::cout << "[I_Cache] MISS at 0x" << std::hex << addr
-            << ", fetching line 0x" << m_missAddr << std::dec
-            << " (" << MISS_LATENCY << " cycles)\n";
+    else {
+        // Demand miss — check if a prefetch slot has this line
+        uint64_t lineAddr = alignToLine(addr);
+        bool promotedFromPrefetch = false;
+        for (int i = 0; i < NUM_PREFETCH; ++i) {
+            if (m_prefetch[i].pending && m_prefetch[i].addr == lineAddr) {
+                // Promote prefetch to demand miss (keep remaining cycles)
+                m_missPending = true;
+                m_missAddr = lineAddr;
+                m_missCounter = m_prefetch[i].counter;
+                m_prefetch[i].pending = false;
+                ++m_missTotal;
+                promotedFromPrefetch = true;
+                break;
+            }
+        }
+        if (!promotedFromPrefetch) {
+            m_missPending = true;
+            m_missAddr = lineAddr;
+            m_missCounter = MISS_LATENCY;
+            ++m_missTotal;
+
+            // Immediately start prefetching next line too
+            startPrefetch(lineAddr + LINE_SIZE);
+        }
     }
 }
 
-// UI implementations:
+// ============================================================================
+// UI access
+// ============================================================================
+
 bool I_Cache::lineValid(int set, int way) const {
     if (set < 0 || set >= NUM_SETS || way < 0 || way >= NUM_WAYS) return false;
     return m_sets[set].ways[way].valid;
@@ -180,10 +206,6 @@ const uint64_t* I_Cache::lineData(int set, int way) const {
     return m_sets[set].ways[way].data;
 }
 
-// ============================================================================
-// Reset
-// ============================================================================
-
 void I_Cache::reset() {
     for (auto& set : m_sets) {
         for (auto& way : set.ways) {
@@ -195,9 +217,9 @@ void I_Cache::reset() {
         set.lruOrder[2] = 2; set.lruOrder[3] = 3;
     }
     m_missPending = false;
-    m_prefetchPending = false;
     m_missCounter = 0;
-    m_prefetchCounter = 0;
+    for (int i = 0; i < NUM_PREFETCH; ++i)
+        m_prefetch[i] = {};
     m_missTotal = 0;
     m_missStallCycles = 0;
     std::cout << "[I_Cache] reset()\n";

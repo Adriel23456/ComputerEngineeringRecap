@@ -16,10 +16,6 @@ void TomasuloCycleCoordinator::addComponent(ITomasuloComponent* comp) {
 uint64_t TomasuloCycleCoordinator::executeCycle(TomasuloBus& bus) {
     m_cycleComplete = false;
 
-    std::cout << "\n================================================\n";
-    std::cout << "  CYCLE " << (m_cycleCount + 1) << " BEGIN\n";
-    std::cout << "==================================================\n";
-
     // ── Clear one-shot signals from previous cycle ─────────────
     // These are set by Commit_Unit (late in evaluate order) but
     // read by PC_MUX (early in evaluate order). Without clearing,
@@ -42,11 +38,6 @@ uint64_t TomasuloCycleCoordinator::executeCycle(TomasuloBus& bus) {
 
     ++m_cycleCount;
     m_cycleComplete = true;
-
-    std::cout << "==================================================\n";
-    std::cout << "  CYCLE " << m_cycleCount << " END (PC=0x"
-        << std::hex << bus.PCCurrent_o << std::dec << ")\n";
-    std::cout << "==================================================\n";
 
     return m_cycleCount;
 }

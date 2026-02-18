@@ -74,7 +74,6 @@ void RegisterFilePipeline::clockEdge(TomasuloBus& bus) {
     if (bus.Flush_o) {
         for (int r = 0; r < NUM_REGS; ++r)
             m_qiValid[r] = false;
-        std::cout << "[RegisterFile] FLUSH: all Qi tags cleared.\n";
 
         // Sync cleared tags to arch file for UI visibility
         for (int r = 0; r < NUM_REGS; ++r)
@@ -93,15 +92,6 @@ void RegisterFilePipeline::clockEdge(TomasuloBus& bus) {
             // A later instruction may have overwritten the tag.
             if (m_qiValid[reg] && m_qi[reg] == bus.CommitROBIdx_i) {
                 m_qiValid[reg] = false;
-                std::cout << "[RegisterFile] Commit: R" << (int)reg
-                    << " = 0x" << std::hex << bus.CommitWrData_i
-                    << std::dec << ", tag cleared (ROB#"
-                    << (int)bus.CommitROBIdx_i << ")\n";
-            }
-            else {
-                std::cout << "[RegisterFile] Commit: R" << (int)reg
-                    << " = 0x" << std::hex << bus.CommitWrData_i
-                    << std::dec << ", tag retained (newer rename)\n";
             }
         }
     }
@@ -112,8 +102,6 @@ void RegisterFilePipeline::clockEdge(TomasuloBus& bus) {
         if (dest < NUM_REGS) {
             m_qi[dest] = bus.ROBTail_o;
             m_qiValid[dest] = true;
-            std::cout << "[RegisterFile] Rename: R" << (int)dest
-                << " -> ROB#" << (int)bus.ROBTail_o << "\n";
         }
     }
 

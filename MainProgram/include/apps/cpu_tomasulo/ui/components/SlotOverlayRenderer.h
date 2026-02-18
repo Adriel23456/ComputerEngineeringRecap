@@ -37,7 +37,6 @@ public:
         const float BORDER_T = 1.5f;
 
         ImFont* font = ImGui::GetFont();
-        const float baseSz = ImGui::GetFontSize();
 
         for (std::size_t i = 0; i < N; ++i) {
             const auto& d = defs[i];
@@ -48,20 +47,33 @@ public:
             dl->AddRectFilled(tl, br, FILL, CORNER_R);
             dl->AddRect(tl, br, colorFn(static_cast<int>(i)), CORNER_R, 0, BORDER_T);
 
-            const float fontPx = std::max(10.0f, baseSz * scale * 1.1f);
-            const float maxW = (br.x - tl.x) - 4.0f * scale;
+            const float boxW = br.x - tl.x;
+            const float boxH = br.y - tl.y;
+            const float pad = 4.0f * scale;
+            const float maxW = boxW - pad;
+            if (maxW <= 0.0f) continue;
 
             const auto& txt = labels[i];
+            if (txt.empty()) continue;
+
+            // Start with height-based font size, then shrink to fit width
+            float fontPx = boxH * 0.75f;
+            fontPx = std::max(8.0f, std::min(fontPx, 40.0f));
+
             ImVec2 textSz = font->CalcTextSizeA(fontPx, FLT_MAX, 0.0f, txt.c_str());
-            if (textSz.x > maxW && maxW > 0.0f)
-                textSz = font->CalcTextSizeA(fontPx, maxW, maxW, txt.c_str());
+
+            // Shrink if text overflows box width
+            if (textSz.x > maxW) {
+                fontPx *= (maxW / textSz.x);
+                fontPx = std::max(6.0f, fontPx);
+                textSz = font->CalcTextSizeA(fontPx, FLT_MAX, 0.0f, txt.c_str());
+            }
 
             ImVec2 textPos(
-                tl.x + ((br.x - tl.x) - textSz.x) * 0.5f,
-                tl.y + ((br.y - tl.y) - textSz.y) * 0.5f);
+                tl.x + (boxW - textSz.x) * 0.5f,
+                tl.y + (boxH - textSz.y) * 0.5f);
 
-            dl->AddText(font, fontPx, textPos, TEXT_COLOR, txt.c_str(),
-                nullptr, maxW > 0.0f ? maxW : 0.0f);
+            dl->AddText(font, fontPx, textPos, TEXT_COLOR, txt.c_str());
         }
     }
 };

@@ -482,6 +482,8 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tomasulo/ui/components/ShaderBackground.h"
     "include/apps/cpu_tomasulo/ui/components/BorderRenderer.h"
     "include/apps/cpu_tomasulo/ui/components/SlotOverlayRenderer.h"
+    "include/apps/cpu_tomasulo/ui/widgets/TomasuloDisassembler.h"
+    "include/apps/cpu_tomasulo/simulation/PipelineTracker.h"
 )
 
 # Build definitions depending on build type

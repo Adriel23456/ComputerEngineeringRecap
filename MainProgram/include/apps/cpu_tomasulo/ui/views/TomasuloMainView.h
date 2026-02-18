@@ -39,10 +39,10 @@ public:
         RS_INTMUL0,
         RS_FPMUL0,
         RS_BRANCH0,
-        COMMIT_CDB_A, COMMIT_CDB_B,
-        SLOT_COUNT
+        COMMIT
     };
 
+    static constexpr int SLOT_COUNT = 13;
     using SlotDef = SlotOverlayRenderer::SlotDef;
 
     // ── Construction ──────────────────────────────────────────

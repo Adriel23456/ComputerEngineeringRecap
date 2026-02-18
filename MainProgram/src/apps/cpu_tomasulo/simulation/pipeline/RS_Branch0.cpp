@@ -39,13 +39,6 @@ void RS_Branch0::evaluate(TomasuloBus& bus) {
     bus.RSBr0_FlagsValue_o = m_flagsValue;
     bus.RSBr0_PredTaken_o = m_predictedTaken;
     bus.RSBr0_ROBTag_o = m_robTag;
-
-    if (ready) {
-        std::cout << "[RS_Branch0] Ready: op=0x" << std::hex << (int)m_op
-            << " target=0x" << m_targetPC
-            << " flags=0x" << (int)m_flagsValue
-            << std::dec << " ROB#" << (int)m_robTag << "\n";
-    }
 }
 
 // ============================================================================
@@ -56,17 +49,12 @@ void RS_Branch0::clockEdge(TomasuloBus& bus) {
 
     // -- 1. Flush --
     if (bus.Flush_o) {
-        if (m_busy) {
-            std::cout << "[RS_Branch0] FLUSH: cleared.\n";
-        }
         m_busy = false;
         return;
     }
 
     // -- 2. Free from Commit_Unit --
     if (bus.FreeRSBr0_o) {
-        std::cout << "[RS_Branch0] FREE from Commit. ROB#"
-            << (int)m_robTag << "\n";
         m_busy = false;
         return;
     }
@@ -83,7 +71,6 @@ void RS_Branch0::clockEdge(TomasuloBus& bus) {
         if (m_op == 0x45) {
             // B (unconditional): no flags needed
             m_flagsQiValid = false;
-            std::cout << "[RS_Branch0] Alloc: B unconditional, no flags needed\n";
         }
         else {
             // Conditional branches need flags
@@ -91,28 +78,18 @@ void RS_Branch0::clockEdge(TomasuloBus& bus) {
                 // TIER 1: No pending producer -- use architectural flags
                 m_flagsValue = bus.FlagsArch_o;
                 m_flagsQiValid = false;
-                std::cout << "[RS_Branch0] Alloc: flags=0x" << std::hex
-                    << (int)m_flagsValue << std::dec << " (arch, Tier1)\n";
             }
             else if (bus.ROBReadFlagsReady_o) {
                 // TIER 2: Producer completed -- forward from ROB
                 m_flagsValue = bus.ROBReadFlagsResult_o;
                 m_flagsQiValid = false;
-                std::cout << "[RS_Branch0] Alloc: flags=0x" << std::hex
-                    << (int)m_flagsValue << std::dec << " (ROB fwd, Tier2)\n";
             }
             else {
                 // TIER 3: Producer still executing -- wait for CDB
                 m_flagsQi = bus.FlagsQi_o;
                 m_flagsQiValid = true;
-                std::cout << "[RS_Branch0] Alloc: flags waiting on ROB#"
-                    << (int)m_flagsQi << " (Tier3)\n";
             }
         }
-
-        std::cout << "[RS_Branch0] Allocated: op=0x" << std::hex << (int)m_op
-            << " target=0x" << m_targetPC << std::dec
-            << " ROB#" << (int)m_robTag << "\n";
     }
 
     // -- 4. CDB snoop (only for flags) --
@@ -122,24 +99,18 @@ void RS_Branch0::clockEdge(TomasuloBus& bus) {
             && m_flagsQi == bus.CDBA_ROBTag_o) {
             m_flagsValue = bus.CDBA_Flags_o;
             m_flagsQiValid = false;
-            std::cout << "[RS_Branch0] CDB_A snoop: flags resolved = 0x"
-                << std::hex << (int)m_flagsValue << std::dec << "\n";
         }
         // CDB_B (re-check m_flagsQiValid)
         if (bus.CDBB_Valid_o && bus.CDBB_FlagsValid_o
             && m_flagsQiValid && m_flagsQi == bus.CDBB_ROBTag_o) {
             m_flagsValue = bus.CDBB_Flags_o;
             m_flagsQiValid = false;
-            std::cout << "[RS_Branch0] CDB_B snoop: flags resolved = 0x"
-                << std::hex << (int)m_flagsValue << std::dec << "\n";
         }
 
         // FALLBACK: architectural flags became authoritative
         if (m_flagsQiValid && !bus.FlagsQiValid_o) {
             m_flagsValue = bus.FlagsArch_o;
             m_flagsQiValid = false;
-            std::cout << "[RS_Branch0] Flags fallback: arch flags = 0x"
-                << std::hex << (int)m_flagsValue << std::dec << "\n";
         }
     }
 }

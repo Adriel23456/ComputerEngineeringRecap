@@ -23,14 +23,6 @@ void Instruction_Decoder::evaluate(TomasuloBus& bus) {
     bus.Rn_in_o = static_cast<uint8_t>((instr >> 48) & 0xF);
     bus.Rm_in_o = static_cast<uint8_t>((instr >> 44) & 0xF);
     bus.Imm_in_o = static_cast<uint32_t>((instr >> 12) & 0xFFFFFFFF);
-
-    if (bus.InstReady_o) {
-        std::cout << "[Decoder] Op=0x" << std::hex << (int)bus.Op_in_o
-            << " Rd=" << (int)bus.Dest_in_o
-            << " Rn=" << (int)bus.Rn_in_o
-            << " Rm=" << (int)bus.Rm_in_o
-            << " Imm=0x" << bus.Imm_in_o << std::dec << "\n";
-    }
 }
 
 void Instruction_Decoder::clockEdge(TomasuloBus& /*bus*/) {

@@ -18,19 +18,12 @@ void PC_C::clockEdge(TomasuloBus& bus) {
 
     if (bus.RESET) {
         m_register = 0x0000000000000000ULL;
-        std::cout << "[PC_C] RESET -> PC = 0x0\n";
     }
     else if (bus.Flush_o) {
         m_register = bus.BranchTarget_o;   // <-- WAS bus.PCNext_o
-        std::cout << "[PC_C] FLUSH -> PC = 0x" << std::hex << m_register << std::dec << "\n";
     }
     else if (bus.ROBAlloc_o) {
         m_register = bus.PCNext_o;
-    }
-
-    if (m_register != prev) {
-        std::cout << "[PC_C] clockEdge: PC 0x" << std::hex << prev
-            << " -> 0x" << m_register << std::dec << "\n";
     }
 }
 

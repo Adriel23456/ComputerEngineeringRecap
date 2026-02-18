@@ -203,11 +203,6 @@ void IntALU::evaluate(TomasuloBus& bus) {
     bus.IntALU_CDBROBTag_o = bus.IntALU_DestROBTag_o;
     bus.IntALU_CDBValue_o = result;
     bus.IntALU_CDBException_o = 0x0;
-
-    std::cout << "[IntALU] op=0x" << std::hex << (int)op
-        << " A=0x" << A << " B=0x" << B
-        << " -> result=0x" << result << std::dec
-        << " ROB#" << (int)bus.IntALU_DestROBTag_o << "\n";
 }
 
 void IntALU::reset() {

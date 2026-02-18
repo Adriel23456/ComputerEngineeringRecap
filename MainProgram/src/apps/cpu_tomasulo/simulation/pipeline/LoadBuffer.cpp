@@ -66,23 +66,6 @@ void LoadBuffer::evaluate(TomasuloBus& bus) {
     }
     writeCDBReq(bus, cdbReq);
     writeCDBROBTag(bus, m_destROBTag);
-
-    if (aguReq) {
-        std::cout << "[" << idStr() << "] AGU request: base=0x" << std::hex
-            << m_baseValue << " offset=0x" << m_offset
-            << std::dec << " ROB#" << (int)m_destROBTag << "\n";
-    }
-    if (memReq) {
-        std::cout << "[" << idStr() << "] MEM request: addr=0x" << std::hex
-            << m_address << std::dec << " op=0x" << (int)m_op
-            << " ROB#" << (int)m_destROBTag << "\n";
-    }
-    if (cdbReq) {
-        std::cout << "[" << idStr() << "] CDB request: value=0x" << std::hex
-            << (m_segFault ? (uint64_t)0 : m_loadedData) << std::dec
-            << " exc=" << (m_segFault ? 2 : 0)
-            << " ROB#" << (int)m_destROBTag << "\n";
-    }
 }
 
 // ============================================================================
@@ -93,17 +76,12 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
 
     // -- 1. Flush --
     if (bus.Flush_o) {
-        if (m_busy) {
-            std::cout << "[" << idStr() << "] FLUSH: cleared.\n";
-        }
         m_busy = false;
         return;
     }
 
     // -- 2. Free from Commit_Unit --
     if (readFree(bus)) {
-        std::cout << "[" << idStr() << "] FREE from Commit. ROB#"
-            << (int)m_destROBTag << "\n";
         m_busy = false;
         return;
     }
@@ -122,27 +100,17 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
         if (!bus.RD1_QiValid_o) {
             m_baseValue = bus.RD1_Value_o;
             m_baseTagValid = false;
-            std::cout << "[" << idStr() << "] Alloc: base=0x" << std::hex
-                << m_baseValue << std::dec << " (ready)\n";
         }
         else {
             if (bus.ROBReadReady1_o) {
                 m_baseValue = bus.ROBReadValue1_o;
                 m_baseTagValid = false;
-                std::cout << "[" << idStr() << "] Alloc: base forwarded from ROB#"
-                    << (int)bus.RD1_Qi_o << " = 0x" << std::hex
-                    << m_baseValue << std::dec << "\n";
             }
             else {
                 m_baseTag = bus.RD1_Qi_o;
                 m_baseTagValid = true;
-                std::cout << "[" << idStr() << "] Alloc: base waiting on ROB#"
-                    << (int)m_baseTag << "\n";
             }
         }
-
-        std::cout << "[" << idStr() << "] Allocated: op=0x" << std::hex
-            << (int)m_op << std::dec << " ROB#" << (int)m_destROBTag << "\n";
     }
 
     // -- 4. CDB snoop --
@@ -150,14 +118,10 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
         if (bus.CDBA_Valid_o && m_baseTag == bus.CDBA_ROBTag_o) {
             m_baseValue = bus.CDBA_Value_o;
             m_baseTagValid = false;
-            std::cout << "[" << idStr() << "] CDB_A snoop: base resolved = 0x"
-                << std::hex << m_baseValue << std::dec << "\n";
         }
         if (bus.CDBB_Valid_o && m_baseTagValid && m_baseTag == bus.CDBB_ROBTag_o) {
             m_baseValue = bus.CDBB_Value_o;
             m_baseTagValid = false;
-            std::cout << "[" << idStr() << "] CDB_B snoop: base resolved = 0x"
-                << std::hex << m_baseValue << std::dec << "\n";
         }
     }
 
@@ -166,9 +130,6 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
         m_address = readAGUAddress(bus);
         m_addressReady = true;
         m_segFault = readAGUSegFault(bus);
-        std::cout << "[" << idStr() << "] AGU done: addr=0x" << std::hex
-            << m_address << std::dec
-            << " segfault=" << m_segFault << "\n";
     }
 
     // -- 6. Latch CDB requested (BEFORE mem response, uses PREVIOUS cycle's state)
@@ -180,14 +141,11 @@ void LoadBuffer::clockEdge(TomasuloBus& bus) {
     if (m_busy && readMemDone(bus)) {
         m_loadedData = readMemData(bus);
         m_memDoneInt = true;
-        std::cout << "[" << idStr() << "] MEM done: data=0x" << std::hex
-            << m_loadedData << std::dec << " ROB#" << (int)m_destROBTag << "\n";
     }
 
     // -- 8. CDB stall --
     if (m_busy && readCDBStall(bus)) {
         m_cdbRequested = false;
-        std::cout << "[" << idStr() << "] CDB stall: will retry.\n";
     }
 }
 

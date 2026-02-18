@@ -294,7 +294,12 @@ void ROBTable::renderMainTable(const char* id, float tableHeight) {
             // ── Type ──────────────────────────────────────────
             ImGui::TableSetColumnIndex(3);
             if (e.busy) {
-                ImGui::Text("%s", typeToString(e.type));
+                if (e.sourceStation == 15) {
+                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f), "SPECIAL");
+                }
+                else {
+                    ImGui::Text("%s", typeToString(e.type));
+                }
             }
             else {
                 ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
@@ -302,11 +307,17 @@ void ROBTable::renderMainTable(const char* id, float tableHeight) {
 
             // ── Dest ──────────────────────────────────────────
             ImGui::TableSetColumnIndex(4);
-            if (e.busy) {
-                ImGui::Text("%s", destRegToString(e.destReg));
+            if (!e.busy) {
+                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
+            }
+            else if (e.type == 5       // STORE
+                || e.type == 6       // BRANCH
+                || e.type == 7       // CMP/FLG
+                || e.sourceStation == 15) {  // SPECIAL (NOP/SWI)
+                ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "NaN");
             }
             else {
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
+                ImGui::Text("%s", destRegToString(e.destReg));
             }
 
             // ── Value ─────────────────────────────────────────

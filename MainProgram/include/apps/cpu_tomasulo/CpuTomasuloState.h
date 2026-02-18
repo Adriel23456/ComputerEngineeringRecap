@@ -47,6 +47,8 @@ public:
     TomasuloSimController& controller() { return m_controller; }
     const TomasuloSimController& controller() const { return m_controller; }
 
+    void syncMainView();
+
 private:
     enum class Panel {
         MainView = 0,
@@ -92,4 +94,11 @@ private:
     void syncDCacheView();
     void syncROBView();
     void syncAnalysisView();
+
+    bool m_showSWIPopup = false;
+
+    // ── StepMS delay selector ───────────────────────────────────
+    int      m_stepMsIndex = 0;
+    static constexpr int kStepMsValues[] = { 1, 10, 50, 100, 250, 500 };
+    static constexpr int kStepMsCount = 6;
 };

@@ -109,15 +109,6 @@ void CDB_Arbiter::evaluate(TomasuloBus& bus) {
         default: break;
         }
     }
-
-    if (bus.ArbToCDBA_Valid_o) {
-        std::cout << "[CDB_Arbiter] CDB_A: ROB#" << (int)bus.ArbToCDBA_ROBTag_o
-            << " val=0x" << std::hex << bus.ArbToCDBA_Value_o << std::dec << "\n";
-    }
-    if (bus.ArbToCDBB_Valid_o) {
-        std::cout << "[CDB_Arbiter] CDB_B: ROB#" << (int)bus.ArbToCDBB_ROBTag_o
-            << " val=0x" << std::hex << bus.ArbToCDBB_Value_o << std::dec << "\n";
-    }
 }
 
 void CDB_Arbiter::reset() {

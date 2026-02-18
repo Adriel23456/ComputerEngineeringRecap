@@ -94,6 +94,9 @@ uint64_t TomasuloCPU::step() {
 
     uint64_t c = m_coordinator.executeCycle(m_bus);
 
+    // ── Update pipeline tracker for MainView ────────────────────
+    m_tracker.update(m_bus);
+
     // ── Check for SWI halt ──────────────────────────────────────
     if (m_bus.Halt_o) {
         m_halted = true;
@@ -163,6 +166,7 @@ void TomasuloCPU::reset() {
     m_registers.reset();
     m_coordinator.resetAll(m_bus);
     m_stats = Stats{};
+    m_tracker.reset();
     m_halted = false;
     std::cout << "[TomasuloCPU] Full reset (RAM + Registers + Pipeline).\n";
 }

@@ -16,8 +16,6 @@ void FPALU_Arbiter::evaluate(TomasuloBus& bus) {
         bus.FPALU_ModFlags_o = bus.RSFPAU0_ModFlags_o;
         bus.FPALU_NeedsFlags_o = bus.RSFPAU0_NeedsFlags_o;
         bus.FPALU_FlagsIn_o = bus.RSFPAU0_FlagsValue_o;
-        std::cout << "[FPALU_Arbiter] Grant RS_FPALU0, ROB#"
-            << (int)bus.RSFPAU0_DestROBTag_o << "\n";
     }
 }
 

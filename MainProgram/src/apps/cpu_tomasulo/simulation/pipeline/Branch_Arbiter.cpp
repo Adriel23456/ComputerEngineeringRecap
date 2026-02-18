@@ -14,8 +14,6 @@ void Branch_Arbiter::evaluate(TomasuloBus& bus) {
         bus.BrEx_FlagsValue_o = bus.RSBr0_FlagsValue_o;
         bus.BrEx_PredTaken_o = bus.RSBr0_PredTaken_o;
         bus.BrEx_ROBTag_o = bus.RSBr0_ROBTag_o;
-        std::cout << "[Branch_Arbiter] Grant RS_Branch0, ROB#"
-            << (int)bus.RSBr0_ROBTag_o << "\n";
     }
 }
 

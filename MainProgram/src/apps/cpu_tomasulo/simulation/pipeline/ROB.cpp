@@ -116,7 +116,6 @@ void ROB::clockEdge(TomasuloBus& bus) {
         m_head = 0;
         m_tail = 0;
         m_empty = true;
-        std::cout << "[ROB] FLUSH: all entries cleared.\n";
         return;
     }
 
@@ -127,8 +126,6 @@ void ROB::clockEdge(TomasuloBus& bus) {
         m_head = nextIdx(m_head);
         if (m_head == m_tail)
             m_empty = true;
-        std::cout << "[ROB] Commit pop: ROB#" << (int)popped
-            << " (head now " << (int)m_head << ", count=" << count() << ")\n";
     }
 
     // ── 3. CDB snoop — mark matching entries ready ──────────────
@@ -142,9 +139,6 @@ void ROB::clockEdge(TomasuloBus& bus) {
                 m_entries[tag].flagsResult = bus.CDBA_Flags_o;
                 m_entries[tag].flagsValid = true;
             }
-            std::cout << "[ROB] CDB_A -> ROB#" << (int)tag
-                << " READY, val=0x" << std::hex << bus.CDBA_Value_o
-                << std::dec << "\n";
         }
     }
     if (bus.CDBB_Valid_o) {
@@ -157,9 +151,6 @@ void ROB::clockEdge(TomasuloBus& bus) {
                 m_entries[tag].flagsResult = bus.CDBB_Flags_o;
                 m_entries[tag].flagsValid = true;
             }
-            std::cout << "[ROB] CDB_B -> ROB#" << (int)tag
-                << " READY, val=0x" << std::hex << bus.CDBB_Value_o
-                << std::dec << "\n";
         }
     }
 
@@ -170,10 +161,6 @@ void ROB::clockEdge(TomasuloBus& bus) {
             m_entries[tag].ready = true;
             m_entries[tag].mispredict = bus.BrExResult_Mispredict_o;
             m_entries[tag].branchTarget = bus.BrExResult_Target_o;
-            std::cout << "[ROB] BranchResult -> ROB#" << (int)tag
-                << " mispredict=" << bus.BrExResult_Mispredict_o
-                << " target=0x" << std::hex << bus.BrExResult_Target_o
-                << std::dec << "\n";
         }
     }
 
@@ -185,9 +172,6 @@ void ROB::clockEdge(TomasuloBus& bus) {
             m_entries[tag].storeData = bus.SB0_StComplete_Data_o;
             m_entries[tag].storeReady = true;
             m_entries[tag].ready = true;
-            std::cout << "[ROB] StoreComplete SB0 -> ROB#" << (int)tag
-                << " addr=0x" << std::hex << bus.SB0_StComplete_Addr_o
-                << std::dec << "\n";
         }
     }
     if (bus.SB1_StComplete_Valid_o) {
@@ -197,9 +181,6 @@ void ROB::clockEdge(TomasuloBus& bus) {
             m_entries[tag].storeData = bus.SB1_StComplete_Data_o;
             m_entries[tag].storeReady = true;
             m_entries[tag].ready = true;
-            std::cout << "[ROB] StoreComplete SB1 -> ROB#" << (int)tag
-                << " addr=0x" << std::hex << bus.SB1_StComplete_Addr_o
-                << std::dec << "\n";
         }
     }
 
@@ -231,13 +212,6 @@ void ROB::clockEdge(TomasuloBus& bus) {
         if (e.sourceStation == 0x0F) {
             e.ready = true;
         }
-
-        std::cout << "[ROB] Alloc: ROB#" << (int)m_tail
-            << " op=0x" << std::hex << (int)e.op << std::dec
-            << " dest=R" << (int)e.destReg
-            << " type=" << (int)e.type
-            << " station=" << (int)e.sourceStation
-            << " (count=" << (count() + 1) << ")\n";
 
         m_tail = nextIdx(m_tail);
         m_empty = false;

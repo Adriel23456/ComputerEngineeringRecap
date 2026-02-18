@@ -42,7 +42,6 @@ void FPMUL::clockEdge(TomasuloBus& bus) {
     if (m_done && !bus.FPMUL_CDBStall_o) {
         m_busy = false;
         m_done = false;
-        std::cout << "[FPMUL] CDB accepted. ROB#" << (int)m_robTag << "\n";
     }
 
     // Count down
@@ -67,10 +66,6 @@ void FPMUL::clockEdge(TomasuloBus& bus) {
             }
             m_result = fromDouble(r);
             m_done = true;
-
-            std::cout << "[FPMUL] Complete: op=0x" << std::hex << (int)m_op
-                << " result=0x" << m_result << std::dec
-                << " ROB#" << (int)m_robTag << "\n";
         }
     }
 
@@ -89,10 +84,6 @@ void FPMUL::clockEdge(TomasuloBus& bus) {
         case 0x28: case 0x52: m_cyclesRemaining = 25; break;
         default: m_cyclesRemaining = 5; break;
         }
-
-        std::cout << "[FPMUL] Start: op=0x" << std::hex << (int)m_op
-            << std::dec << " cycles=" << m_cyclesRemaining
-            << " ROB#" << (int)m_robTag << "\n";
     }
 }
 

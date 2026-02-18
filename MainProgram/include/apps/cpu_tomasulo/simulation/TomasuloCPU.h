@@ -52,6 +52,7 @@
 #include "apps/cpu_tomasulo/simulation/pipeline/Memory_Arbiter.h"
 #include "apps/cpu_tomasulo/simulation/pipeline/D_Cache.h"
 #include "apps/cpu_tomasulo/simulation/pipeline/Commit_Unit.h"
+#include "apps/cpu_tomasulo/simulation/PipelineTracker.h"
 #include <string>
 #include <memory>
 
@@ -101,8 +102,12 @@ public:
 
     void resetStats() { m_stats = Stats{}; }
 
+    const PipelineTracker& tracker() const { return m_tracker; }
+
 private:
     Stats m_stats;
+
+    PipelineTracker m_tracker;
 
     void buildPipeline();
 

@@ -240,7 +240,6 @@ void Control_Unit::evaluate(TomasuloBus& bus) {
     // ── STEP 3: Check ROB availability ─────────────────────────
     if (bus.ROBFull_o) {
         bus.StallIF_o = true;
-        std::cout << "[Control_Unit] STALL: ROB full.\n";
         return;
     }
 
@@ -248,8 +247,6 @@ void Control_Unit::evaluate(TomasuloBus& bus) {
     if (d.isNOP || d.isSWI) {
         bus.ROBAlloc_o = true;
         bus.AllocSourceStation_o = 0x0F;
-        std::cout << "[Control_Unit] Issue: " << (d.isNOP ? "NOP" : "SWI")
-            << " -> ROB only.\n";
         return;
     }
 
@@ -259,65 +256,48 @@ void Control_Unit::evaluate(TomasuloBus& bus) {
     if (d.isIntALU) {
         if (!bus.RS_IntALU0_Busy_o) {
             bus.AllocRSIntALU0_o = true; bus.AllocSourceStation_o = 0b0101; allocated = true;
-            std::cout << "[Control_Unit] Issue op=0x" << std::hex << (int)op
-                << std::dec << " -> RS_IntALU0\n";
         }
         else if (!bus.RS_IntALU1_Busy_o) {
             bus.AllocRSIntALU1_o = true; bus.AllocSourceStation_o = 0b0110; allocated = true;
-            std::cout << "[Control_Unit] Issue op=0x" << std::hex << (int)op
-                << std::dec << " -> RS_IntALU1\n";
         }
     }
     else if (d.isIntMUL) {
         if (!bus.RS_IntMUL0_Busy_o) {
             bus.AllocRSIntMUL0_o = true; bus.AllocSourceStation_o = 0b1000; allocated = true;
-            std::cout << "[Control_Unit] Issue op=0x" << std::hex << (int)op
-                << std::dec << " -> RS_IntMUL0\n";
         }
     }
     else if (d.isFPALU) {
         if (!bus.RS_FPALU0_Busy_o) {
             bus.AllocRSFPALU0_o = true; bus.AllocSourceStation_o = 0b0111; allocated = true;
-            std::cout << "[Control_Unit] Issue op=0x" << std::hex << (int)op
-                << std::dec << " -> RS_FPALU0\n";
         }
     }
     else if (d.isFPMUL) {
         if (!bus.RS_FPMUL0_Busy_o) {
             bus.AllocRSFPMUL0_o = true; bus.AllocSourceStation_o = 0b1001; allocated = true;
-            std::cout << "[Control_Unit] Issue op=0x" << std::hex << (int)op
-                << std::dec << " -> RS_FPMUL0\n";
         }
     }
     else if (d.isLoad) {
         if (!bus.LB0_Busy_o) {
             bus.AllocLB0_o = true; bus.AllocSourceStation_o = 0b0010; allocated = true;
-            std::cout << "[Control_Unit] Issue LDR -> LB0\n";
         }
         else if (!bus.LB1_Busy_o) {
             bus.AllocLB1_o = true; bus.AllocSourceStation_o = 0b0011; allocated = true;
-            std::cout << "[Control_Unit] Issue LDR -> LB1\n";
         }
         else if (!bus.LB2_Busy_o) {
             bus.AllocLB2_o = true; bus.AllocSourceStation_o = 0b0100; allocated = true;
-            std::cout << "[Control_Unit] Issue LDR -> LB2\n";
         }
     }
     else if (d.isStore) {
         if (!bus.SB0_Busy_o) {
             bus.AllocSB0_o = true; bus.AllocSourceStation_o = 0b0000; allocated = true;
-            std::cout << "[Control_Unit] Issue STR -> SB0\n";
         }
         else if (!bus.SB1_Busy_o) {
             bus.AllocSB1_o = true; bus.AllocSourceStation_o = 0b0001; allocated = true;
-            std::cout << "[Control_Unit] Issue STR -> SB1\n";
         }
     }
     else if (d.isBranch) {
         if (!bus.RS_Branch0_Busy_o) {
             bus.AllocRSBranch0_o = true; bus.AllocSourceStation_o = 0b1010; allocated = true;
-            std::cout << "[Control_Unit] Issue Branch op=0x" << std::hex << (int)op
-                << std::dec << " -> RS_Branch0\n";
         }
     }
 
@@ -325,8 +305,6 @@ void Control_Unit::evaluate(TomasuloBus& bus) {
     if (!allocated) {
         bus.StallIF_o = true;
         bus.ROBAlloc_o = false;
-        std::cout << "[Control_Unit] STALL: no free station for op=0x"
-            << std::hex << (int)op << std::dec << "\n";
         return;
     }
 

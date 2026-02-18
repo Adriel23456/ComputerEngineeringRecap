@@ -16,8 +16,6 @@ void FPMUL_Arbiter::evaluate(TomasuloBus& bus) {
         bus.FPMUL_ModFlags_o = bus.RSFPMUL0_ModFlags_o;
         bus.FPMUL_NeedsFlags_o = bus.RSFPMUL0_NeedsFlags_o;
         bus.FPMUL_FlagsIn_o = bus.RSFPMUL0_FlagsValue_o;
-        std::cout << "[FPMUL_Arbiter] Grant RS_FPMUL0, ROB#"
-            << (int)bus.RSFPMUL0_DestROBTag_o << "\n";
     }
 }
 

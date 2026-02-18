@@ -40,10 +40,6 @@ void AGU::evaluate(TomasuloBus& bus) {
     writeSourceIDOut(bus, srcID);
 
     routeResult(bus, srcID, address, segFault);
-
-    std::cout << "[" << idStr() << "] Computed: 0x" << std::hex << base
-        << " + 0x" << offset << " = 0x" << address << std::dec
-        << " segfault=" << segFault << " src=" << (int)srcID << "\n";
 }
 
 void AGU::routeResult(TomasuloBus& bus, uint8_t sourceID,

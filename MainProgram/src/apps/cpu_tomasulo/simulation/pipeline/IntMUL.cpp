@@ -32,7 +32,6 @@ void IntMUL::clockEdge(TomasuloBus& bus) {
     if (m_done && !bus.IntMUL_CDBStall_o) {
         m_busy = false;
         m_done = false;
-        std::cout << "[IntMUL] CDB accepted. ROB#" << (int)m_robTag << "\n";
     }
 
     // Count down
@@ -64,10 +63,6 @@ void IntMUL::clockEdge(TomasuloBus& bus) {
             m_flags = (N << 3) | (Z << 2);  // C=0, V=0 (simplified)
             m_flagsValid = true;
             m_done = true;
-
-            std::cout << "[IntMUL] Complete: op=0x" << std::hex << (int)m_op
-                << " result=0x" << m_result << std::dec
-                << " ROB#" << (int)m_robTag << "\n";
         }
     }
 
@@ -80,9 +75,6 @@ void IntMUL::clockEdge(TomasuloBus& bus) {
         m_B = bus.IntMUL_B_o;
         m_robTag = bus.IntMUL_DestROBTag_o;
         m_cyclesRemaining = (m_op == 0x04 || m_op == 0x12) ? 4 : 16;
-        std::cout << "[IntMUL] Start: op=0x" << std::hex << (int)m_op
-            << std::dec << " cycles=" << m_cyclesRemaining
-            << " ROB#" << (int)m_robTag << "\n";
     }
 }
 

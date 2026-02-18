@@ -40,11 +40,6 @@ void Branch_Executor::evaluate(TomasuloBus& bus) {
     bus.BrExResult_Taken_o = taken;
     bus.BrExResult_Target_o = bus.BrEx_TargetPC_o;
     bus.BrExResult_Mispredict_o = mispredict;
-
-    std::cout << "[Branch_Executor] op=0x" << std::hex << (int)bus.BrEx_Op_o
-        << " flags=0x" << (int)flags << std::dec
-        << " taken=" << taken << " mispredict=" << mispredict
-        << " ROB#" << (int)bus.BrEx_ROBTag_o << "\n";
 }
 
 void Branch_Executor::reset() {

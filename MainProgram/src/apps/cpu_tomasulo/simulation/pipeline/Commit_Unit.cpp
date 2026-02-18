@@ -77,15 +77,12 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
             bus.Halt_o = true;
             bus.CommitPop_i = true;
             bus.CommitROBIdx_i = bus.ROBHead_o;
-            std::cout << "[Commit_Unit] SWI committed. CPU HALT.\n";
             return;
         }
 
         // NOP: just pop, do absolutely nothing else
         bus.CommitPop_i = true;
         bus.CommitROBIdx_i = bus.ROBHead_o;
-        std::cout << "[Commit_Unit] NOP committed. ROB#"
-            << (int)bus.ROBHead_o << "\n";
         return;
     }
 
@@ -99,9 +96,6 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
         bus.CommitPop_i = true;
         bus.CommitROBIdx_i = bus.ROBHead_o;
         activateFree(bus, bus.ROBHeadSourceStation_o);
-        std::cout << "[Commit_Unit] EXCEPTION: code=0x" << std::hex
-            << (int)bus.ROBHeadException_o << " PC=0x"
-            << bus.ROBHeadPC_o << std::dec << "\n";
         return;
     }
 
@@ -124,11 +118,6 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
         }
         activateFree(bus, bus.ROBHeadSourceStation_o);
         bus.CommitPop_i = true;
-
-        std::cout << "[Commit_Unit] Commit type=" << (int)type
-            << " dest=R" << (int)bus.ROBHeadDestReg_o
-            << " val=0x" << std::hex << bus.ROBHeadValue_o
-            << std::dec << " ROB#" << (int)bus.ROBHead_o << "\n";
     }
 
     // ================================================================
@@ -137,15 +126,12 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
     else if (type == 0x05) {
         if (!bus.ROBHeadStoreReady_o) return;
 
-        // Phase 1: Send request (held high until clockEdge arms InProgress)
-        if (!m_storeCommitInProgress && !m_storeCommitDone) {
+        // Phase 1: Hold request HIGH until done
+        if (!m_storeCommitDone) {
             bus.StoreCommit_Req_o = true;
             bus.StoreCommit_Addr_o = bus.ROBHeadStoreAddr_o;
             bus.StoreCommit_Data_o = bus.ROBHeadStoreData_o;
             bus.StoreCommit_Op_o = bus.ROBHeadOp_o;
-            std::cout << "[Commit_Unit] Store commit req: addr=0x" << std::hex
-                << bus.ROBHeadStoreAddr_o << " data=0x"
-                << bus.ROBHeadStoreData_o << std::dec << "\n";
         }
 
         // Phase 2: Done latched by clockEdge -> pop ROB
@@ -153,8 +139,6 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
             activateFree(bus, bus.ROBHeadSourceStation_o);
             bus.CommitPop_i = true;
             bus.CommitROBIdx_i = bus.ROBHead_o;
-            std::cout << "[Commit_Unit] Store commit done. ROB#"
-                << (int)bus.ROBHead_o << "\n";
         }
     }
 
@@ -169,13 +153,6 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
             bus.BranchTarget_i = bus.ROBHeadBranchTarget_o;
             bus.Flush_o = true;
             bus.Flush_PC_i = true;
-            std::cout << "[Commit_Unit] Branch MISPREDICT: redirect to 0x"
-                << std::hex << bus.ROBHeadBranchTarget_o
-                << std::dec << " FLUSH!\n";
-        }
-        else {
-            std::cout << "[Commit_Unit] Branch correct prediction. ROB#"
-                << (int)bus.ROBHead_o << "\n";
         }
         activateFree(bus, bus.ROBHeadSourceStation_o);
         bus.CommitPop_i = true;
@@ -193,10 +170,6 @@ void Commit_Unit::evaluate(TomasuloBus& bus) {
         }
         activateFree(bus, bus.ROBHeadSourceStation_o);
         bus.CommitPop_i = true;
-
-        std::cout << "[Commit_Unit] Commit CMP/flags: flags=0x" << std::hex
-            << (int)bus.ROBHeadFlagsResult_o << std::dec
-            << " ROB#" << (int)bus.ROBHead_o << "\n";
     }
 }
 

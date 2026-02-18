@@ -190,8 +190,6 @@ void FPALU::clockEdge(TomasuloBus& bus) {
         m_stage1.B = bus.FPALU_B_o;
         m_stage1.robTag = bus.FPALU_DestROBTag_o;
         m_stage1.modFlags = bus.FPALU_ModFlags_o;
-        std::cout << "[FPALU] Accept: op=0x" << std::hex << (int)m_stage1.op
-            << std::dec << " ROB#" << (int)m_stage1.robTag << "\n";
     }
 }
 

@@ -16,8 +16,6 @@ void IntMUL_Arbiter::evaluate(TomasuloBus& bus) {
         bus.IntMUL_ModFlags_o = bus.RSIMUL0_ModFlags_o;
         bus.IntMUL_NeedsFlags_o = bus.RSIMUL0_NeedsFlags_o;
         bus.IntMUL_FlagsIn_o = bus.RSIMUL0_FlagsValue_o;
-        std::cout << "[IntMUL_Arbiter] Grant RS_IntMUL0, ROB#"
-            << (int)bus.RSIMUL0_DestROBTag_o << "\n";
     }
 }
 
