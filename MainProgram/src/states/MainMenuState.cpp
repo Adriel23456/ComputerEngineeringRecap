@@ -20,6 +20,7 @@
  // Forward declaration for factory functions (now with AudioManager)
 std::unique_ptr<State> CreateCpuTLPSharedCacheState(StateManager*, sf::RenderWindow*, AudioManager*);
 std::unique_ptr<State> CreateQuicksortVisualizerState(StateManager*, sf::RenderWindow*, AudioManager*);
+std::unique_ptr<State> CreateCpuTomasuloState(StateManager*, sf::RenderWindow*, AudioManager*);
 
 // ============================================================================
 // Shader Background Implementation
@@ -205,11 +206,17 @@ void MainMenuState::handleMenuSelection(const std::string& itemName) {
             CreateCpuTLPSharedCacheState(m_stateManager, m_window, m_audio)
         );
     }
+    else if (itemName == "CPU with Tomasulo") {
+        m_stateManager->queueNextState(
+            CreateCpuTomasuloState(m_stateManager, m_window, m_audio)
+        );
+    }
     else if (itemName == "Quicksort") {
         m_stateManager->queueNextState(
             CreateQuicksortVisualizerState(m_stateManager, m_window, m_audio)
         );
     }
+    // Here your gonna be adding the new cpu_tomasulo_simulation
     else {
         m_stateManager->queueNextState(
             std::make_unique<ProgramState>(m_stateManager, m_window, itemName)

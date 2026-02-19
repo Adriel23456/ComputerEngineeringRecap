@@ -1,0 +1,153 @@
+; =========================================================
+; MEMORY TEST FOR LDR / STR / LDRB / STRB
+; =========================================================
+
+; ---------------------------------------------------------
+; SET BASE ADDRESS
+; ---------------------------------------------------------
+
+MOVI REG1, #1024           ; REG1 = 1024  (Base address)
+
+; ---------------------------------------------------------
+; TEST STR / LDR (64-bit)
+; ---------------------------------------------------------
+
+MOVI REG2, #123456789      ; REG2 = 123456789
+
+STR  REG2, [REG1, #0]      ; MEM[1024] = 123456789
+LDR  REG3, [REG1, #0]      ; REG3 = 123456789
+
+CMP  REG2, REG3            ; Should be equal
+BEQ  OK1
+SWI
+OK1:
+
+; ---------------------------------------------------------
+; TEST OFFSET ADDRESSING
+; ---------------------------------------------------------
+
+MOVI REG4, #555            ; REG4 = 555
+
+STR  REG4, [REG1, #8]      ; MEM[1032] = 555
+LDR  REG5, [REG1, #8]      ; REG5 = 555
+
+CMP  REG4, REG5
+BEQ  OK2
+SWI
+OK2:
+
+; ---------------------------------------------------------
+; TEST OVERWRITE
+; ---------------------------------------------------------
+
+MOVI REG6, #999            ; REG6 = 999
+
+STR  REG6, [REG1, #8]      ; overwrite MEM[1032]
+LDR  REG7, [REG1, #8]      ; REG7 = 999
+
+CMP  REG6, REG7
+BEQ  OK3
+SWI
+OK3:
+
+; ---------------------------------------------------------
+; TEST STRB / LDRB (BYTE ACCESS)
+; ---------------------------------------------------------
+
+MOVI REG8, #0xAB           ; REG8 = 171 (0xAB)
+
+STRB REG8, [REG1, #16]     ; MEM[1040] = 0xAB
+LDRB REG9, [REG1, #16]     ; REG9 = 0xAB (171)
+
+CMP  REG8, REG9
+BEQ  OK4
+SWI
+OK4:
+
+; ---------------------------------------------------------
+; TEST LDRB ZERO EXTENSION
+; ---------------------------------------------------------
+
+MOVI REG10, #0xFF          ; REG10 = 255
+STRB REG10, [REG1, #24]    ; MEM[1048] = 0xFF
+LDRB REG11, [REG1, #24]    ; REG11 = 255 (0x00000000000000FF)
+
+MOVI REG12, #255
+CMP  REG11, REG12          ; Should match exactly
+BEQ  OK5
+SWI
+OK5:
+
+; ---------------------------------------------------------
+; TEST BYTE DOES NOT CORRUPT NEIGHBOR BYTES (32-bit safe)
+; ---------------------------------------------------------
+
+; Build 0x55667788 (32-bit safe)
+MOVI REG2, #0x55667788     ; REG2 = 0x0000000055667788
+STR  REG2, [REG1, #32]     ; Store at MEM[base+32]
+
+; Overwrite lowest byte only
+MOVI REG3, #0xAA
+STRB REG3, [REG1, #32]     ; Modify only byte 0
+
+; Load full word back
+LDR  REG4, [REG1, #32]     ; Expect 0x00000000556677AA
+
+MOVI REG5, #0x556677AA
+CMP  REG4, REG5
+BEQ  OK6
+SWI
+OK6:
+
+; ---------------------------------------------------------
+; TEST MULTIPLE BYTE WRITES
+; ---------------------------------------------------------
+
+MOVI REG6, #0x11
+STRB REG6, [REG1, #40]     ; MEM[1064] = 0x11
+
+MOVI REG6, #0x22
+STRB REG6, [REG1, #41]     ; MEM[1065] = 0x22
+
+MOVI REG6, #0x33
+STRB REG6, [REG1, #42]     ; MEM[1066] = 0x33
+
+MOVI REG6, #0x44
+STRB REG6, [REG1, #43]     ; MEM[1067] = 0x44
+
+LDRB REG7, [REG1, #40]     ; REG7 = 0x11
+MOVI REG8, #0x11
+CMP  REG7, REG8
+BEQ  OK7
+SWI
+OK7:
+
+LDRB REG7, [REG1, #41]     ; REG7 = 0x22
+MOVI REG8, #0x22
+CMP  REG7, REG8
+BEQ  OK8
+SWI
+OK8:
+
+LDRB REG7, [REG1, #42]     ; REG7 = 0x33
+MOVI REG8, #0x33
+CMP  REG7, REG8
+BEQ  OK9
+SWI
+OK9:
+
+LDRB REG7, [REG1, #43]     ; REG7 = 0x44
+MOVI REG8, #0x44
+CMP  REG7, REG8
+BEQ  OK10
+SWI
+OK10:
+
+; ---------------------------------------------------------
+; END MEMORY TEST
+; ---------------------------------------------------------
+
+NOP
+NOP
+FMOVI REG10, #0.850
+SWI

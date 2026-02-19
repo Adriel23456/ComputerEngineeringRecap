@@ -15,6 +15,7 @@
 
 #include "core/Application.h"
 #include <iostream>
+#include "cuda/CudaTest.cuh"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -47,6 +48,8 @@ static void enableConsole() {
  */
 int main() {
     enableConsole();
+
+    runCudaTest();   // GPU proof
 
     Application app(CONFIG_PATH);
 

@@ -1,0 +1,60 @@
+; ================================================================
+; SINGLE-PE DOT PRODUCT (PE0 ONLY)
+; ================================================================
+; Vectors A and B: 256 elements each (double, 64 bits)
+;
+; Vector A: 0x890  - 0x1088   (256 elements)
+; Vector B: 0x890 - 0x1088   (256 elements)
+;
+; A[i] = 0.0 ... 255.0
+; B[i] = 0.0 ... 255.0
+;
+; Expected result:
+;   ++ i from 0 to 255 = 5,559,680.0
+;
+; Result:
+;   Final dot product returned in REG8
+; ================================================================
+
+.START:
+
+    ; Optional: ensure only PE0 runs
+    CMPI PEID, #0
+    BNE .END_PROGRAM
+
+    ; IMPORTANT: Configure LOWER first, then UPPER
+    MOVL UPPER, .END_PROGRAM
+
+    ; Base addresses
+    MOVI REG1, #0x890          ; Pointer A
+    MOVI REG2, #0x890          ; Pointer B
+
+    MOVI REG3, #256            ; Process ALL 128 elements
+    FMOVI REG4, #0.0           ; Accumulator = 0.0
+
+; ================================================================
+; COMPUTATION LOOP
+; ================================================================
+.COMPUTE:
+
+    LDR REG5, [REG1]           ; Load A[i]
+    LDR REG6, [REG2]           ; Load B[i]
+
+    FMUL REG5, REG5, REG6      ; REG5 = A[i] * B[i]
+    FADD REG4, REG4, REG5      ; Accumulate
+
+    ADDI REG1, REG1, #8        ; Next element
+    ADDI REG2, REG2, #8
+
+    DEC REG3
+    CMPI REG3, #0
+    BGT .COMPUTE
+
+    ; Final result
+    MOV REG8, REG4            ; REG8 holds final dot product
+
+; ================================================================
+; TERMINATION
+; ================================================================
+.END_PROGRAM:
+    SWI

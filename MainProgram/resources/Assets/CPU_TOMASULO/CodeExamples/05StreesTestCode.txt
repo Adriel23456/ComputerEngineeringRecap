@@ -1,0 +1,67 @@
+; =========================================================
+; STABLE FP STRESS TEST (NO INF / NO NaN)
+; >15M cycles
+; =========================================================
+
+.START:
+
+    MOVI REG1, #0x3000         ; Base memory
+    MOVI REG2, #100000        ; 1M iterations
+
+    ; Safe constants (very close to 1)
+    FMOVI REG3, #1.0000001
+    FMOVI REG4, #0.9999999
+    FMOVI REG5, #1.00000005
+    FMOVI REG6, #0.5
+    FMOVI REG7, #2.0
+    FMOVI REG8, #1000.0
+
+    FMOVI REG9, #1.0           ; Accumulator
+
+.LOOP:
+
+    ; -------------------------
+    ; Memory traffic
+    ; -------------------------
+    STR  REG9, [REG1, #0]
+    LDR  REG10, [REG1, #0]
+
+    ; -------------------------
+    ; Controlled multiply chain
+    ; -------------------------
+    FMUL REG10, REG10, REG3
+    FMUL REG10, REG10, REG4
+    FMUL REG10, REG10, REG5
+
+    ; Keep bounded
+    FDIV REG10, REG10, REG3
+
+    ; -------------------------
+    ; Stable expensive chain
+    ; -------------------------
+    FDIV  REG10, REG10, REG7      ; divide by 2
+    FSQRT REG10, REG10
+    FMUL  REG10, REG10, REG10     ; square back
+
+    ; -------------------------
+    ; Soft normalization
+    ; Keeps values near 1
+    ; -------------------------
+    FDIV REG10, REG10, REG8
+    FMUL REG10, REG10, REG8
+
+    ; -------------------------
+    ; Accumulate safely
+    ; -------------------------
+    FADD REG9, REG9, REG6
+    FDIV REG9, REG9, REG7
+
+    ; -------------------------
+    ; Loop control
+    ; -------------------------
+    DEC  REG2
+    CMPI REG2, #0
+    BGT  .LOOP
+
+    MOV REG12, REG9
+    SWI

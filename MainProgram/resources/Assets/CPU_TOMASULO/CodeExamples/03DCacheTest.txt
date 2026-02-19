@@ -1,0 +1,388 @@
+; =========================================================
+; D-CACHE: WRITE-BACK, WRITE-ALLOCATE, LRU VALIDATION
+; =========================================================
+; D-Cache config: 8 sets, 4 ways, 64-byte lines (8 words)
+; Set   = (addr >> 6) & 0x7
+; Tag   = addr >> 9
+;
+; All test addresses map to SET 0:
+;   A = 0x800  (2048)   tag 4   way 0
+;   B = 0xA00  (2560)   tag 5   way 1
+;   C = 0xC00  (3072)   tag 6   way 2
+;   D = 0xE00  (3584)   tag 7   way 3
+;   E = 0x1000 (4096)   tag 8   eviction trigger
+;
+; Set 1 address (independence test):
+;   G = 0x840  (2112)   set 1, tag 4
+; =========================================================
+
+; ---------------------------------------------------------
+; SETUP BASE ADDRESSES
+; ---------------------------------------------------------
+
+MOVI REG1, #2048            ; A = 0x800  set 0
+MOVI REG2, #2560            ; B = 0xA00  set 0
+MOVI REG3, #3072            ; C = 0xC00  set 0
+MOVI REG4, #3584            ; D = 0xE00  set 0
+MOVI REG5, #4096            ; E = 0x1000 set 0  (5th line)
+
+; =========================================================
+; PHASE 1: FILL ALL 4 WAYS OF SET 0 WITH DIRTY DATA
+; =========================================================
+
+MOVI REG6, #0x1A000001
+STR  REG6, [REG1, #0]       ; Miss -> allocate way 0, dirty (A word0)
+MOVI REG6, #0x1A000002
+STR  REG6, [REG1, #8]       ; Hit same line (A word1)
+
+MOVI REG6, #0x1B000001
+STR  REG6, [REG2, #0]       ; Miss -> allocate way 1, dirty (B word0)
+
+MOVI REG6, #0x1C000001
+STR  REG6, [REG3, #0]       ; Miss -> allocate way 2, dirty (C word0)
+
+MOVI REG6, #0x1D000001
+STR  REG6, [REG4, #0]       ; Miss -> allocate way 3, dirty (D word0)
+MOVI REG6, #0x1D000002
+STR  REG6, [REG4, #8]       ; Hit same line (D word1)
+
+; ---------------------------------------------------------
+; Verify all 4 ways readable (also updates LRU order)
+; Access order: A, B, C, D -> A is LRU after this
+; ---------------------------------------------------------
+
+LDR  REG7, [REG1, #0]
+MOVI REG8, #0x1A000001
+CMP  REG7, REG8
+BEQ  P1_OK1
+SWI
+P1_OK1:
+
+LDR  REG7, [REG1, #8]       ; Second word in same line
+MOVI REG8, #0x1A000002
+CMP  REG7, REG8
+BEQ  P1_OK2
+SWI
+P1_OK2:
+
+LDR  REG7, [REG2, #0]
+MOVI REG8, #0x1B000001
+CMP  REG7, REG8
+BEQ  P1_OK3
+SWI
+P1_OK3:
+
+LDR  REG7, [REG3, #0]
+MOVI REG8, #0x1C000001
+CMP  REG7, REG8
+BEQ  P1_OK4
+SWI
+P1_OK4:
+
+LDR  REG7, [REG4, #0]
+MOVI REG8, #0x1D000001
+CMP  REG7, REG8
+BEQ  P1_OK5
+SWI
+P1_OK5:
+
+LDR  REG7, [REG4, #8]
+MOVI REG8, #0x1D000002
+CMP  REG7, REG8
+BEQ  P1_OK6
+SWI
+P1_OK6:
+
+; =========================================================
+; PHASE 2: TRIGGER LRU EVICTION + WRITEBACK
+; =========================================================
+; LRU order after Phase 1 reads: A(oldest), B, C, D(newest)
+; Accessing E (5th line, set 0) must evict A (way 0)
+; A is dirty -> writeback to RAM before filling E
+
+MOVI REG6, #0x1E000001
+STR  REG6, [REG5, #0]       ; Miss set 0 -> evict A(dirty) -> writeback -> fill E
+
+; Verify E is in cache
+LDR  REG7, [REG5, #0]
+MOVI REG8, #0x1E000001
+CMP  REG7, REG8
+BEQ  P2_OK1
+SWI
+P2_OK1:
+
+; =========================================================
+; PHASE 3: VERIFY WRITEBACK CORRECTNESS
+; =========================================================
+; A (0x800) was evicted dirty -> its data must be in RAM now
+; Reading A will miss (re-fetch from RAM), evicting B (new LRU)
+
+LDR  REG7, [REG1, #0]       ; Miss -> evict B(dirty) -> writeback B -> fetch A
+MOVI REG8, #0x1A000001
+CMP  REG7, REG8
+BEQ  P3_OK1
+SWI
+P3_OK1:
+
+LDR  REG7, [REG1, #8]       ; Hit (same line) -- second word survived writeback
+MOVI REG8, #0x1A000002
+CMP  REG7, REG8
+BEQ  P3_OK2
+SWI
+P3_OK2:
+
+; =========================================================
+; PHASE 4: VERIFY CASCADING WRITEBACKS
+; =========================================================
+; B was evicted dirty when A was re-fetched
+; Re-read B -> miss -> evict C(LRU, dirty) -> writeback C -> fetch B
+
+LDR  REG7, [REG2, #0]       ; Miss -> evict C -> writeback -> fetch B
+MOVI REG8, #0x1B000001
+CMP  REG7, REG8
+BEQ  P4_OK1
+SWI
+P4_OK1:
+
+; Verify C survived its writeback
+LDR  REG7, [REG3, #0]       ; Miss -> evict D(LRU, dirty) -> writeback -> fetch C
+MOVI REG8, #0x1C000001
+CMP  REG7, REG8
+BEQ  P4_OK2
+SWI
+P4_OK2:
+
+; Verify D survived its writeback
+LDR  REG7, [REG4, #0]       ; Miss -> evict E(LRU) -> fetch D from RAM
+MOVI REG8, #0x1D000001
+CMP  REG7, REG8
+BEQ  P4_OK3
+SWI
+P4_OK3:
+
+LDR  REG7, [REG4, #8]       ; Hit (same line) -- multi-word writeback check
+MOVI REG8, #0x1D000002
+CMP  REG7, REG8
+BEQ  P4_OK4
+SWI
+P4_OK4:
+
+; =========================================================
+; PHASE 5: LRU ORDER MANIPULATION
+; =========================================================
+; Touch A, C, D to make B the LRU
+; Then store to E -> should evict B specifically
+
+LDR  REG7, [REG1, #0]       ; Touch A
+LDR  REG7, [REG3, #0]       ; Touch C
+LDR  REG7, [REG4, #0]       ; Touch D
+; LRU order: B(oldest), A, C, D(newest)
+
+; Write unique marker to B
+MOVI REG6, #0x1BFF0099
+STR  REG6, [REG2, #0]       ; Dirty B with new value
+
+; Bring in E -> should evict B (LRU, dirty -> writeback)
+MOVI REG6, #0x1EFF0001
+STR  REG6, [REG5, #0]       ; Evict B -> writeback -> fill E
+
+; Verify E is correct
+LDR  REG7, [REG5, #0]
+MOVI REG8, #0x1EFF0001
+CMP  REG7, REG8
+BEQ  P5_OK1
+SWI
+P5_OK1:
+
+; Verify B survived writeback (re-fetch from RAM)
+LDR  REG7, [REG2, #0]       ; Miss -> fetch B from RAM
+MOVI REG8, #0x1BFF0099
+CMP  REG7, REG8
+BEQ  P5_OK2
+SWI
+P5_OK2:
+
+; =========================================================
+; PHASE 6: WRITE-ALLOCATE ON CLEAN MISS
+; =========================================================
+; Write to set 1 (fresh, never touched)
+
+MOVI REG1, #2112            ; G = 0x840 -> set 1
+
+MOVI REG6, #0x42424242
+STR  REG6, [REG1, #0]       ; Write-allocate into set 1
+
+LDR  REG7, [REG1, #0]       ; Should hit
+MOVI REG8, #0x42424242
+CMP  REG7, REG8
+BEQ  P6_OK1
+SWI
+P6_OK1:
+
+; Verify neighboring word in same line is zero (untouched)
+LDR  REG7, [REG1, #8]
+MOVI REG8, #0
+CMP  REG7, REG8
+BEQ  P6_OK2
+SWI
+P6_OK2:
+
+; =========================================================
+; PHASE 7: BYTE WRITE DIRTY + EVICTION INTEGRITY
+; =========================================================
+
+MOVI REG1, #2048            ; Back to A = 0x800
+
+MOVI REG6, #0x11223344
+STR  REG6, [REG1, #16]      ; A word2 = 0x11223344
+
+MOVI REG6, #0xFF
+STRB REG6, [REG1, #16]      ; A word2 byte0 -> 0x112233FF
+
+; Verify before eviction
+LDR  REG7, [REG1, #16]
+MOVI REG8, #0x112233FF
+CMP  REG7, REG8
+BEQ  P7_OK1
+SWI
+P7_OK1:
+
+; Force A out: touch other 3, then bring E
+MOVI REG2, #2560
+MOVI REG3, #3072
+MOVI REG4, #3584
+MOVI REG5, #4096
+
+LDR  REG7, [REG2, #0]
+LDR  REG7, [REG3, #0]
+LDR  REG7, [REG4, #0]
+; A is now LRU
+
+MOVI REG6, #0x1E770001
+STR  REG6, [REG5, #0]       ; Evict A (dirty with byte mod)
+
+; Re-fetch A -> verify byte write survived writeback
+LDR  REG7, [REG1, #16]      ; Miss -> fetch A from RAM
+MOVI REG8, #0x112233FF
+CMP  REG7, REG8
+BEQ  P7_OK2
+SWI
+P7_OK2:
+
+; =========================================================
+; PHASE 8: MULTIPLE OFFSETS SURVIVE EVICTION
+; =========================================================
+
+MOVI REG1, #2048            ; A = 0x800
+
+MOVI REG6, #100
+STR  REG6, [REG1, #0]       ; A word0
+
+MOVI REG6, #200
+STR  REG6, [REG1, #8]       ; A word1
+
+MOVI REG6, #300
+STR  REG6, [REG1, #16]      ; A word2
+
+MOVI REG6, #400
+STR  REG6, [REG1, #24]      ; A word3
+
+MOVI REG6, #500
+STR  REG6, [REG1, #32]      ; A word4
+
+MOVI REG6, #600
+STR  REG6, [REG1, #40]      ; A word5
+
+MOVI REG6, #700
+STR  REG6, [REG1, #48]      ; A word6
+
+MOVI REG6, #800
+STR  REG6, [REG1, #56]      ; A word7
+
+; Touch B, C, D so A is LRU
+LDR  REG7, [REG2, #0]
+LDR  REG7, [REG3, #0]
+LDR  REG7, [REG4, #0]
+
+; Evict A (all 8 words dirty)
+MOVI REG6, #99
+STR  REG6, [REG5, #0]       ; E fills -> A evicted -> full line writeback
+
+; Re-fetch A and verify every word
+LDR  REG7, [REG1, #0]
+MOVI REG8, #100
+CMP  REG7, REG8
+BEQ  P8_OK1
+SWI
+P8_OK1:
+
+LDR  REG7, [REG1, #8]
+MOVI REG8, #200
+CMP  REG7, REG8
+BEQ  P8_OK2
+SWI
+P8_OK2:
+
+LDR  REG7, [REG1, #16]
+MOVI REG8, #300
+CMP  REG7, REG8
+BEQ  P8_OK3
+SWI
+P8_OK3:
+
+LDR  REG7, [REG1, #24]
+MOVI REG8, #400
+CMP  REG7, REG8
+BEQ  P8_OK4
+SWI
+P8_OK4:
+
+LDR  REG7, [REG1, #32]
+MOVI REG8, #500
+CMP  REG7, REG8
+BEQ  P8_OK5
+SWI
+P8_OK5:
+
+LDR  REG7, [REG1, #40]
+MOVI REG8, #600
+CMP  REG7, REG8
+BEQ  P8_OK6
+SWI
+P8_OK6:
+
+LDR  REG7, [REG1, #48]
+MOVI REG8, #700
+CMP  REG7, REG8
+BEQ  P8_OK7
+SWI
+P8_OK7:
+
+LDR  REG7, [REG1, #56]
+MOVI REG8, #800
+CMP  REG7, REG8
+BEQ  P8_OK8
+SWI
+P8_OK8:
+
+; =========================================================
+; PHASE 9: SET INDEPENDENCE
+; =========================================================
+
+MOVI REG1, #2112            ; G = 0x840 -> set 1
+LDR  REG7, [REG1, #0]       ; Should still be 0x42424242 from Phase 6
+MOVI REG8, #0x42424242
+CMP  REG7, REG8
+BEQ  P9_OK1
+SWI
+P9_OK1:
+
+; =========================================================
+; ALL PASSED
+; =========================================================
+
+NOP
+NOP
+MOVI REG12, #0x600D
+FMOVI REG10, #999.995
+SWI
