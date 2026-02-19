@@ -1,129 +1,105 @@
+// ============================================================================
+// File: include/apps/cpu_tomasulo/ui/widgets/ROBTable.h
+// ============================================================================
+
 #pragma once
 
 /**
  * @file ROBTable.h
- * @brief Reorder Buffer visualization table widget for Tomasulo CPU.
+ * @brief Reorder Buffer visualization widget for the Tomasulo CPU.
  *
- * Displays a 32-entry circular ROB with Head/Tail pointers,
- * a main table of core fields, and a detail panel for the
- * selected entry's branch, store, and flags information.
+ * Displays a 32-entry circular ROB split into three regions:
+ *   1. Status bar      — Head, Tail, Count, Full/Empty indicator.
+ *   2. Main table      — One row per entry: Busy, Ready, Type, DestReg,
+ *                        Value, PC, Exception, SourceStation.
+ *   3. Detail panel    — Flags, Branch, and Store sub-fields for the
+ *                        currently selected entry.
  *
- * @note Follows:
- *   - SRP: Only handles ROB table display and entry selection
- *   - OCP: Entry count is configurable via constant
- *   - Encapsulation: Internal layout logic is private
+ * Head is highlighted blue, Tail green, and the selected entry orange.
+ *
+ * Data is pushed entry-by-entry via getEntry() references by
+ * CpuTomasuloState::syncROBView() while the simulation mutex is held.
+ *
+ * @note
+ *   - SRP: Only handles ROB display and entry selection.
+ *   - OCP: Entry count is a compile-time constant.
  */
 
 #include <array>
 #include <string>
 #include <cstdint>
 
- /**
-  * @class ROBTable
-  * @brief Interactive ROB viewer with entry selection and detail panel.
-  *
-  * Features:
-  * - 32 entries with Head/Tail/Count status bar
-  * - Core fields table: Busy, Ready, Type, DestReg, Value, PC, Exception
-  * - Detail panel for selected entry (branch, store, flags)
-  * - Head row highlighted blue, Tail row highlighted green
-  */
 class ROBTable {
 public:
     static constexpr int kEntryCount = 32;
 
-    // ════════════════════════════════════════════════════════════
-    // ROB Entry
-    // ════════════════════════════════════════════════════════════
+    // ── ROB Entry ────────────────────────────────────────────────
 
-    /**
-     * @struct ROBEntry
-     * @brief Single ROB entry with all fields.
-     */
+    /** @brief All fields for a single ROB entry. */
     struct ROBEntry {
-        // Core fields
-        bool        busy = false;
-        bool        ready = false;
-        uint8_t     type = 0;       ///< 3-bit instruction type
-        uint8_t     destReg = 0;       ///< 4-bit destination register
-        uint64_t    value = 0;       ///< 64-bit result value
-        uint8_t     exception = 0;       ///< 4-bit exception code
-        uint64_t    pc = 0;       ///< 64-bit program counter
-        uint8_t     sourceStation = 0;       ///< 4-bit source station ID
+        // Core fields (main table)
+        bool     busy = false;
+        bool     ready = false;
+        uint8_t  type = 0;   ///< 3-bit instruction type.
+        uint8_t  destReg = 0;   ///< 4-bit destination register index.
+        uint64_t value = 0;   ///< 64-bit result value.
+        uint8_t  exception = 0;   ///< 4-bit exception code.
+        uint64_t pc = 0;   ///< 64-bit program counter.
+        uint8_t  sourceStation = 0;   ///< 4-bit source station ID.
 
-        // Flags fields
-        uint8_t     flagsResult = 0;       ///< 4-bit flags result
-        bool        flagsValid = false;
-        bool        modifiesFlags = false;
+        // Flags fields (detail panel)
+        uint8_t  flagsResult = 0;   ///< 4-bit NZCV result.
+        bool     flagsValid = false;
+        bool     modifiesFlags = false;
 
-        // Branch fields
-        bool        predicted = false;
-        bool        branchTaken = false;
-        uint64_t    branchTarget = 0;       ///< 64-bit branch target address
-        bool        mispredict = false;
+        // Branch fields (detail panel)
+        bool     predicted = false;
+        bool     branchTaken = false;
+        uint64_t branchTarget = 0;   ///< 64-bit branch target address.
+        bool     mispredict = false;
 
-        // Store fields
-        uint64_t    storeAddr = 0;       ///< 64-bit store address
-        uint64_t    storeData = 0;       ///< 64-bit store data
-        bool        storeReady = false;
+        // Store fields (detail panel)
+        uint64_t storeAddr = 0;   ///< 64-bit effective store address.
+        uint64_t storeData = 0;   ///< 64-bit data to be written.
+        bool     storeReady = false;
     };
 
-    // ════════════════════════════════════════════════════════════
-    // Construction
-    // ════════════════════════════════════════════════════════════
-
+    // ── Construction ─────────────────────────────────────────────
     ROBTable();
 
-    // ════════════════════════════════════════════════════════════
-    // Data Access
-    // ════════════════════════════════════════════════════════════
+    // ── Data Access ──────────────────────────────────────────────
 
     /**
-     * @brief Gets a mutable reference to an entry.
-     * @param index Entry index (0–31).
+     * @brief Returns a mutable reference to an entry for in-place update.
+     * @param index  Entry index [0, kEntryCount). Returns a dummy on out-of-range.
      */
     ROBEntry& getEntry(int index);
     const ROBEntry& getEntry(int index) const;
 
-    /**
-     * @brief Sets Head pointer.
-     */
-    void setHead(int head);
+    void setHead(int head);    ///< Sets the ROB head pointer (wraps mod kEntryCount).
+    void setTail(int tail);    ///< Sets the ROB tail pointer (wraps mod kEntryCount).
+    void setCount(int count);  ///< Sets the live entry count (clamped to [0, kEntryCount]).
 
-    /**
-     * @brief Sets Tail pointer.
-     */
-    void setTail(int tail);
+    int  getHead()  const { return m_head; }
+    int  getTail()  const { return m_tail; }
+    int  getCount() const { return m_count; }
+    bool isFull()   const { return m_count == kEntryCount; }
 
-    /**
-     * @brief Sets entry count.
-     */
-    void setCount(int count);
-
-    int getHead()  const { return m_head; }
-    int getTail()  const { return m_tail; }
-    int getCount() const { return m_count; }
-    bool isFull()  const { return m_count == kEntryCount; }
-
-    /**
-     * @brief Resets all entries and pointers.
-     */
+    /** @brief Resets all entries, pointers, and the selection to their default state. */
     void resetAll();
 
-    // ════════════════════════════════════════════════════════════
-    // Rendering
-    // ════════════════════════════════════════════════════════════
+    // ── Rendering ────────────────────────────────────────────────
 
     /**
-     * @brief Renders the complete ROB widget.
-     * @param id ImGui widget ID.
+     * @brief Renders the complete ROB widget (status bar + table + detail panel).
+     * @param id  ImGui widget ID string.
      */
     void render(const char* id);
 
-    /**
-     * @brief Gets/sets the selected entry index (-1 = none).
-     */
+    // ── Entry Selection ──────────────────────────────────────────
     int  getSelectedEntry() const { return m_selectedEntry; }
+
+    /** @brief Sets the selected entry index. Pass -1 to clear selection. */
     void setSelectedEntry(int idx);
 
 private:
@@ -133,55 +109,34 @@ private:
     int m_count = 0;
     int m_selectedEntry = -1;
 
-    // ════════════════════════════════════════════════════════════
-    // Rendering Helpers
-    // ════════════════════════════════════════════════════════════
+    // ── Rendering Helpers ────────────────────────────────────────
 
-    /**
-     * @brief Renders the Head/Tail/Count/Full status bar.
-     */
+    /** @brief Renders the Head / Tail / Count / Free status bar. */
     void renderStatusBar(float availableWidth);
 
     /**
-     * @brief Renders the main 32-entry table.
-     * @param id ImGui table ID.
-     * @param tableHeight Available height.
+     * @brief Renders the main 32-row entry table.
+     * @param id           ImGui table ID.
+     * @param tableHeight  Height available for the table.
      */
     void renderMainTable(const char* id, float tableHeight);
 
     /**
-     * @brief Renders the detail panel for the selected entry.
-     * @param panelHeight Available height.
+     * @brief Renders the flags / branch / store detail panel for the selected entry.
+     * @param availableWidth  Width of the parent region.
+     * @param panelHeight     Height available for the panel.
      */
     void renderDetailPanel(float availableWidth, float panelHeight);
 
-    /**
-     * @brief Converts instruction type code to display string.
-     */
-    static const char* typeToString(uint8_t type);
+    // ── String Conversion Helpers ────────────────────────────────
+    static const char* typeToString(uint8_t type);           ///< e.g. "INT_ALU"
+    static const char* destRegToString(uint8_t reg);         ///< e.g. "R3", "UPPER"
+    static const char* exceptionToString(uint8_t exc);       ///< e.g. "Overflow"
+    static const char* sourceStationToString(uint8_t ss);    ///< e.g. "LB0"
 
-    /**
-     * @brief Converts destination register code to display string.
-     */
-    static const char* destRegToString(uint8_t reg);
-
-    /**
-     * @brief Converts exception code to display string.
-     */
-    static const char* exceptionToString(uint8_t exc);
-
-    /**
-     * @brief Converts source station code to display string.
-     */
-    static const char* sourceStationToString(uint8_t ss);
-
-    /**
-     * @brief Formats a 64-bit value as trimmed hex (like RAM addresses).
-     */
+    /** @brief Formats a uint64 as trimmed hex (e.g. "0x1A00"). */
     static std::string formatHexTrimmed(uint64_t v);
 
-    /**
-     * @brief Formats a 64-bit value as full 16-digit hex.
-     */
+    /** @brief Formats a uint64 as zero-padded 16-digit hex (e.g. "0x0000000000001A00"). */
     static std::string formatHexFull(uint64_t v);
 };

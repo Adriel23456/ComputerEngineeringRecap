@@ -1,6 +1,15 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.cpp
+// ============================================================================
+
 /**
  * @file TomasuloRAM.cpp
  * @brief Implementation of TomasuloRAM.
+ *
+ * All out-of-range row accesses are silently ignored (read returns 0,
+ * write is a no-op) to keep pipeline components safe during transient
+ * states. Address-based accessors throw std::out_of_range on misaligned
+ * or out-of-bound addresses to catch bugs in the pipeline components.
  */
 
 #include "apps/cpu_tomasulo/simulation/memory/TomasuloRAM.h"
@@ -8,7 +17,7 @@
 #include <stdexcept>
 
  // ============================================================================
- // Helpers
+ // Address → Row Conversion
  // ============================================================================
 
 size_t TomasuloRAM::addressToRow(uint64_t address) {
@@ -21,7 +30,7 @@ size_t TomasuloRAM::addressToRow(uint64_t address) {
 }
 
 // ============================================================================
-// Single-word access
+// Row-Index Access
 // ============================================================================
 
 uint64_t TomasuloRAM::read(size_t rowIndex) const {
@@ -34,6 +43,10 @@ void TomasuloRAM::write(size_t rowIndex, uint64_t value) {
         m_data[rowIndex] = value;
 }
 
+// ============================================================================
+// Byte-Address Access
+// ============================================================================
+
 uint64_t TomasuloRAM::readAddress(uint64_t address) const {
     return m_data[addressToRow(address)];
 }
@@ -43,7 +56,7 @@ void TomasuloRAM::writeAddress(uint64_t address, uint64_t value) {
 }
 
 // ============================================================================
-// Bulk
+// Bulk Operations
 // ============================================================================
 
 size_t TomasuloRAM::loadBlock(const std::vector<uint64_t>& words) {

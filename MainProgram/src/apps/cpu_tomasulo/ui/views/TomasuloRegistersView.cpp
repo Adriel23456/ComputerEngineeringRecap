@@ -1,10 +1,22 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/views/TomasuloRegistersView.cpp
+// ============================================================================
+
 /**
  * @file TomasuloRegistersView.cpp
  * @brief Implementation of TomasuloRegistersView.
+ *
+ * Renders a header then delegates to TomasuloRegTable, which reads
+ * live register values via the data-source pointer bound by
+ * CpuTomasuloState::bindDataSources().
  */
 
 #include "apps/cpu_tomasulo/ui/views/TomasuloRegistersView.h"
 #include <imgui.h>
+
+ // ============================================================================
+ // Render
+ // ============================================================================
 
 void TomasuloRegistersView::render() {
     ImVec2 available = ImGui::GetContentRegionAvail();

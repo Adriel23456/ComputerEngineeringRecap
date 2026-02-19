@@ -1,6 +1,16 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/widgets/ROBTable.cpp
+// ============================================================================
+
 /**
  * @file ROBTable.cpp
  * @brief Implementation of ROBTable.
+ *
+ * Handles:
+ *   - Entry storage and pointer management.
+ *   - Status bar (Head / Tail / Count / Free).
+ *   - Main 32-row table with click-to-select and row coloring.
+ *   - Detail panel (flags, branch, store) for the selected entry.
  */
 
 #include "apps/cpu_tomasulo/ui/widgets/ROBTable.h"
@@ -13,14 +23,10 @@
  // Construction / Reset
  // ============================================================================
 
-ROBTable::ROBTable() {
-    resetAll();
-}
+ROBTable::ROBTable() { resetAll(); }
 
 void ROBTable::resetAll() {
-    for (auto& e : m_entries) {
-        e = ROBEntry{};
-    }
+    for (auto& e : m_entries) e = ROBEntry{};
     m_head = 0;
     m_tail = 0;
     m_count = 0;
@@ -53,7 +59,7 @@ void ROBTable::setSelectedEntry(int idx) {
 }
 
 // ============================================================================
-// Type / Register / Exception / SourceStation Strings
+// Type / Register / Exception / Source Station String Tables
 // ============================================================================
 
 const char* ROBTable::typeToString(uint8_t type) {
@@ -72,22 +78,11 @@ const char* ROBTable::typeToString(uint8_t type) {
 
 const char* ROBTable::destRegToString(uint8_t reg) {
     static char buf[8];
-    if (reg <= 12) {
-        std::snprintf(buf, sizeof(buf), "R%d", reg);
-    }
-    else if (reg == 13) {
-        return "UPPER";
-    }
-    else if (reg == 14) {
-        return "LOWER";
-    }
-    else if (reg == 15) {
-        return "PEID";
-    }
-    else {
-        return "---";
-    }
-    return buf;
+    if (reg <= 12) { std::snprintf(buf, sizeof(buf), "R%d", reg); return buf; }
+    else if (reg == 13) return "UPPER";
+    else if (reg == 14) return "LOWER";
+    else if (reg == 15) return "PEID";
+    return "---";
 }
 
 const char* ROBTable::exceptionToString(uint8_t exc) {
@@ -100,8 +95,7 @@ const char* ROBTable::exceptionToString(uint8_t exc) {
     case 0x5: return "ProtFault";
     case 0x6: return "Misalign";
     case 0x7: return "Breakpoint";
-    default:
-    {
+    default: {
         static char buf[8];
         std::snprintf(buf, sizeof(buf), "0x%X", exc);
         return buf;
@@ -140,24 +134,14 @@ std::string ROBTable::formatHexFull(uint64_t v) {
 // Status Bar
 // ============================================================================
 
-void ROBTable::renderStatusBar(float availableWidth) {
-    // Head indicator (blue)
+void ROBTable::renderStatusBar(float /*availableWidth*/) {
     ImGui::TextColored(ImVec4(0.3f, 0.6f, 1.0f, 1.0f), "HEAD: %d", m_head);
-
     ImGui::SameLine(0, 25.0f);
-
-    // Tail indicator (green)
     ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.5f, 1.0f), "TAIL: %d", m_tail);
-
+    ImGui::SameLine(0, 25.0f);
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f), "COUNT: %d / %d", m_count, kEntryCount);
     ImGui::SameLine(0, 25.0f);
 
-    // Count
-    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f), "COUNT: %d / %d",
-        m_count, kEntryCount);
-
-    ImGui::SameLine(0, 25.0f);
-
-    // Full indicator
     if (isFull()) {
         ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "[FULL]");
     }
@@ -165,11 +149,10 @@ void ROBTable::renderStatusBar(float availableWidth) {
         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "[EMPTY]");
     }
     else {
-        ImGui::TextColored(ImVec4(0.5f, 0.8f, 0.5f, 1.0f), "[%d FREE]",
-            kEntryCount - m_count);
+        ImGui::TextColored(ImVec4(0.5f, 0.8f, 0.5f, 1.0f),
+            "[%d FREE]", kEntryCount - m_count);
     }
 
-    // Selected entry info
     if (m_selectedEntry >= 0) {
         ImGui::SameLine(0, 25.0f);
         ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f),
@@ -219,128 +202,89 @@ void ROBTable::renderMainTable(const char* id, float tableHeight) {
 
             ImGui::TableNextRow();
 
-            // ── Row highlighting ──────────────────────────────
             bool isHead = (i == m_head);
             bool isTail = (i == m_tail && m_count < kEntryCount);
             bool isSelected = (i == m_selectedEntry);
 
+            // ── Row background highlight ──────────────────────
             ImU32 rowColor = 0;
-            if (isHead && isTail) {
-                rowColor = IM_COL32(40, 80, 80, 80);   // Teal when Head==Tail
-            }
-            else if (isHead) {
-                rowColor = IM_COL32(30, 50, 120, 80);   // Blue for Head
-            }
-            else if (isTail) {
-                rowColor = IM_COL32(30, 100, 50, 80);   // Green for Tail
-            }
+            if (isHead && isTail) rowColor = IM_COL32(40, 80, 80, 80);  // teal
+            else if (isHead)           rowColor = IM_COL32(30, 50, 120, 80);  // blue
+            else if (isTail)           rowColor = IM_COL32(30, 100, 50, 80);  // green
+            if (isSelected)            rowColor = IM_COL32(120, 80, 20, 100);  // orange
 
-            if (isSelected) {
-                rowColor = IM_COL32(120, 80, 20, 100);  // Orange for selected
-            }
-
-            if (rowColor != 0) {
+            if (rowColor != 0)
                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, rowColor);
-            }
 
-            // ── Index column ──────────────────────────────────
+            // ── Index + click-to-select ───────────────────────
             ImGui::TableSetColumnIndex(0);
             {
-                // Clickable selectable spanning the row
-                char selectableId[16];
-                std::snprintf(selectableId, sizeof(selectableId), "%d##rob", i);
+                char selId[16];
+                std::snprintf(selId, sizeof(selId), "%d##rob", i);
 
                 bool wasSelected = (m_selectedEntry == i);
-                if (ImGui::Selectable(selectableId, wasSelected,
+                if (ImGui::Selectable(selId, wasSelected,
                     ImGuiSelectableFlags_SpanAllColumns |
                     ImGuiSelectableFlags_AllowItemOverlap)) {
                     m_selectedEntry = (m_selectedEntry == i) ? -1 : i;
                 }
 
-                // Head/Tail markers
+                // Head / Tail markers
                 ImGui::SameLine();
-                if (isHead && isTail) {
-                    ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.9f, 1.0f), "HT");
-                }
-                else if (isHead) {
-                    ImGui::TextColored(ImVec4(0.3f, 0.6f, 1.0f, 1.0f), "H");
-                }
-                else if (isTail) {
-                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.5f, 1.0f), "T");
-                }
+                if (isHead && isTail) ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.9f, 1.0f), "HT");
+                else if (isHead)           ImGui::TextColored(ImVec4(0.3f, 0.6f, 1.0f, 1.0f), "H");
+                else if (isTail)           ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.5f, 1.0f), "T");
             }
 
-            // ── Busy ──────────────────────────────────────────
+            // ── Busy ─────────────────────────────────────────
             ImGui::TableSetColumnIndex(1);
-            if (e.busy) {
-                ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.3f, 1.0f), "Yes");
-            }
-            else {
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "No");
-            }
+            e.busy
+                ? ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.3f, 1.0f), "Yes")
+                : ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "No");
 
-            // ── Ready ─────────────────────────────────────────
+            // ── Ready ────────────────────────────────────────
             ImGui::TableSetColumnIndex(2);
+            if (!e.busy)  ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
+            else if (e.ready)  ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "Ready");
+            else               ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Wait");
+
+            // ── Type ─────────────────────────────────────────
+            ImGui::TableSetColumnIndex(3);
             if (!e.busy) {
                 ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
             }
-            else if (e.ready) {
-                ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "Ready");
+            else if (e.sourceStation == 15) {
+                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f), "SPECIAL");
             }
             else {
-                ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.2f, 1.0f), "Wait");
+                ImGui::Text("%s", typeToString(e.type));
             }
 
-            // ── Type ──────────────────────────────────────────
-            ImGui::TableSetColumnIndex(3);
-            if (e.busy) {
-                if (e.sourceStation == 15) {
-                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f), "SPECIAL");
-                }
-                else {
-                    ImGui::Text("%s", typeToString(e.type));
-                }
-            }
-            else {
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
-            }
-
-            // ── Dest ──────────────────────────────────────────
+            // ── Dest ─────────────────────────────────────────
             ImGui::TableSetColumnIndex(4);
             if (!e.busy) {
                 ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
             }
-            else if (e.type == 5       // STORE
-                || e.type == 6       // BRANCH
-                || e.type == 7       // CMP/FLG
-                || e.sourceStation == 15) {  // SPECIAL (NOP/SWI)
+            else if (e.type == 5 || e.type == 6 || e.type == 7 || e.sourceStation == 15) {
                 ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "NaN");
             }
             else {
                 ImGui::Text("%s", destRegToString(e.destReg));
             }
 
-            // ── Value ─────────────────────────────────────────
+            // ── Value ────────────────────────────────────────
             ImGui::TableSetColumnIndex(5);
-            if (e.busy) {
-                std::string hex = formatHexFull(e.value);
-                ImGui::TextUnformatted(hex.c_str());
-            }
-            else {
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
-            }
+            e.busy
+                ? ImGui::TextUnformatted(formatHexFull(e.value).c_str())
+                : ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
 
-            // ── PC ────────────────────────────────────────────
+            // ── PC ───────────────────────────────────────────
             ImGui::TableSetColumnIndex(6);
-            if (e.busy) {
-                std::string pc = formatHexTrimmed(e.pc);
-                ImGui::Text("%s", pc.c_str());
-            }
-            else {
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
-            }
+            e.busy
+                ? ImGui::Text("%s", formatHexTrimmed(e.pc).c_str())
+                : ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
 
-            // ── Exception ─────────────────────────────────────
+            // ── Exception ────────────────────────────────────
             ImGui::TableSetColumnIndex(7);
             if (!e.busy) {
                 ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
@@ -353,14 +297,11 @@ void ROBTable::renderMainTable(const char* id, float tableHeight) {
                 ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "None");
             }
 
-            // ── Source Station ─────────────────────────────────
+            // ── Source Station ───────────────────────────────
             ImGui::TableSetColumnIndex(8);
-            if (e.busy) {
-                ImGui::Text("%s", sourceStationToString(e.sourceStation));
-            }
-            else {
-                ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
-            }
+            e.busy
+                ? ImGui::Text("%s", sourceStationToString(e.sourceStation))
+                : ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
         }
 
         ImGui::EndTable();
@@ -368,10 +309,10 @@ void ROBTable::renderMainTable(const char* id, float tableHeight) {
 }
 
 // ============================================================================
-// Detail Panel
+// Detail Panel  (flags / branch / store for the selected entry)
 // ============================================================================
 
-void ROBTable::renderDetailPanel(float availableWidth, float panelHeight) {
+void ROBTable::renderDetailPanel(float /*availableWidth*/, float /*panelHeight*/) {
     if (m_selectedEntry < 0) {
         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
             "Click a ROB entry above to view details.");
@@ -380,7 +321,7 @@ void ROBTable::renderDetailPanel(float availableWidth, float panelHeight) {
 
     const ROBEntry& e = m_entries[m_selectedEntry];
 
-    // Header
+    // ── Header ───────────────────────────────────────────────
     ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.2f, 1.0f),
         "Entry #%d Details", m_selectedEntry);
 
@@ -396,19 +337,16 @@ void ROBTable::renderDetailPanel(float availableWidth, float panelHeight) {
     ImGui::Separator();
     ImGui::Dummy(ImVec2(1, 4));
 
-    // Use an ImGui table for the 3-column layout — handles overflow & scrollbar properly
-    ImGuiTableFlags tflags =
-        ImGuiTableFlags_SizingFixedFit |
-        ImGuiTableFlags_ScrollX;
+    // ── Three-column detail table ─────────────────────────────
+    ImGuiTableFlags tflags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX;
 
     if (ImGui::BeginTable("##ROBDetailCols", 3, tflags)) {
-        // Size columns from the widest possible content + padding
-        const float colMin = ImGui::CalcTextSize("StoreData:     0x0000000000000000").x + 30.0f;
+        const float colMin =
+            ImGui::CalcTextSize("StoreData:     0x0000000000000000").x + 30.0f;
 
         ImGui::TableSetupColumn("Flags", ImGuiTableColumnFlags_WidthFixed, colMin);
         ImGui::TableSetupColumn("Branch", ImGuiTableColumnFlags_WidthFixed, colMin);
         ImGui::TableSetupColumn("Store", ImGuiTableColumnFlags_WidthFixed, colMin);
-
         ImGui::TableNextRow();
 
         // ── Flags Info ────────────────────────────────────────
@@ -427,8 +365,7 @@ void ROBTable::renderDetailPanel(float availableWidth, float panelHeight) {
             ImGui::Text("FlagsResult:   0x%X (%s)", e.flagsResult, flagsBin);
         }
         else {
-            ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f),
-                "FlagsResult:   ---");
+            ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "FlagsResult:   ---");
         }
 
         // ── Branch Info ───────────────────────────────────────
@@ -437,31 +374,18 @@ void ROBTable::renderDetailPanel(float availableWidth, float panelHeight) {
         ImGui::Separator();
         ImGui::Text("Predicted:     %s", e.predicted ? "Taken" : "NotTaken");
         ImGui::Text("BranchTaken:   %s", e.branchTaken ? "Yes" : "No");
-        {
-            std::string target = formatHexTrimmed(e.branchTarget);
-            ImGui::Text("BranchTarget:  %s", target.c_str());
-        }
-        if (e.mispredict) {
-            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
-                "Mispredict:    YES");
-        }
-        else {
-            ImGui::Text("Mispredict:    No");
-        }
+        ImGui::Text("BranchTarget:  %s", formatHexTrimmed(e.branchTarget).c_str());
+        e.mispredict
+            ? ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Mispredict:    YES")
+            : ImGui::Text("Mispredict:    No");
 
         // ── Store Info ────────────────────────────────────────
         ImGui::TableSetColumnIndex(2);
         ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.7f, 1.0f), "Store Info");
         ImGui::Separator();
         ImGui::Text("StoreReady:    %s", e.storeReady ? "Yes" : "No");
-        {
-            std::string addr = formatHexTrimmed(e.storeAddr);
-            ImGui::Text("StoreAddr:     %s", addr.c_str());
-        }
-        {
-            std::string data = formatHexFull(e.storeData);
-            ImGui::Text("StoreData:     %s", data.c_str());
-        }
+        ImGui::Text("StoreAddr:     %s", formatHexTrimmed(e.storeAddr).c_str());
+        ImGui::Text("StoreData:     %s", formatHexFull(e.storeData).c_str());
 
         ImGui::EndTable();
     }
@@ -476,14 +400,13 @@ void ROBTable::render(const char* id) {
 
     const float STATUS_HEIGHT = 30.0f;
     const float GAP = 5.0f;
+    bool        hasSelection = (m_selectedEntry >= 0);
 
-    bool hasSelection = (m_selectedEntry >= 0);
-
-    // Proportional split: table gets 60%, detail gets 40% when selected
-    // When no selection, detail collapses to a single hint line
+    // Proportional split: 60 % table / 40 % detail when an entry is selected;
+    // detail collapses to a single hint line when nothing is selected.
     float usable = available.y - STATUS_HEIGHT - GAP * 3;
-
     float detailH, tableHeight;
+
     if (hasSelection) {
         detailH = usable * 0.40f;
         tableHeight = usable - detailH;
@@ -497,22 +420,17 @@ void ROBTable::render(const char* id) {
 
     // ── Status bar ────────────────────────────────────────────
     renderStatusBar(available.x);
-
     ImGui::Dummy(ImVec2(1, GAP));
 
     // ── Main table ────────────────────────────────────────────
     ImGui::BeginChild("##ROBTableArea", ImVec2(available.x, tableHeight), false);
-    {
-        renderMainTable(id, tableHeight);
-    }
+    renderMainTable(id, tableHeight);
     ImGui::EndChild();
 
     ImGui::Dummy(ImVec2(1, GAP));
 
     // ── Detail panel ──────────────────────────────────────────
     ImGui::BeginChild("##ROBDetailPanel", ImVec2(available.x, detailH), true);
-    {
-        renderDetailPanel(available.x, detailH);
-    }
+    renderDetailPanel(available.x, detailH);
     ImGui::EndChild();
 }

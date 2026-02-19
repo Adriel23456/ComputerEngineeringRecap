@@ -1,6 +1,13 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/views/TomasuloDCacheView.cpp
+// ============================================================================
+
 /**
  * @file TomasuloDCacheView.cpp
  * @brief Implementation of TomasuloDCacheView.
+ *
+ * Forwards line data from CpuTomasuloState::syncDCacheView() into the
+ * CacheTable widget, then renders the widget inside a scrollable child.
  */
 
 #include "apps/cpu_tomasulo/ui/views/TomasuloDCacheView.h"
@@ -19,18 +26,16 @@ void TomasuloDCacheView::setBySetWay(
 }
 
 // ============================================================================
-// Main Render
+// Render
 // ============================================================================
 
 void TomasuloDCacheView::render() {
     ImVec2 available = ImGui::GetContentRegionAvail();
 
-    // Header
     ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "L1 Data Cache (D-Cache)");
     ImGui::Separator();
     ImGui::Dummy(ImVec2(1, 5));
 
-    // All remaining height goes to the cache table
     float remainingHeight = ImGui::GetContentRegionAvail().y;
     if (remainingHeight < 50.0f) remainingHeight = 50.0f;
 

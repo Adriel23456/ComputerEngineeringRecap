@@ -1,6 +1,18 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.cpp
+// ============================================================================
+
 /**
  * @file TomasuloAnalysisView.cpp
  * @brief Implementation of TomasuloAnalysisView.
+ *
+ * Renders a scrollable two-column metrics table grouped into sections:
+ *   - Execution Overview (total cycles, committed instructions)
+ *   - Latency           (cache stall cycles, RAM stall cycles)
+ *   - Store Buffers     (SB0–SB1 use counts)
+ *   - Load Buffers      (LB0–LB2 use counts)
+ *   - Reservation Stations (RS use counts per functional unit)
+ *   - Branch Prediction (misprediction count)
  */
 
 #include "apps/cpu_tomasulo/ui/views/TomasuloAnalysisView.h"
@@ -29,7 +41,6 @@ void TomasuloAnalysisView::resetAll() {
 void TomasuloAnalysisView::render() {
     ImVec2 available = ImGui::GetContentRegionAvail();
 
-    // Header
     ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Simulation Analysis");
     ImGui::Separator();
     ImGui::Dummy(ImVec2(1, 5));
@@ -47,14 +58,13 @@ void TomasuloAnalysisView::render() {
     if (ImGui::BeginTable("##AnalysisTable", 2, flags,
         ImVec2(available.x, remainingHeight))) {
         ImGui::TableSetupScrollFreeze(0, 1);
-
         ImGui::TableSetupColumn("Metric",
             ImGuiTableColumnFlags_WidthStretch, 0.70f);
         ImGui::TableSetupColumn("Value",
             ImGuiTableColumnFlags_WidthStretch, 0.30f);
         ImGui::TableHeadersRow();
 
-        // Helper lambda
+        // ── Row helper ───────────────────────────────────────────
         auto row = [](const char* name, uint64_t value,
             ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f)) {
                 ImGui::TableNextRow();
@@ -65,7 +75,7 @@ void TomasuloAnalysisView::render() {
                     static_cast<unsigned long long>(value));
             };
 
-        // Helper for section headers
+        // ── Section header helper ────────────────────────────────
         auto sectionHeader = [](const char* title, ImVec4 color) {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
@@ -74,12 +84,12 @@ void TomasuloAnalysisView::render() {
             ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.4f, 1.0f), "---");
             };
 
-        ImVec4 cyan = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
-        ImVec4 green = ImVec4(0.3f, 1.0f, 0.5f, 1.0f);
-        ImVec4 yellow = ImVec4(1.0f, 1.0f, 0.3f, 1.0f);
-        ImVec4 orange = ImVec4(1.0f, 0.7f, 0.2f, 1.0f);
-        ImVec4 red = ImVec4(1.0f, 0.4f, 0.3f, 1.0f);
-        ImVec4 white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+        const ImVec4 cyan = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
+        const ImVec4 green = ImVec4(0.3f, 1.0f, 0.5f, 1.0f);
+        const ImVec4 yellow = ImVec4(1.0f, 1.0f, 0.3f, 1.0f);
+        const ImVec4 orange = ImVec4(1.0f, 0.7f, 0.2f, 1.0f);
+        const ImVec4 red = ImVec4(1.0f, 0.4f, 0.3f, 1.0f);
+        const ImVec4 white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
         // ── Execution Overview ────────────────────────────────
         sectionHeader("EXECUTION OVERVIEW", cyan);
@@ -112,7 +122,7 @@ void TomasuloAnalysisView::render() {
         row("RS FP_MUL0 Uses", m_usesRS[4], white);
         row("RS Branch0 Uses", m_usesRS[5], white);
 
-        // ── Branch ────────────────────────────────────────────
+        // ── Branch Prediction ─────────────────────────────────
         sectionHeader("BRANCH PREDICTION", cyan);
         row("Branch Mispredictions", m_branchMispredictions, red);
 

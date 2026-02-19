@@ -1,3 +1,7 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/components/Camera2D.cpp
+// ============================================================================
+
 /**
  * @file Camera2D.cpp
  * @brief Implementation of Camera2D.
@@ -6,7 +10,10 @@
 #include "apps/cpu_tomasulo/ui/components/Camera2D.h"
 #include "imgui.h"
 
- // ────────────────────────────────────────────────────────────────
+ // ============================================================================
+ // Lifecycle
+ // ============================================================================
+
 void Camera2D::init(float worldW, float worldH) {
     m_center = { worldW * 0.5f, worldH * 0.5f };
     m_centerTarget = m_center;
@@ -24,10 +31,13 @@ void Camera2D::reset() {
     m_dragging = false;
     m_dragButton = -1;
     m_velocity = { 0, 0 };
-    m_initialized = false;          // will re-center on next init()
+    m_initialized = false;   // will re-center on the next init() call
 }
 
-// ────────────────────────────────────────────────────────────────
+// ============================================================================
+// Static Helpers
+// ============================================================================
+
 float Camera2D::computeFitScale(float canvasW, float canvasH,
     float worldW, float worldH, float fill) {
     return std::min(canvasW / worldW, canvasH / worldH) * fill;
@@ -43,7 +53,10 @@ ImVec2 Camera2D::worldOrigin(const ImVec2& canvasP0,
              cy - m_center.y * scale };
 }
 
-// ────────────────────────────────────────────────────────────────
+// ============================================================================
+// Input Handling
+// ============================================================================
+
 void Camera2D::handleInput(const ImVec2& canvasP0,
     const ImVec2& canvasSize,
     float fitScale) {
@@ -63,22 +76,21 @@ void Camera2D::handleInput(const ImVec2& canvasP0,
         return;
     }
 
-    // ── Zoom (cursor-anchored, updates target) ────────────────
+    // ── Mouse-wheel zoom (cursor-anchored) ────────────────────
     if (io.MouseWheel != 0.0f) {
+        // World point currently under the cursor — stays fixed after zoom
         const ImVec2 worldUnderMouse = {
             m_centerTarget.x + (mouse.x - canvasCenter.x) / oldScale,
             m_centerTarget.y + (mouse.y - canvasCenter.y) / oldScale
         };
 
-        const float factor = (io.MouseWheel > 0.0f)
-            ? config.zoomStep
-            : (1.0f / config.zoomStep);
-        const float newZoom = clampf(m_zoomTarget * factor,
-            config.zoomMin, config.zoomMax);
+        const float factor = (io.MouseWheel > 0.0f) ? config.zoomStep : (1.0f / config.zoomStep);
+        const float newZoom = clampf(m_zoomTarget * factor, config.zoomMin, config.zoomMax);
 
         if (newZoom != m_zoomTarget) {
             m_zoomTarget = newZoom;
             const float newScale = fitScale * m_zoomTarget;
+            // Recompute center so the world point under the cursor does not shift
             m_centerTarget = {
                 worldUnderMouse.x - (mouse.x - canvasCenter.x) / newScale,
                 worldUnderMouse.y - (mouse.y - canvasCenter.y) / newScale
@@ -106,16 +118,15 @@ void Camera2D::handleInput(const ImVec2& canvasP0,
             (m_dragButton == ImGuiMouseButton_Right && ImGui::IsMouseDown(ImGuiMouseButton_Right));
 
         if (held) {
-            const float scale = fitScale * m_zoomTarget;
-            const ImVec2 delta = {
-                mouse.x - m_dragStartMouse.x,
-                mouse.y - m_dragStartMouse.y
-            };
+            const float  scale = fitScale * m_zoomTarget;
+            const ImVec2 delta = { mouse.x - m_dragStartMouse.x,
+                                      mouse.y - m_dragStartMouse.y };
             const ImVec2 newTarget = {
                 m_dragStartCenterTarget.x - delta.x / scale,
                 m_dragStartCenterTarget.y - delta.y / scale
             };
 
+            // Record velocity for inertia on release
             if (config.enableInertia && io.DeltaTime > 0.0f) {
                 m_velocity = {
                     (newTarget.x - m_centerTarget.x) / io.DeltaTime,
@@ -131,21 +142,24 @@ void Camera2D::handleInput(const ImVec2& canvasP0,
     }
 }
 
-// ────────────────────────────────────────────────────────────────
+// ============================================================================
+// Animation
+// ============================================================================
+
 void Camera2D::animate(float dt) {
     if (dt <= 0.0f) return;
 
-    // Smooth zoom
+    // Smooth zoom toward target
     {
         const float a = expAlpha(config.zoomSmoothness, dt);
         m_zoom += (m_zoomTarget - m_zoom) * a;
     }
-    // Smooth pan
+    // Smooth pan toward target
     {
         const float a = expAlpha(config.panSmoothness, dt);
         m_center = lerp(m_center, m_centerTarget, a);
     }
-    // Inertia
+    // Inertial drift after drag release
     if (config.enableInertia && !m_dragging) {
         const float speed = std::sqrt(m_velocity.x * m_velocity.x +
             m_velocity.y * m_velocity.y);
@@ -162,7 +176,10 @@ void Camera2D::animate(float dt) {
     }
 }
 
-// ────────────────────────────────────────────────────────────────
+// ============================================================================
+// Viewport Clamping
+// ============================================================================
+
 void Camera2D::clampTarget(float worldW, float worldH,
     float canvasW, float canvasH,
     float fitScale) {
@@ -171,21 +188,17 @@ void Camera2D::clampTarget(float worldW, float worldH,
     const float halfViewH = canvasH / (2.0f * scale);
 
     const float minVis = config.minVisibleFrac;
-
-    // At least (minVis * worldDim) world-pixels must overlap the viewport.
     const float overlapW = worldW * minVis;
     const float overlapH = worldH * minVis;
 
-    // visible world X range: [centerTarget.x - halfViewW, centerTarget.x + halfViewW]
-    // must overlap [0, worldW] by at least overlapW.
-    //   centerTarget.x + halfViewW > overlapW       -> min
-    //   centerTarget.x - halfViewW < worldW - overlapW -> max
+    // Derivation: visible X range is [centerTarget.x - halfViewW, centerTarget.x + halfViewW].
+    // It must overlap [0, worldW] by at least overlapW.
     const float minCX = overlapW - halfViewW;
     const float maxCX = worldW - overlapW + halfViewW;
     const float minCY = overlapH - halfViewH;
     const float maxCY = worldH - overlapH + halfViewH;
 
-    // If constraints invert (very zoomed out), just center.
+    // If constraints invert (very zoomed out), just center on the world
     m_centerTarget.x = (minCX < maxCX)
         ? clampf(m_centerTarget.x, minCX, maxCX)
         : worldW * 0.5f;

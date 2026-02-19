@@ -1,18 +1,31 @@
+// ============================================================================
+// File: include/apps/cpu_tomasulo/ui/views/TomasuloMainView.h
+// ============================================================================
+
 #pragma once
+
 /**
  * @file TomasuloMainView.h
  * @brief Main architecture diagram view for the Tomasulo CPU.
  *
- * After SOLID refactoring this class is a thin **Mediator** that
- * wires together four focused components:
- *   - Camera2D            (pan / zoom / inertia / clamping)
- *   - ShaderBackground    (animated fragment-shader backdrop)
- *   - BorderRenderer      (decorative 3-D frame)
- *   - SlotOverlayRenderer (label boxes on the diagram)
+ * Acts as a thin Mediator that wires together four focused components:
+ *   - Camera2D            — pan / zoom / inertia / viewport clamping
+ *   - ShaderBackground    — animated GLSL wormhole backdrop
+ *   - BorderRenderer      — decorative 3-D frame around the diagram
+ *   - SlotOverlayRenderer — labeled boxes drawn on top of the diagram
  *
- * New features:
- *   - Pan is clamped so ≥20 % of the image is always visible.
- *   - A translucent RESET button sits in the bottom-right corner.
+ * The diagram image is loaded once via TextureCache and rendered into
+ * an ImDrawList canvas. Labels are pushed each frame by
+ * CpuTomasuloState::syncMainView() while the simulation mutex is held.
+ *
+ * Interaction:
+ *   - Scroll        : zoom anchored to cursor
+ *   - Left/right drag : pan
+ *   - Double-right-click / RESET button : reset camera
+ *
+ * @note
+ *   - SRP: Each rendering concern is isolated in its own component.
+ *   - OCP: New overlays are added by extending SlotDef / Slot enum.
  */
 
 #include "apps/cpu_tomasulo/ui/views/ITomasuloView.h"
@@ -29,7 +42,7 @@ namespace sf { class Texture; }
 
 class TomasuloMainView : public ITomasuloView {
 public:
-    // ── Slot enum (unchanged) ─────────────────────────────────
+    // ── Slot Identifiers ─────────────────────────────────────────
     enum Slot {
         ISSUE = 0,
         SB0, SB1,
@@ -45,34 +58,41 @@ public:
     static constexpr int SLOT_COUNT = 13;
     using SlotDef = SlotOverlayRenderer::SlotDef;
 
-    // ── Construction ──────────────────────────────────────────
+    // ── Construction ─────────────────────────────────────────────
     TomasuloMainView();
 
-    // ── ITomasuloView ─────────────────────────────────────────
+    // ── ITomasuloView ────────────────────────────────────────────
     void render() override;
 
-    // ── Label access ──────────────────────────────────────────
+    // ── Label Access ─────────────────────────────────────────────
     void setLabel(Slot slot, const std::string& text);
     void setLabels(const std::array<std::string, SLOT_COUNT>& labels);
     const std::array<std::string, SLOT_COUNT>& getLabels() const { return m_labels; }
     void clearLabels();
 
 private:
+    /** @brief Loads the diagram texture on first use via TextureCache. */
     void ensureLoaded();
 
-    /// Returns the border color for a given slot index.
+    /** @brief Returns the ImU32 border color for a given slot index. */
     static ImU32 slotBorderColor(int index);
 
-    /// Draws the "RESET" button in the bottom-right of the canvas.
+    /**
+     * @brief Draws the floating RESET camera button in the bottom-right corner.
+     *
+     * Uses the foreground draw list so it renders above all canvas content.
+     * Input is handled via a manual hit-test to avoid conflicts with the
+     * InvisibleButton that captures pan/zoom input.
+     */
     void drawResetButton(const ImVec2& canvasP0, const ImVec2& canvasSize);
 
-    // ── Data ──────────────────────────────────────────────────
-    std::shared_ptr<sf::Texture>                m_tex;
-    std::array<std::string, SLOT_COUNT>         m_labels;
-    static const std::array<SlotDef, SLOT_COUNT> s_slotDefs;
+    // ── Data ─────────────────────────────────────────────────────
+    std::shared_ptr<sf::Texture>                 m_tex;
+    std::array<std::string, SLOT_COUNT>          m_labels;
+    static const std::array<SlotDef, SLOT_COUNT> s_slotDefs;  ///< World-space slot layout.
 
-    // ── Components (SRP) ──────────────────────────────────────
-    Camera2D              m_camera;
-    ShaderBackground      m_background;
-    SlotOverlayRenderer   m_overlay;
+    // ── Components ───────────────────────────────────────────────
+    Camera2D             m_camera;
+    ShaderBackground     m_background;
+    SlotOverlayRenderer  m_overlay;
 };

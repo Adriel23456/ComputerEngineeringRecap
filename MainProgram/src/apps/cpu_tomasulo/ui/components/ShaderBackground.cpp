@@ -1,8 +1,20 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/components/ShaderBackground.cpp
+// ============================================================================
+
 /**
  * @file ShaderBackground.cpp
+ * @brief Implementation of ShaderBackground.
+ *
+ * Contains the inline GLSL wormhole fragment shader and the SFML
+ * render-texture blit pipeline that feeds it into ImGui each frame.
  */
 
 #include "apps/cpu_tomasulo/ui/components/ShaderBackground.h"
+
+ // ============================================================================
+ // Fragment Shader Source  (inline GLSL)
+ // ============================================================================
 
 const std::string ShaderBackground::FRAG_SOURCE = R"(
     uniform vec2  iResolution;
@@ -82,6 +94,10 @@ const std::string ShaderBackground::FRAG_SOURCE = R"(
     }
 )";
 
+// ============================================================================
+// Internal Helpers
+// ============================================================================
+
 void ShaderBackground::ensureShader() {
     if (!m_shaderLoaded) {
         m_shader.loadFromMemory(FRAG_SOURCE, sf::Shader::Fragment);
@@ -98,6 +114,10 @@ void ShaderBackground::ensureRT(unsigned w, unsigned h) {
     }
 }
 
+// ============================================================================
+// Public Interface
+// ============================================================================
+
 void ShaderBackground::draw(const ImVec2& screenPos,
     const ImVec2& screenSize,
     ImDrawList* dl) {
@@ -109,23 +129,24 @@ void ShaderBackground::draw(const ImVec2& screenPos,
     ensureShader();
     ensureRT(static_cast<unsigned>(w), static_cast<unsigned>(h));
 
+    // Upload uniforms
     m_shader.setUniform("iResolution", sf::Glsl::Vec2((float)w, (float)h));
     m_shader.setUniform("iTime", m_clock.getElapsedTime().asSeconds());
 
+    // Render shader into off-screen texture
     m_rt.clear(sf::Color::Black);
-
     sf::RectangleShape quad;
     quad.setSize(sf::Vector2f((float)w, (float)h));
     quad.setPosition(0.f, 0.f);
-
     sf::RenderStates states;
     states.shader = &m_shader;
     m_rt.draw(quad, states);
     m_rt.display();
 
+    // Blit the texture into the ImDrawList
     const sf::Texture& tex = m_rt.getTexture();
-    const ImTextureID texId = (ImTextureID)(intptr_t)tex.getNativeHandle();
-    const ImVec2 p1(screenPos.x + screenSize.x, screenPos.y + screenSize.y);
+    const ImTextureID  texId = (ImTextureID)(intptr_t)tex.getNativeHandle();
+    const ImVec2       p1(screenPos.x + screenSize.x, screenPos.y + screenSize.y);
     dl->AddImage(texId, screenPos, p1, ImVec2(0, 0), ImVec2(1, 1),
         IM_COL32(255, 255, 255, 255));
 }

@@ -1,45 +1,40 @@
+// ============================================================================
+// File: include/apps/cpu_tomasulo/ui/views/TomasuloROBView.h
+// ============================================================================
+
 #pragma once
 
 /**
  * @file TomasuloROBView.h
- * @brief Reorder Buffer visualization view for Tomasulo CPU.
+ * @brief Reorder Buffer visualization view for the Tomasulo CPU.
  *
- * Displays a 32-entry ROB with status indicators,
- * a core-fields table, and a detail panel for selected entries.
+ * Wraps a ROBTable widget that displays a 32-entry ROB with:
+ *   - Head / Tail / Count status bar
+ *   - Core-fields table with color-coded Head and Tail rows
+ *   - Click-to-select detail panel (flags, branch, store fields)
  *
- * @note Follows:
- *   - SRP: Only handles ROB view layout
- *   - LSP: Drop-in replacement for any ITomasuloView
- *   - DIP: Depends on ITomasuloView abstraction
+ * Data is pushed in by CpuTomasuloState::syncROBView() each frame
+ * while the simulation mutex is held.
+ *
+ * @note
+ *   - SRP: Only handles ROB view layout and delegation to ROBTable.
+ *   - LSP: Drop-in replacement for any ITomasuloView.
+ *   - DIP: Depends on ITomasuloView abstraction.
  */
 
 #include "apps/cpu_tomasulo/ui/views/ITomasuloView.h"
 #include "apps/cpu_tomasulo/ui/widgets/ROBTable.h"
 
- /**
-  * @class TomasuloROBView
-  * @brief View for displaying the Tomasulo CPU reorder buffer.
-  *
-  * Features:
-  * - Head/Tail/Count status bar
-  * - 32-entry table with color-coded Head/Tail rows
-  * - Click-to-select entry detail panel (flags, branch, store)
-  */
 class TomasuloROBView : public ITomasuloView {
 public:
     TomasuloROBView() = default;
 
-    /**
-     * @brief Renders ROB with status, table, and detail panel.
-     */
     void render() override;
 
-    /**
-     * @brief Provides direct access to the ROB table widget.
-     */
+    // ── Widget Access ────────────────────────────────────────────
     ROBTable& getTable() { return m_table; }
     const ROBTable& getTable() const { return m_table; }
 
 private:
-    ROBTable m_table;  ///< ROB visualization widget
+    ROBTable m_table;  ///< ROB visualization widget.
 };

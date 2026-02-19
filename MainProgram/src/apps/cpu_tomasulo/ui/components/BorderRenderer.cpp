@@ -1,5 +1,10 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/components/BorderRenderer.cpp
+// ============================================================================
+
 /**
  * @file BorderRenderer.cpp
+ * @brief Implementation of BorderRenderer::drawCool3DBorder.
  */
 
 #include "apps/cpu_tomasulo/ui/components/BorderRenderer.h"
@@ -17,13 +22,13 @@ void BorderRenderer::drawCool3DBorder(ImDrawList* dl,
     const ImU32 mainStroke = IM_COL32(210, 240, 255, 220);
     const ImU32 innerStroke = IM_COL32(40, 60, 80, 200);
 
-    // Drop shadow
+    // ── Drop shadow ─────────────────────────────────────────────
     dl->AddRectFilled(
         ImVec2(p0.x + 6.0f, p0.y + 7.0f),
         ImVec2(p1.x + 6.0f, p1.y + 7.0f),
         IM_COL32(0, 0, 0, 80), rounding + 2.0f);
 
-    // Glow rings
+    // ── Neon glow rings (alternating cyan / magenta) ─────────────
     for (int i = 0; i < 3; ++i) {
         const float g = glow + i * 6.0f;
         const float a = 1.0f - (float)i / 3.0f;
@@ -35,10 +40,10 @@ void BorderRenderer::drawCool3DBorder(ImDrawList* dl,
             c, rounding + g, 0, 2.0f + (float)i);
     }
 
-    // Main stroke
+    // ── Main stroke ──────────────────────────────────────────────
     dl->AddRect(p0, p1, mainStroke, rounding, 0, stroke);
 
-    // Bevel highlights
+    // ── Bevel highlights (top-left bright, bottom-right dark) ────
     {
         const ImU32 hi = IM_COL32(255, 255, 255, 90);
         const ImU32 lo = IM_COL32(0, 0, 0, 120);
@@ -51,19 +56,19 @@ void BorderRenderer::drawCool3DBorder(ImDrawList* dl,
         dl->AddLine({ q1.x, q0.y + rounding }, { q1.x, q1.y - rounding }, lo, bevel);
     }
 
-    // Inner stroke
+    // ── Inner inset stroke ───────────────────────────────────────
     dl->AddRect(ImVec2(p0.x + 4.0f, p0.y + 4.0f),
         ImVec2(p1.x - 4.0f, p1.y - 4.0f),
         innerStroke, rounding - 3.0f, 0, 1.5f);
 
-    // Corner ticks
+    // ── Corner tick marks ────────────────────────────────────────
     {
         const ImU32 tick = IM_COL32(160, 255, 220, 220);
         const float L = 18.0f;
 
         auto drawCorner = [&](float cx, float cy, float sx, float sy) {
-            dl->AddLine({ cx, cy }, { cx + sx * L, cy }, tick, 2.0f);
-            dl->AddLine({ cx, cy }, { cx,          cy + sy * L }, tick, 2.0f);
+            dl->AddLine({ cx,          cy }, { cx + sx * L, cy }, tick, 2.0f);
+            dl->AddLine({ cx,          cy }, { cx,          cy + sy * L }, tick, 2.0f);
             };
         drawCorner(p0.x + 10, p0.y + 10, 1, 1);
         drawCorner(p1.x - 10, p0.y + 10, -1, 1);

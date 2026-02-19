@@ -307,9 +307,8 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "src/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.cpp"
     "include/apps/cpu_tomasulo/simulation/memory/TomasuloRAM.h"
 
-    # ------------------------- PROCESSOR ----------------------
-    "src/apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.cpp"
-    "include/apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.h"
+    "src/apps/cpu_tomasulo/simulation/memory/TomasuloRegisterFile.cpp"
+    "include/apps/cpu_tomasulo/simulation/memory/TomasuloRegisterFile.h"
 
     # --------------------------- CORE -------------------------
     "src/apps/cpu_tomasulo/simulation/TomasuloCPU.cpp"
@@ -317,126 +316,133 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tomasulo/simulation/TomasuloCPU.h"
     "include/apps/cpu_tomasulo/simulation/TomasuloSimController.h"
 
-    # ------------------------- PIPELINE -----------------------
+    # ==========================================================
+    # ========================= PIPELINE =======================
+    # ==========================================================
 
-    # Core Infrastructure
-    "include/apps/cpu_tomasulo/simulation/pipeline/ITomasuloComponent.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/TomasuloBus.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/TomasuloCycleCoordinator.h"
+    "src/apps/cpu_tomasulo/simulation/pipeline/TomasuloCycleCoordinator.cpp"
 
-    # Program Counter & Fetch
-    "src/apps/cpu_tomasulo/simulation/pipeline/PC_C.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/PC_MUX.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/PC_Adder.cpp"
-    "include/apps/cpu_tomasulo/simulation/pipeline/PC_C.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/PC_MUX.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/PC_Adder.h"
+    # ------------------- pipeline/core ------------------------
+    "include/apps/cpu_tomasulo/simulation/pipeline/core/ITomasuloComponent.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/core/TomasuloBus.h"
 
-    # Fetch & Decode
-    "src/apps/cpu_tomasulo/simulation/pipeline/I_Cache.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/Instruction_Decoder.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/Extends.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/Control_Unit.cpp"
-    "include/apps/cpu_tomasulo/simulation/pipeline/I_Cache.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/Instruction_Decoder.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/Extends.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/Control_Unit.h"
+    # ------------------- pipeline/fetch -----------------------
+    "src/apps/cpu_tomasulo/simulation/pipeline/fetch/PC_C.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/fetch/PC_MUX.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/fetch/PC_Adder.cpp"
+    "include/apps/cpu_tomasulo/simulation/pipeline/fetch/PC_C.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/fetch/PC_MUX.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/fetch/PC_Adder.h"
 
-    # Register File Pipeline
-    "src/apps/cpu_tomasulo/simulation/pipeline/RegisterFilePipeline.cpp"
-    "include/apps/cpu_tomasulo/simulation/pipeline/RegisterFilePipeline.h"
+    "src/apps/cpu_tomasulo/simulation/pipeline/fetch/I_Cache.cpp"
+    "include/apps/cpu_tomasulo/simulation/pipeline/fetch/I_Cache.h"
 
-    # Reorder Buffer & Flags
-    "src/apps/cpu_tomasulo/simulation/pipeline/ROB.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/Flags_Unit.cpp"
-    "include/apps/cpu_tomasulo/simulation/pipeline/ROB.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/Flags_Unit.h"
+    # ------------------- pipeline/decode ----------------------
+    "src/apps/cpu_tomasulo/simulation/pipeline/decode/Instruction_Decoder.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/decode/Extends.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/decode/Control_Unit.cpp"
+    "include/apps/cpu_tomasulo/simulation/pipeline/decode/Instruction_Decoder.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/decode/Extends.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/decode/Control_Unit.h"
 
-    # Load / Store Buffers
-    "include/apps/cpu_tomasulo/simulation/pipeline/StoreBuffer.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/SB0.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/SB1.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/LoadBuffer.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/LB0.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/LB1.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/LB2.h"
+    # ------------------- pipeline/issue -----------------------
+    "src/apps/cpu_tomasulo/simulation/pipeline/issue/RegisterFilePipeline.cpp"
+    "include/apps/cpu_tomasulo/simulation/pipeline/issue/RegisterFilePipeline.h"
 
-    "src/apps/cpu_tomasulo/simulation/pipeline/StoreBuffer.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/SB0.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/SB1.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/LoadBuffer.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/LB0.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/LB1.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/LB2.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/issue/ROB.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/issue/Flags_Unit.cpp"
+    "include/apps/cpu_tomasulo/simulation/pipeline/issue/ROB.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/issue/Flags_Unit.h"
 
-    # Reservation Stations
-    "include/apps/cpu_tomasulo/simulation/pipeline/ReservationStation.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/RS_IntALU0.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/RS_IntALU1.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/RS_FPALU0.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/RS_IntMUL0.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/RS_FPMUL0.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/RS_Branch0.h"
+    # ------------------- pipeline/buffers ---------------------
+    "include/apps/cpu_tomasulo/simulation/pipeline/buffers/StoreBuffer.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/buffers/SB0.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/buffers/SB1.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/buffers/LoadBuffer.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/buffers/LB0.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/buffers/LB1.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/buffers/LB2.h"
 
-    "src/apps/cpu_tomasulo/simulation/pipeline/ReservationStation.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/RS_IntALU0.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/RS_IntALU1.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/RS_FPALU0.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/RS_IntMUL0.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/RS_FPMUL0.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/RS_Branch0.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/buffers/StoreBuffer.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/buffers/SB0.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/buffers/SB1.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/buffers/LoadBuffer.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/buffers/LB0.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/buffers/LB1.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/buffers/LB2.cpp"
 
-    # AGU
-    "include/apps/cpu_tomasulo/simulation/pipeline/AGU.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/AGU_0.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/AGU_1.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/AGU_Arbiter.h"
+    # --------------- pipeline/reservation ---------------------
+    "include/apps/cpu_tomasulo/simulation/pipeline/reservation/ReservationStation.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_IntALU0.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_IntALU1.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_FPALU0.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_IntMUL0.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_FPMUL0.h"
 
-    "src/apps/cpu_tomasulo/simulation/pipeline/AGU.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/AGU_0.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/AGU_1.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/AGU_Arbiter.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/reservation/ReservationStation.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_IntALU0.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_IntALU1.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_FPALU0.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_IntMUL0.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/reservation/RS_FPMUL0.cpp"
 
-    # Execution Units
-    "include/apps/cpu_tomasulo/simulation/pipeline/IntALU.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/FPALU.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/IntMUL.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/FPMUL.h"
+    # ------------------- pipeline/agu -------------------------
+    "include/apps/cpu_tomasulo/simulation/pipeline/agu/AGU.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/agu/AGU_0.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/agu/AGU_1.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/agu/AGU_Arbiter.h"
 
-    "src/apps/cpu_tomasulo/simulation/pipeline/IntALU.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/FPALU.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/IntMUL.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/FPMUL.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/agu/AGU.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/agu/AGU_0.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/agu/AGU_1.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/agu/AGU_Arbiter.cpp"
 
-    # Execution Arbiters
-    "include/apps/cpu_tomasulo/simulation/pipeline/IntALU_Arbiter.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/FPALU_Arbiter.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/IntMUL_Arbiter.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/FPMUL_Arbiter.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/Branch_Arbiter.h"
+    # ----------------- pipeline/execution ---------------------
+    "include/apps/cpu_tomasulo/simulation/pipeline/execution/IntALU.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/execution/FPALU.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/execution/IntMUL.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/execution/FPMUL.h"
 
-    "src/apps/cpu_tomasulo/simulation/pipeline/IntALU_Arbiter.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/FPALU_Arbiter.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/IntMUL_Arbiter.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/FPMUL_Arbiter.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/Branch_Arbiter.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/execution/IntALU.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/execution/FPALU.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/execution/IntMUL.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/execution/FPMUL.cpp"
 
-    # Branch & CDB
-    "include/apps/cpu_tomasulo/simulation/pipeline/Branch_Executor.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/CDB.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/CDB_Arbiter.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/execution/IntALU_Arbiter.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/execution/FPALU_Arbiter.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/execution/IntMUL_Arbiter.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/execution/FPMUL_Arbiter.h"
 
-    "src/apps/cpu_tomasulo/simulation/pipeline/Branch_Executor.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/CDB.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/CDB_Arbiter.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/execution/IntALU_Arbiter.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/execution/FPALU_Arbiter.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/execution/IntMUL_Arbiter.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/execution/FPMUL_Arbiter.cpp"
 
-    # Memory & Commit
-    "include/apps/cpu_tomasulo/simulation/pipeline/Memory_Arbiter.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/D_Cache.h"
-    "include/apps/cpu_tomasulo/simulation/pipeline/Commit_Unit.h"
+    # ------------------- pipeline/branch ----------------------
+    "include/apps/cpu_tomasulo/simulation/pipeline/branch/RS_Branch0.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/branch/Branch_Arbiter.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/branch/Branch_Executor.h"
 
-    "src/apps/cpu_tomasulo/simulation/pipeline/Memory_Arbiter.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/D_Cache.cpp"
-    "src/apps/cpu_tomasulo/simulation/pipeline/Commit_Unit.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/branch/RS_Branch0.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/branch/Branch_Arbiter.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/branch/Branch_Executor.cpp"
+
+    # ------------------- pipeline/cdb -------------------------
+    "include/apps/cpu_tomasulo/simulation/pipeline/cdb/CDB.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/cdb/CDB_Arbiter.h"
+
+    "src/apps/cpu_tomasulo/simulation/pipeline/cdb/CDB.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/cdb/CDB_Arbiter.cpp"
+
+    # ------------------- pipeline/commit ----------------------
+    "include/apps/cpu_tomasulo/simulation/pipeline/commit/Memory_Arbiter.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/commit/D_Cache.h"
+    "include/apps/cpu_tomasulo/simulation/pipeline/commit/Commit_Unit.h"
+
+    "src/apps/cpu_tomasulo/simulation/pipeline/commit/Memory_Arbiter.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/commit/D_Cache.cpp"
+    "src/apps/cpu_tomasulo/simulation/pipeline/commit/Commit_Unit.cpp"
 
     # ==========================================================
     # ============================ UI ==========================
@@ -472,6 +478,7 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tomasulo/ui/widgets/CacheTable.h"
     "include/apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.h"
     "include/apps/cpu_tomasulo/ui/widgets/ROBTable.h"
+    "include/apps/cpu_tomasulo/ui/widgets/TomasuloDisassembler.h"
 
     # ------------------------- COMPONENTS ---------------------
     "src/apps/cpu_tomasulo/ui/components/Camera2D.cpp"
@@ -482,7 +489,8 @@ target_sources("${CMAKE_PROJECT_NAME}" PRIVATE
     "include/apps/cpu_tomasulo/ui/components/ShaderBackground.h"
     "include/apps/cpu_tomasulo/ui/components/BorderRenderer.h"
     "include/apps/cpu_tomasulo/ui/components/SlotOverlayRenderer.h"
-    "include/apps/cpu_tomasulo/ui/widgets/TomasuloDisassembler.h"
+
+    # ----------------------- TRACKING -------------------------
     "include/apps/cpu_tomasulo/simulation/PipelineTracker.h"
 )
 

@@ -1,14 +1,22 @@
+// ============================================================================
+// File: include/apps/cpu_tomasulo/ui/components/Camera2D.h
+// ============================================================================
+
 #pragma once
+
 /**
  * @file Camera2D.h
- * @brief 2D camera with smooth pan, zoom, inertia, and clamping.
+ * @brief 2D camera with smooth pan, zoom, inertia, and viewport clamping.
  *
- * Responsibility: Owns all camera state and transforms.
- *   - Mouse-wheel zoom (cursor-anchored)
- *   - Drag pan (left or right button)
- *   - Exponential smoothing toward target state
- *   - Optional inertial drift on release
- *   - Pan clamping so the image never fully leaves the viewport
+ * Responsibility: Owns all camera state and world-to-screen transforms.
+ *
+ * Features:
+ *   - Mouse-wheel zoom anchored to the cursor position
+ *   - Left or right button drag pan
+ *   - Exponential smoothing toward target state (separate zoom / pan rates)
+ *   - Optional inertial drift on drag release
+ *   - Viewport clamping: the image always remains partially visible
+ *   - Double-right-click resets to default
  */
 
 #include "imgui.h"
@@ -17,18 +25,18 @@
 
 class Camera2D {
 public:
-    // ── Configuration (public so the owner can tweak) ──────────────
+    // ── Configuration (public so the owner can tweak at runtime) ──
     struct Config {
         float zoomMin = 0.35f;
         float zoomMax = 3.00f;
-        float zoomStep = 1.12f;
-        float zoomSmoothness = 20.0f;   // higher = snappier
-        float panSmoothness = 24.0f;
+        float zoomStep = 1.12f;   ///< Multiplier applied per scroll tick.
+        float zoomSmoothness = 20.0f;   ///< Higher = snappier zoom animation.
+        float panSmoothness = 24.0f;   ///< Higher = snappier pan animation.
         bool  enableInertia = true;
         float inertiaFriction = 10.0f;
-        float inertiaMinSpeed = 1.5f;
-        float fitFill = 0.90f;
-        float minVisibleFrac = 0.20f;   // fraction of image that must stay visible
+        float inertiaMinSpeed = 1.5f; ///< Velocity (world units/s) below which inertia stops.
+        float fitFill = 0.90f;///< Fraction of canvas used when fitting.
+        float minVisibleFrac = 0.20f;///< Fraction of world that must stay inside viewport.
     };
 
     Config config;
@@ -36,24 +44,24 @@ public:
     // ── Lifecycle ──────────────────────────────────────────────────
     Camera2D() = default;
 
-    /// Call once when the world (image) size is first known.
+    /** @brief Call once when the world (image) size is first known. */
     void init(float worldW, float worldH);
 
-    /// Reset camera to centered, zoom 1.
+    /** @brief Reset camera to centered position at zoom = 1. */
     void reset();
 
     bool isInitialized() const { return m_initialized; }
 
-    // ── Per-frame pipeline ────────────────────────────────────────
-    /// Process input (call only when canvas is hovered).
+    // ── Per-frame Pipeline ────────────────────────────────────────
+    /** @brief Process mouse input. Call only when the canvas is hovered. */
     void handleInput(const ImVec2& canvasP0,
         const ImVec2& canvasSize,
         float fitScale);
 
-    /// Animate current state toward target (call every frame).
+    /** @brief Animate current state toward target. Call every frame. */
     void animate(float dt);
 
-    /// Clamp target so image is always partially visible.
+    /** @brief Clamp target so at least minVisibleFrac of the image stays on screen. */
     void clampTarget(float worldW, float worldH,
         float canvasW, float canvasH,
         float fitScale);
@@ -62,11 +70,11 @@ public:
     float zoom()       const { return m_zoom; }
     float zoomTarget() const { return m_zoomTarget; }
 
-    /// Compute fit scale (how big 1 world-pixel is on screen at zoom=1).
+    /** @brief Compute fit scale: how large one world-pixel is on screen at zoom = 1. */
     static float computeFitScale(float canvasW, float canvasH,
         float worldW, float worldH, float fill);
 
-    /// Screen-space top-left of the world image.
+    /** @brief Returns the screen-space top-left corner of the world image. */
     ImVec2 worldOrigin(const ImVec2& canvasP0,
         const ImVec2& canvasSize,
         float fitScale) const;
@@ -74,12 +82,8 @@ public:
     float currentScale(float fitScale) const { return fitScale * m_zoom; }
 
 private:
-    static float clampf(float v, float lo, float hi) {
-        return std::max(lo, std::min(v, hi));
-    }
-    static float expAlpha(float k, float dt) {
-        return 1.0f - std::exp(-k * dt);
-    }
+    static float  clampf(float v, float lo, float hi) { return std::max(lo, std::min(v, hi)); }
+    static float  expAlpha(float k, float dt) { return 1.0f - std::exp(-k * dt); }
     static ImVec2 lerp(const ImVec2& a, const ImVec2& b, float t) {
         return { a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t };
     }
@@ -90,7 +94,7 @@ private:
     ImVec2 m_center = { 0, 0 };
     float  m_zoom = 1.0f;
 
-    // Target (what input updates)
+    // Target (updated by input)
     ImVec2 m_centerTarget = { 0, 0 };
     float  m_zoomTarget = 1.0f;
 
@@ -101,5 +105,5 @@ private:
     ImVec2 m_dragStartCenterTarget = { 0, 0 };
 
     // Inertia
-    ImVec2 m_velocity = { 0, 0 };   // world units/sec
+    ImVec2 m_velocity = { 0, 0 };  ///< World units / second.
 };

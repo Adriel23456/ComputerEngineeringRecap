@@ -1,8 +1,17 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/widgets/TomasuloRamTable.cpp
+// ============================================================================
+
 /**
  * @file TomasuloRamTable.cpp
  * @brief Implementation of TomasuloRamTable.
  *
- * Pure renderer — all data reads come from the bound TomasuloRAM*.
+ * Pure renderer. All data reads go through the bound TomasuloRAM*.
+ *
+ * Responsibilities:
+ *   - Page math (firstRow, rowsOnPage, totalPages).
+ *   - Navigation bar with auto-scaled info text and |<< < [n] > >>| buttons.
+ *   - Four-column table (Address | Hex | Decimal | Double).
  */
 
 #include "apps/cpu_tomasulo/ui/widgets/TomasuloRamTable.h"
@@ -43,9 +52,7 @@ void TomasuloRamTable::setPage(int page) {
     m_currentPage = std::clamp(page, 0, std::max(0, maxPage));
 }
 
-void TomasuloRamTable::resetPage() {
-    m_currentPage = 0;
-}
+void TomasuloRamTable::resetPage() { m_currentPage = 0; }
 
 // ============================================================================
 // Formatting
@@ -53,27 +60,23 @@ void TomasuloRamTable::resetPage() {
 
 std::string TomasuloRamTable::formatAddress(uint64_t addr) {
     char buf[32];
-    std::snprintf(buf, sizeof(buf), "0x%llX",
-        static_cast<unsigned long long>(addr));
+    std::snprintf(buf, sizeof(buf), "0x%llX", static_cast<unsigned long long>(addr));
     return std::string(buf);
 }
 
 std::string TomasuloRamTable::formatHex(uint64_t v) {
     char buf[24];
-    std::snprintf(buf, sizeof(buf), "0x%016llX",
-        static_cast<unsigned long long>(v));
+    std::snprintf(buf, sizeof(buf), "0x%016llX", static_cast<unsigned long long>(v));
     return std::string(buf);
 }
 
 // ============================================================================
-// Page Helpers
+// Page Math
 // ============================================================================
 
 int TomasuloRamTable::rowsOnPage(int page, int pages, int rows) {
     if (page < 0 || page >= pages) return 0;
-    int startRow = page * kRowsPerPage;
-    int remaining = rows - startRow;
-    return std::min(remaining, kRowsPerPage);
+    return std::min(rows - page * kRowsPerPage, kRowsPerPage);
 }
 
 int TomasuloRamTable::firstRowOfPage(int page) {
@@ -81,7 +84,7 @@ int TomasuloRamTable::firstRowOfPage(int page) {
 }
 
 // ============================================================================
-// Page Navigation
+// Page Navigation Bar
 // ============================================================================
 
 void TomasuloRamTable::renderPageNavigation(float availableWidth) {
@@ -115,76 +118,52 @@ void TomasuloRamTable::renderPageNavigation(float availableWidth) {
         formatAddress(addrEnd).c_str(),
         rows);
 
-    // Info text (auto-scaled)
+    // ── Auto-scaled info text ─────────────────────────────────
     {
         ImVec2 fullTextSize = ImGui::CalcTextSize(pageInfo);
-        float scale = 1.0f;
-        if (textRegionW > 0.0f && fullTextSize.x > textRegionW) {
+        float  scale = 1.0f;
+        if (textRegionW > 0.0f && fullTextSize.x > textRegionW)
             scale = std::max(textRegionW / fullTextSize.x, 0.55f);
-        }
 
         if (scale < 1.0f) ImGui::SetWindowFontScale(scale);
 
-        float textH = ImGui::GetFontSize() * scale;
-        float offsetY = (NAV_BUTTON_H - textH) * 0.5f;
-        if (offsetY > 0.0f)
-            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
+        float offsetY = (NAV_BUTTON_H - ImGui::GetFontSize() * scale) * 0.5f;
+        if (offsetY > 0.0f) ImGui::SetCursorPosY(ImGui::GetCursorPosY() + offsetY);
 
         ImGui::TextColored(ImVec4(0.7f, 0.8f, 0.9f, 1.0f), "%s", pageInfo);
 
         if (scale < 1.0f) ImGui::SetWindowFontScale(1.0f);
     }
 
-    // Navigation buttons
+    // ── Navigation buttons ────────────────────────────────────
     float navStartX = availableWidth - navTotalW - MARGIN;
     if (navStartX < 0.0f) navStartX = 0.0f;
     ImGui::SameLine(navStartX);
 
-    { // |<< First
-        bool dis = (m_currentPage == 0);
-        if (dis) ImGui::BeginDisabled();
-        if (ImGui::Button("|<<", ImVec2(NAV_BUTTON_W, NAV_BUTTON_H)))
-            m_currentPage = 0;
-        if (dis) ImGui::EndDisabled();
-    }
+    auto navBtn = [&](const char* label, bool disabled, auto action) {
+        if (disabled) ImGui::BeginDisabled();
+        if (ImGui::Button(label, ImVec2(NAV_BUTTON_W, NAV_BUTTON_H))) action();
+        if (disabled) ImGui::EndDisabled();
+        };
+
+    navBtn("|<<", m_currentPage == 0, [&] { m_currentPage = 0; });
+    ImGui::SameLine(0.0f, GAP);
+    navBtn("<", m_currentPage == 0, [&] { m_currentPage = std::max(0, m_currentPage - 1); });
     ImGui::SameLine(0.0f, GAP);
 
-    { // < Prev
-        bool dis = (m_currentPage == 0);
-        if (dis) ImGui::BeginDisabled();
-        if (ImGui::Button("<", ImVec2(NAV_BUTTON_W, NAV_BUTTON_H)))
-            m_currentPage = std::max(0, m_currentPage - 1);
-        if (dis) ImGui::EndDisabled();
+    // Page number input
+    ImGui::PushItemWidth(PAGE_INPUT_W);
+    int displayPage = m_currentPage + 1;
+    if (ImGui::InputInt("##PageInput", &displayPage, 0, 0,
+        ImGuiInputTextFlags_EnterReturnsTrue)) {
+        setPage(displayPage - 1);
     }
-    ImGui::SameLine(0.0f, GAP);
+    ImGui::PopItemWidth();
 
-    { // Page input
-        ImGui::PushItemWidth(PAGE_INPUT_W);
-        int displayPage = m_currentPage + 1;
-        if (ImGui::InputInt("##PageInput", &displayPage, 0, 0,
-            ImGuiInputTextFlags_EnterReturnsTrue)) {
-            setPage(displayPage - 1);
-        }
-        ImGui::PopItemWidth();
-    }
     ImGui::SameLine(0.0f, GAP);
-
-    { // > Next
-        bool dis = (m_currentPage >= tPages - 1);
-        if (dis) ImGui::BeginDisabled();
-        if (ImGui::Button(">", ImVec2(NAV_BUTTON_W, NAV_BUTTON_H)))
-            m_currentPage = std::min(tPages - 1, m_currentPage + 1);
-        if (dis) ImGui::EndDisabled();
-    }
+    navBtn(">", m_currentPage >= tPages - 1, [&] { m_currentPage = std::min(tPages - 1, m_currentPage + 1); });
     ImGui::SameLine(0.0f, GAP);
-
-    { // >>| Last
-        bool dis = (m_currentPage >= tPages - 1);
-        if (dis) ImGui::BeginDisabled();
-        if (ImGui::Button(">>|", ImVec2(NAV_BUTTON_W, NAV_BUTTON_H)))
-            m_currentPage = tPages - 1;
-        if (dis) ImGui::EndDisabled();
-    }
+    navBtn(">>|", m_currentPage >= tPages - 1, [&] { m_currentPage = tPages - 1; });
 }
 
 // ============================================================================
@@ -234,11 +213,11 @@ void TomasuloRamTable::renderTable(const char* id, float tableHeight) {
 
             ImGui::TableNextRow();
 
-            // Address
+            // ── Address ───────────────────────────────────────
             ImGui::TableSetColumnIndex(0);
             ImGui::Text("%s", formatAddress(addr).c_str());
 
-            // Hex value + context menu
+            // ── Hex value + right-click copy context menu ─────
             ImGui::TableSetColumnIndex(1);
             {
                 std::string hexStr = formatHex(value);
@@ -254,11 +233,12 @@ void TomasuloRamTable::renderTable(const char* id, float tableHeight) {
                 }
             }
 
-            // Decimal (signed 64-bit)
+            // ── Decimal (signed 64-bit) ───────────────────────
             ImGui::TableSetColumnIndex(2);
-            ImGui::Text("%lld", static_cast<long long>(static_cast<int64_t>(value)));
+            ImGui::Text("%lld",
+                static_cast<long long>(static_cast<int64_t>(value)));
 
-            // Double (IEEE 754)
+            // ── Double (IEEE 754) ─────────────────────────────
             ImGui::TableSetColumnIndex(3);
             {
                 double dbl = 0.0;
@@ -282,7 +262,7 @@ void TomasuloRamTable::render(const char* id) {
 
     const float NAV_HEIGHT = 36.0f;
     const float SPACING = 6.0f;
-    const float TABLE_BOTTOM_PAD = 6.0f; // <--- new
+    const float TABLE_BOTTOM_PAD = 6.0f;
 
     renderPageNavigation(available.x);
     ImGui::Dummy(ImVec2(1.0f, SPACING));

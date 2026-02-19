@@ -1,13 +1,17 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/CpuTomasuloState.cpp
+// ============================================================================
+
 /**
  * @file CpuTomasuloState.cpp
  * @brief Implementation of CpuTomasuloState.
  *
  * Key responsibilities:
- * 1. buildAllViews()    — Instantiates all panel views
- * 2. bindDataSources()  — Points table widgets at simulation data
- * 3. wireCallbacks()    — Connects UI buttons to async controller
- * 4. pollResults()      — Dispatches completed async results to views
- * 5. renderContentPanel — Locks sim mutex for data-dependent panels
+ *   1. buildAllViews()     — Instantiates all panel views.
+ *   2. bindDataSources()   — Points table widgets at simulation data.
+ *   3. wireCallbacks()     — Connects UI buttons to async controller.
+ *   4. pollResults()       — Dispatches completed async results to views.
+ *   5. renderContentPanel  — Locks sim mutex for data-dependent panels.
  */
 
 #include "apps/cpu_tomasulo/CpuTomasuloState.h"
@@ -28,7 +32,7 @@
 #include <cstring>
 
  // ============================================================================
- // Placeholder View
+ // Placeholder View  (anonymous, internal use only)
  // ============================================================================
 
 namespace {
@@ -54,13 +58,13 @@ CpuTomasuloState::CpuTomasuloState(StateManager* sm, sf::RenderWindow* win)
     : State(sm, win)
 {
     buildAllViews();
-    m_controller.start();     // Start worker thread
-    bindDataSources();        // Point table widgets -> simulation data
-    wireCallbacks();          // Connect UI buttons -> async controller
+    m_controller.start();   // Start background worker thread
+    bindDataSources();      // Point table widgets -> simulation data
+    wireCallbacks();        // Connect UI buttons -> async controller
 }
 
 CpuTomasuloState::~CpuTomasuloState() {
-    m_controller.stop();      // Join worker thread before views are destroyed
+    m_controller.stop();    // Join worker thread before views are destroyed
 }
 
 // ============================================================================
@@ -112,7 +116,7 @@ void CpuTomasuloState::wireCallbacks() {
             });
     }
 
-    // ── RAM Reset button ────────────────────────────────────────
+    // ── RAM control buttons ─────────────────────────────────────
     if (auto* rv = dynamic_cast<TomasuloRAMView*>(getView(Panel::RAM))) {
         rv->setResetCallback([this]() {
             m_controller.requestResetRAM();
@@ -172,18 +176,19 @@ void CpuTomasuloState::pollResults() {
     case SimTask::Type::Step:
     case SimTask::Type::StepUntil:
     case SimTask::Type::InfiniteStep: {
-        // Check if SWI was hit
         if (result.message.find("SWI reached") != std::string::npos) {
             m_showSWIPopup = true;
         }
         break;
     }
-    case SimTask::Type::InfiniteStepMS: {     // ← add this line
+
+    case SimTask::Type::InfiniteStepMS: {
         if (result.message.find("SWI reached") != std::string::npos) {
             m_showSWIPopup = true;
         }
         break;
     }
+
     default: break;
 
     } // switch
@@ -330,7 +335,7 @@ void CpuTomasuloState::renderSidebar(float width, float height) {
 }
 
 // ============================================================================
-// Content Panel  (locks sim mutex for data-dependent views)
+// Content Panel  (non-blocking sim mutex lock for data-dependent views)
 // ============================================================================
 
 void CpuTomasuloState::renderContentPanel(float width, float height) {
@@ -346,17 +351,18 @@ void CpuTomasuloState::renderContentPanel(float width, float height) {
         }
 
         if (locked || !panelNeedsSimLock(m_selectedPanel)) {
-            // Sync simulation data → UI widgets before rendering
+            // Sync simulation data -> UI widgets before rendering
             switch (m_selectedPanel) {
-            case Panel::MainView:     syncMainView();      break;
-            case Panel::ICache:       syncICacheView();    break;
-            case Panel::DCache:       syncDCacheView();    break;
-            case Panel::ROB:          syncROBView();       break;
-            case Panel::DataAnalysis: syncAnalysisView();  break;
+            case Panel::MainView:     syncMainView();     break;
+            case Panel::ICache:       syncICacheView();   break;
+            case Panel::DCache:       syncDCacheView();   break;
+            case Panel::ROB:          syncROBView();      break;
+            case Panel::DataAnalysis: syncAnalysisView(); break;
             default: break;
             }
         }
-        // Always render (with latest synced data, or stale data if lock failed)
+
+        // Always render — uses latest synced data, or stale data if lock failed
         view->render();
 
         if (locked) {
@@ -385,7 +391,7 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
     bool busy = m_controller.isBusy();
     bool infinite = m_controller.isRunningInfinite();
 
-    // --- RESET (red) ---
+    // ── RESET (red) ─────────────────────────────────────────────
     float wReset = ImGui::CalcTextSize("RESET").x + TEXT_PADDING;
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.70f, 0.15f, 0.15f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.82f, 0.22f, 0.22f, 1.0f));
@@ -399,7 +405,7 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
 
     ImGui::SameLine(0.0f, GAP);
 
-    // --- STEP ---
+    // ── STEP ────────────────────────────────────────────────────
     float wStep = ImGui::CalcTextSize("STEP").x + TEXT_PADDING;
     bool stepDisabled = busy || infinite;
     if (stepDisabled) ImGui::BeginDisabled();
@@ -410,7 +416,7 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
 
     ImGui::SameLine(0.0f, GAP);
 
-    // --- StepUntil ---
+    // ── StepUntil (with cycle-count input) ──────────────────────
     ImGui::BeginGroup();
     {
         if (m_untilSteps < 1) m_untilSteps = 1;
@@ -436,7 +442,7 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
 
     ImGui::SameLine(0.0f, GAP);
 
-    // --- InfiniteStep (green) ---
+    // ── InfiniteStep (green) ─────────────────────────────────────
     float wInfinite = ImGui::CalcTextSize("InfiniteStep").x + TEXT_PADDING;
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.55f, 0.20f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.68f, 0.28f, 1.0f));
@@ -450,10 +456,10 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
 
     ImGui::SameLine(0.0f, GAP);
 
-    // Delay selector button — cycles through values on click
+    // ── Delay Selector (cycles through values on click) ──────────
     char msLabel[16];
     std::snprintf(msLabel, sizeof(msLabel), "%dms", kStepMsValues[m_stepMsIndex]);
-    float wMsBtn = ImGui::CalcTextSize("500ms").x + 16.0f;  // fixed width so it doesn't jump
+    float wMsBtn = ImGui::CalcTextSize("500ms").x + 16.0f;  // fixed width to prevent layout shift
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.25f, 0.30f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.42f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.18f, 0.22f, 1.0f));
@@ -464,7 +470,7 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
 
     ImGui::SameLine(0.0f, 4.0f);
 
-    // StepMS run button
+    // ── StepMS (teal) ────────────────────────────────────────────
     float wStepMs = ImGui::CalcTextSize("StepMS").x + TEXT_PADDING;
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.45f, 0.55f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.15f, 0.58f, 0.68f, 1.0f));
@@ -478,7 +484,7 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
 
     ImGui::SameLine(0.0f, GAP);
 
-    // --- STOP ---
+    // ── STOP ─────────────────────────────────────────────────────
     float wStop = ImGui::CalcTextSize("STOP").x + TEXT_PADDING;
     bool stopDisabled = !infinite;
     if (stopDisabled) ImGui::BeginDisabled();
@@ -489,7 +495,7 @@ void CpuTomasuloState::renderBottomBar(float width, float height) {
 
     ImGui::SameLine(0.0f, GAP * 2.0f);
 
-    // --- Cycles counter ---
+    // ── Cycle Counter ────────────────────────────────────────────
     char cyclesText[64];
     std::snprintf(cyclesText, sizeof(cyclesText), "Cycles: %llu",
         static_cast<unsigned long long>(m_cycleCount));
@@ -557,7 +563,7 @@ void CpuTomasuloState::syncICacheView() {
 
     for (int s = 0; s < ic.numSets(); ++s) {
         for (int w = 0; w < ic.numWays(); ++w) {
-            bool valid = ic.lineValid(s, w);
+            bool     valid = ic.lineValid(s, w);
             uint64_t tag = ic.lineTag(s, w);
 
             // Format tag as hex string
@@ -565,7 +571,7 @@ void CpuTomasuloState::syncICacheView() {
             std::snprintf(tagStr, sizeof(tagStr), "0x%014llX",
                 static_cast<unsigned long long>(tag));
 
-            // Convert uint64_t[8] -> uint8_t[64] (little-endian)
+            // Convert uint64_t[8] -> uint8_t[64] (little-endian word packing)
             std::array<uint8_t, CacheTable::kLineSizeBytes> bytes{};
             const uint64_t* words = ic.lineData(s, w);
             if (words) {
@@ -592,7 +598,7 @@ void CpuTomasuloState::syncDCacheView() {
 
     for (int s = 0; s < dc.numSets(); ++s) {
         for (int w = 0; w < dc.numWays(); ++w) {
-            bool valid = dc.lineValid(s, w);
+            bool     valid = dc.lineValid(s, w);
             uint64_t tag = dc.lineTag(s, w);
 
             char tagStr[24];
@@ -626,7 +632,7 @@ void CpuTomasuloState::syncROBView() {
     table.setCount(rob.count());
 
     for (int i = 0; i < ROBTable::kEntryCount; ++i) {
-        ROB::EntryView ev = rob.getEntryView(i);
+        ROB::EntryView  ev = rob.getEntryView(i);
         ROBTable::ROBEntry& te = table.getEntry(i);
 
         // ── Core fields (main table) ────────────────────────────
@@ -644,7 +650,7 @@ void CpuTomasuloState::syncROBView() {
         te.flagsValid = ev.flagsValid;
         te.modifiesFlags = ev.modifiesFlags;
 
-        // ── Branch fields (detail panel) ─────────────────────────
+        // ── Branch fields (detail panel) ────────────────────────
         te.predicted = ev.predicted;
         te.branchTaken = ev.mispredict ? !ev.predicted : ev.predicted;
         te.branchTarget = ev.branchTarget;
@@ -677,11 +683,11 @@ void CpuTomasuloState::syncAnalysisView() {
     view->setCyclesLostCacheLatency(
         cpu.iCache().missCount() + cpu.dCache().missCount());
 
-    // RAM latency = actual cycles spent waiting for RAM to respond
+    // RAM latency = actual cycles spent stalled waiting for RAM
     view->setCyclesLostRAMLatency(
         cpu.iCache().missStallCycles() + cpu.dCache().missStallCycles());
 
-    // Station usage
+    // Station usage (index matches station order in the pipeline)
     view->setUsesSB(0, stats.stationUses[0]);
     view->setUsesSB(1, stats.stationUses[1]);
     view->setUsesLB(0, stats.stationUses[2]);
@@ -695,6 +701,9 @@ void CpuTomasuloState::syncAnalysisView() {
     view->setUsesRS(5, stats.stationUses[10]);
 }
 
+// ============================================================================
+// Main View Sync
+// ============================================================================
 
 void CpuTomasuloState::syncMainView() {
     auto* view = dynamic_cast<TomasuloMainView*>(getView(Panel::MainView));

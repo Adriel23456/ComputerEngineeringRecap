@@ -1,20 +1,26 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.cpp
+// ============================================================================
+
 /**
  * @file TomasuloRegTable.cpp
  * @brief Implementation of TomasuloRegTable.
  *
- * Pure renderer — reads Value, Qi, and Qi_valid from the bound
- * TomasuloRegisterFile* and displays them in an ImGui table.
+ * Pure renderer. Reads Value, Qi, and Qi_valid from the bound
+ * TomasuloRegisterFile* and displays them in a six-column ImGui table.
+ *
+ * Columns: Register | Qi (ROB#) | Qi Valid | Hex Value | Decimal | Double
  */
 
 #include "apps/cpu_tomasulo/ui/widgets/TomasuloRegTable.h"
-#include "apps/cpu_tomasulo/simulation/processor/TomasuloRegisterFile.h"
+#include "apps/cpu_tomasulo/simulation/memory/TomasuloRegisterFile.h"
 
 #include <imgui.h>
 #include <cstdio>
 #include <cstring>
 
  // ============================================================================
- // Construction
+ // Construction  (pre-format register name strings)
  // ============================================================================
 
 TomasuloRegTable::TomasuloRegTable() {
@@ -50,8 +56,7 @@ void TomasuloRegTable::bindDataSource(const TomasuloRegisterFile* regs) {
 
 std::string TomasuloRegTable::formatHex(uint64_t v) {
     char b[24];
-    std::snprintf(b, sizeof(b), "0x%016llX",
-        static_cast<unsigned long long>(v));
+    std::snprintf(b, sizeof(b), "0x%016llX", static_cast<unsigned long long>(v));
     return std::string(b);
 }
 
@@ -73,7 +78,6 @@ void TomasuloRegTable::render(const char* id) {
         ImGuiTableFlags_Borders | ImGuiTableFlags_ScrollY |
         ImGuiTableFlags_SizingStretchProp;
 
-    // 6 columns: Register | Qi | Qi Valid | Hex | Decimal | Double
     if (ImGui::BeginTable(id, 6, flags, ImVec2(available.x, available.y))) {
         ImGui::TableSetupScrollFreeze(0, 1);
 
@@ -103,25 +107,19 @@ void TomasuloRegTable::render(const char* id) {
             ImGui::TableSetColumnIndex(0);
             ImGui::TextUnformatted(m_names[i].c_str());
 
-            // ── Col 1: Qi (ROB index) ───────────────────────────
+            // ── Col 1: Qi (ROB slot waiting to produce this reg) ─
             ImGui::TableSetColumnIndex(1);
-            if (entry.qi_valid) {
-                ImGui::Text("ROB[%u]", static_cast<unsigned>(entry.qi));
-            }
-            else {
-                ImGui::TextColored(ImVec4(0.45f, 0.45f, 0.45f, 1.0f), "--");
-            }
+            entry.qi_valid
+                ? ImGui::Text("ROB[%u]", static_cast<unsigned>(entry.qi))
+                : ImGui::TextColored(ImVec4(0.45f, 0.45f, 0.45f, 1.0f), "--");
 
-            // ── Col 2: Qi Valid ─────────────────────────────────
+            // ── Col 2: Qi Valid indicator ────────────────────────
             ImGui::TableSetColumnIndex(2);
-            if (entry.qi_valid) {
-                ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Waiting");
-            }
-            else {
-                ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.4f, 1.0f), "Ready");
-            }
+            entry.qi_valid
+                ? ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Waiting")
+                : ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.4f, 1.0f), "Ready");
 
-            // ── Col 3: Hex value + context menu ─────────────────
+            // ── Col 3: Hex value + right-click copy menu ─────────
             ImGui::TableSetColumnIndex(3);
             {
                 std::string hx = formatHex(entry.value);
@@ -135,15 +133,15 @@ void TomasuloRegTable::render(const char* id) {
                 }
             }
 
-            // ── Col 4: Decimal (signed 64-bit) ──────────────────
+            // ── Col 4: Decimal (signed 64-bit) ───────────────────
             ImGui::TableSetColumnIndex(4);
             ImGui::Text("%lld",
                 static_cast<long long>(static_cast<int64_t>(entry.value)));
 
-            // ── Col 5: Double (IEEE 754) ────────────────────────
+            // ── Col 5: Double (IEEE 754) ──────────────────────────
             ImGui::TableSetColumnIndex(5);
             {
-                double dbl = 0.0;
+                double   dbl = 0.0;
                 uint64_t bits = entry.value;
                 std::memcpy(&dbl, &bits, sizeof(double));
                 char dblStr[64];

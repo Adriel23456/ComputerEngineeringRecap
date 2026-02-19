@@ -1,10 +1,15 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/views/TomasuloCompilerView.cpp
+// ============================================================================
+
 /**
  * @file TomasuloCompilerView.cpp
  * @brief Implementation of TomasuloCompilerView.
  *
- * - Load:    Opens file dialog -> reads .txt into editor
- * - Save:    Opens file dialog -> writes editor text to .txt
- * - Compile: Cleans source, invokes async callback
+ * Responsibilities:
+ *   - Load:    Opens a file dialog, reads .txt into the editor buffer.
+ *   - Save:    Opens a file dialog, writes the editor buffer to .txt.
+ *   - Compile: Strips BOM, normalises line endings, invokes async callback.
  */
 
 #include "apps/cpu_tomasulo/ui/views/TomasuloCompilerView.h"
@@ -16,6 +21,10 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+
+ // ============================================================================
+ // Default Source Template  (shown when no file is loaded)
+ // ============================================================================
 
 namespace {
 
@@ -45,12 +54,14 @@ namespace {
 // ============================================================================
 
 std::string TomasuloCompilerView::removeBOM(const std::string& source) {
+    // UTF-8 BOM: EF BB BF
     if (source.size() >= 3 &&
         static_cast<unsigned char>(source[0]) == 0xEF &&
         static_cast<unsigned char>(source[1]) == 0xBB &&
         static_cast<unsigned char>(source[2]) == 0xBF) {
         return source.substr(3);
     }
+    // Single-byte BOM marker (e.g. truncated UTF-16)
     if (!source.empty() &&
         (static_cast<unsigned char>(source[0]) == 0xEF ||
             static_cast<unsigned char>(source[0]) == 0xFF)) {
@@ -67,19 +78,17 @@ std::string TomasuloCompilerView::cleanSource(const std::string& source) {
         unsigned char c = static_cast<unsigned char>(source[i]);
 
         if (c == '\r') {
+            // Normalise CR and CRLF -> LF
             result += '\n';
             if (i + 1 < source.length() && source[i + 1] == '\n') ++i;
         }
-        else if (c == '\n') {
-            result += '\n';
-        }
-        else if (c == '\t') {
-            result += '\t';
+        else if (c == '\n' || c == '\t') {
+            result += static_cast<char>(c);
         }
         else if (c >= 32 && c <= 126) {
             result += static_cast<char>(c);
         }
-        // ignore all other bytes
+        // All other bytes (control characters, high-byte Unicode) are dropped
     }
     return result;
 }
@@ -92,12 +101,13 @@ TomasuloCompilerView::TomasuloCompilerView() {
     m_source.reserve(16 * 1024);
     m_source.assign(DEFAULT_SOURCE);
 
+    // Ensure ImGui always has room to grow the buffer without realloc mid-frame
     if (m_source.capacity() - m_source.size() < 1024)
         m_source.reserve(m_source.size() + 4096);
 }
 
 // ============================================================================
-// ImGui Callback
+// ImGui Resize Callback
 // ============================================================================
 
 int TomasuloCompilerView::TextEditCallback(ImGuiInputTextCallbackData* data) {
@@ -127,7 +137,8 @@ void TomasuloCompilerView::setCompileMessage(const std::string& message,
     m_compileMessage = message;
     m_messageTimer = durationSeconds;
 
-    // If we receive a result message, the compile is done
+    // If the result is a real response (not the "Compiling..." placeholder),
+    // mark the compile operation as complete.
     if (message.find("Compiling...") == std::string::npos) {
         m_isCompiling = false;
     }
@@ -158,7 +169,6 @@ void TomasuloCompilerView::render() {
 
     const float lineH = ImGui::GetTextLineHeight();
     const float messageHeight = lineH + style.WindowPadding.y * 2.0f + 2.0f;
-
     const float footerHeight =
         SPACING + messageHeight + SPACING + BUTTON_HEIGHT +
         style.ItemSpacing.y * 2.0f + style.WindowPadding.y + 4.0f;
@@ -187,10 +197,9 @@ void TomasuloCompilerView::render() {
 
     ImGui::Dummy(ImVec2(1.0f, SPACING));
 
-    // ── Message box ─────────────────────────────────────────────
+    // ── Status Bar ──────────────────────────────────────────────
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
-    ImGui::BeginChild("##tomasulo_msg_box",
-        ImVec2(0.0f, messageHeight), true);
+    ImGui::BeginChild("##tomasulo_msg_box", ImVec2(0.0f, messageHeight), true);
     {
         if (!m_compileMessage.empty()) {
             bool isSuccess =
@@ -214,7 +223,7 @@ void TomasuloCompilerView::render() {
 
     ImGui::Dummy(ImVec2(1.0f, SPACING));
 
-    // ── Buttons ─────────────────────────────────────────────────
+    // ── Action Buttons ───────────────────────────────────────────
     const float availX = ImGui::GetContentRegionAvail().x;
     const float buttonWidth = (availX - 2.0f * GAP) / 3.0f;
 
@@ -222,11 +231,7 @@ void TomasuloCompilerView::render() {
     if (ImGui::Button("Load", ImVec2(buttonWidth, BUTTON_HEIGHT))) {
         const char* filters[] = { "*.txt" };
         const char* filePath = tinyfd_openFileDialog(
-            "Select Assembly Source File",
-            "",
-            1, filters,
-            "Text files (*.txt)",
-            0);
+            "Select Assembly Source File", "", 1, filters, "Text files (*.txt)", 0);
 
         if (filePath) {
             std::ifstream file(filePath);
@@ -260,10 +265,7 @@ void TomasuloCompilerView::render() {
     if (ImGui::Button("Save", ImVec2(buttonWidth, BUTTON_HEIGHT))) {
         const char* filters[] = { "*.txt" };
         const char* filePath = tinyfd_saveFileDialog(
-            "Save Assembly File",
-            "program.txt",
-            1, filters,
-            "Text files (*.txt)");
+            "Save Assembly File", "program.txt", 1, filters, "Text files (*.txt)");
 
         if (filePath) {
             std::ofstream file(filePath);
@@ -296,7 +298,6 @@ void TomasuloCompilerView::render() {
             std::cout << "[TomasuloCompiler] Compile pressed\n";
 
             if (m_compileCallback) {
-                // Clean source before sending to assembler
                 std::string cleaned = removeBOM(m_source);
                 cleaned = cleanSource(cleaned);
 

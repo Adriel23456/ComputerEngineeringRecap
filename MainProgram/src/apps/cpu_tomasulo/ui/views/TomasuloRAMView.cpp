@@ -1,9 +1,14 @@
+// ============================================================================
+// File: src/apps/cpu_tomasulo/ui/views/TomasuloRAMView.cpp
+// ============================================================================
+
 /**
  * @file TomasuloRAMView.cpp
  * @brief Implementation of TomasuloRAMView.
  *
- * - Reset: invokes reset callback (async via controller)
- * - Load:  opens file dialog for .bin, sends path to load callback
+ * Renders the RAM table in the upper region and the control row
+ * (RESET RAM + Load .bin) in a fixed-height child at the bottom,
+ * with a status bar in between.
  */
 
 #include "apps/cpu_tomasulo/ui/views/TomasuloRAMView.h"
@@ -52,24 +57,23 @@ void TomasuloRAMView::update(float deltaTime) {
 // ============================================================================
 
 void TomasuloRAMView::render() {
-    ImVec2 available = ImGui::GetContentRegionAvail();
+    ImVec2            available = ImGui::GetContentRegionAvail();
     const ImGuiStyle& style = ImGui::GetStyle();
 
-    // More breathing room between sections + ensure bottom controls never clip
     const float SPACING = 10.0f;
     const float BUTTON_HEIGHT = 46.0f;
 
     const float STATUS_HEIGHT =
         ImGui::GetTextLineHeight() + style.WindowPadding.y * 2.0f + 2.0f;
 
-    // Fixed button area height (includes a tiny vertical padding)
+    // Fixed-height child for the button row (prevents bottom clipping)
     const float BUTTON_AREA_HEIGHT =
         BUTTON_HEIGHT + style.WindowPadding.y * 1.5f;
 
-    // Extra bottom padding so the last widget isn't flush with the window edge
+    // Extra breathing room so the last element is never flush with the edge
     const float BOTTOM_PAD = style.WindowPadding.y + 6.0f;
 
-    // Table takes the remainder after reserving status + buttons + spacers
+    // Table takes whatever height remains after the footer
     const float bottomAreaHeight =
         STATUS_HEIGHT + SPACING +
         BUTTON_AREA_HEIGHT + BOTTOM_PAD + SPACING;
@@ -90,13 +94,14 @@ void TomasuloRAMView::render() {
 
     ImGui::Dummy(ImVec2(1.0f, SPACING));
 
-    // ── Status message ──────────────────────────────────────────
+    // ── Status Bar ──────────────────────────────────────────────
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
     ImGui::BeginChild("##tomasulo_ram_status", ImVec2(0.0f, STATUS_HEIGHT), true);
     {
         if (!m_statusMessage.empty()) {
-            bool isOk = (m_statusMessage.find("Success") != std::string::npos);
-            ImVec4 col = isOk ? ImVec4(0.2f, 0.9f, 0.2f, 1.0f)
+            bool   isOk = (m_statusMessage.find("Success") != std::string::npos);
+            ImVec4 col = isOk
+                ? ImVec4(0.2f, 0.9f, 0.2f, 1.0f)
                 : ImVec4(0.9f, 0.2f, 0.2f, 1.0f);
             ImGui::PushStyleColor(ImGuiCol_Text, col);
             ImGui::TextUnformatted(m_statusMessage.c_str());
@@ -111,7 +116,7 @@ void TomasuloRAMView::render() {
 
     ImGui::Dummy(ImVec2(1.0f, SPACING));
 
-    // ── Control buttons in their own region (prevents bottom clipping) ────────
+    // ── Control Buttons (in their own child to prevent clipping) ─
     ImGui::BeginChild("##tomasulo_ram_controls",
         ImVec2(0.0f, BUTTON_AREA_HEIGHT), false,
         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
@@ -120,7 +125,6 @@ void TomasuloRAMView::render() {
     }
     ImGui::EndChild();
 
-    // Bottom breathing room (prevents last row/buttons from looking cut)
     ImGui::Dummy(ImVec2(1.0f, BOTTOM_PAD));
 }
 
@@ -134,14 +138,13 @@ void TomasuloRAMView::renderControlButtons(float availableWidth) {
     const float buttonWidth = (availableWidth - GAP) * 0.5f;
     const ImVec2 buttonSize(buttonWidth, BUTTON_HEIGHT);
 
-    // ── Reset button (red) ──────────────────────────────────────
+    // ── RESET RAM (red) ─────────────────────────────────────────
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.70f, 0.16f, 0.16f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.78f, 0.22f, 0.22f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.58f, 0.12f, 0.12f, 1.0f));
 
     if (ImGui::Button("RESET RAM", buttonSize)) {
         std::cout << "[TomasuloRAM] RESET RAM pressed\n";
-
         if (m_resetCallback) {
             m_resetCallback();
             setStatusMessage("Reset requested...", 3.0f);
@@ -152,7 +155,7 @@ void TomasuloRAMView::renderControlButtons(float availableWidth) {
     ImGui::PopStyleColor(3);
     ImGui::SameLine(0.0f, GAP);
 
-    // ── Load button (green) ─────────────────────────────────────
+    // ── Load .bin (green) ───────────────────────────────────────
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.55f, 0.20f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.68f, 0.28f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.09f, 0.45f, 0.16f, 1.0f));
@@ -160,15 +163,10 @@ void TomasuloRAMView::renderControlButtons(float availableWidth) {
     if (ImGui::Button("Load .bin", buttonSize)) {
         const char* filters[] = { "*.bin" };
         const char* filePath = tinyfd_openFileDialog(
-            "Select Binary Data File",
-            "",
-            1, filters,
-            "Binary files (*.bin)",
-            0);
+            "Select Binary Data File", "", 1, filters, "Binary files (*.bin)", 0);
 
         if (filePath) {
             std::cout << "[TomasuloRAM] Load .bin: " << filePath << "\n";
-
             if (m_loadBinaryCallback) {
                 m_loadBinaryCallback(std::string(filePath));
                 setStatusMessage("Loading binary...", 30.0f);
@@ -183,6 +181,5 @@ void TomasuloRAMView::renderControlButtons(float availableWidth) {
     }
 
     ImGui::PopStyleColor(3);
-
     ImGui::Dummy(ImVec2(1.0f, 4.0f));
 }
